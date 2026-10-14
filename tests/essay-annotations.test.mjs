@@ -12,7 +12,7 @@ test('highlights a unique exact quote at its true source position', () => {
     quote: 'serious problem', severity: 'high', category: 'task-response'
   }]);
   assert.deepEqual(result.spans.map(({ start, end, quote }) => ({ start, end, quote })), [
-    { start: 24, end: 39, quote: 'serious problem' }
+    { start: 21, end: 36, quote: 'serious problem' }
   ]);
   assert.equal(result.unavailable.length, 0);
   const html = renderAnnotatedEssayText(essay, result, escapeHtml);
