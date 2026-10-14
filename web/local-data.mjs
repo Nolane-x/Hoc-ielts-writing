@@ -38,13 +38,25 @@ export function normaliseLocalBackup(input, validTaskIds) {
       }).filter(Boolean).slice(-8);
     }
   }
+  const agentArtifacts = Array.isArray(input.agentArtifacts)
+    ? input.agentArtifacts.slice(0, 100).map((item, index) => normaliseAgentArtifact(item, index, taskIds)).filter(Boolean)
+    : [];
+  const agentRevisions = {};
+  if (input.agentRevisions && typeof input.agentRevisions === 'object' && !Array.isArray(input.agentRevisions)) {
+    for (const [taskId, revisions] of Object.entries(input.agentRevisions)) {
+      if (!taskIds.has(taskId) || !Array.isArray(revisions)) continue;
+      agentRevisions[taskId] = revisions.slice(0, 5).map((item, index) => normaliseAgentRevision(item, index)).filter(Boolean);
+    }
+  }
   return {
     schemaVersion: 1,
     exportedAt: cleanText(input.exportedAt, 80),
     theme: THEMES.has(input.theme) ? input.theme : 'system',
     drafts,
     history,
-    coachHistories
+    coachHistories,
+    agentArtifacts,
+    agentRevisions
   };
 }
 
@@ -145,4 +157,63 @@ function bandValue(value) {
 }
 function cleanText(value, max) {
   return typeof value === 'string' ? value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, max) : '';
+}
+
+
+const AGENT_ARTIFACT_KINDS = new Set(['outline', 'exercise', 'goal', 'focus']);
+
+function normaliseAgentArtifact(item, index, taskIds) {
+  if (!item || typeof item !== 'object' || Array.isArray(item) ||
+      !taskIds.has(item.taskId) || !AGENT_ARTIFACT_KINDS.has(item.kind)) return null;
+  const kind = item.kind;
+  const title = cleanText(item.title, 160);
+  if (!title) return null;
+  const payload = item.payload;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  let cleanPayload;
+  if (kind === 'outline') {
+    const content = cleanText(payload.content, 3000);
+    if (content.length < 12) return null;
+    cleanPayload = { title: cleanText(payload.title, 160) || title, content };
+  } else if (kind === 'exercise') {
+    const skill = cleanText(payload.skill, 120);
+    const prompt = cleanText(payload.prompt, 900);
+    const instructions = cleanText(payload.instructions, 900);
+    const successCriteria = cleanText(payload.successCriteria, 500);
+    if (!skill || prompt.length < 8 || instructions.length < 8 || successCriteria.length < 8) return null;
+    cleanPayload = { skill, prompt, instructions, successCriteria };
+  } else if (kind === 'goal') {
+    const why = cleanText(payload.why, 600);
+    const successCriteria = cleanText(payload.successCriteria, 500);
+    if (why.length < 8 || successCriteria.length < 8) return null;
+    cleanPayload = { title: cleanText(payload.title, 160) || title, why, successCriteria };
+  } else {
+    const quote = cleanText(payload.quote, 600);
+    const reason = cleanText(payload.reason, 500);
+    if (quote.length < 5 || !reason) return null;
+    cleanPayload = { quote, reason };
+  }
+  const at = typeof item.at === 'string' && Number.isFinite(Date.parse(item.at)) ? new Date(item.at).toISOString() : new Date().toISOString();
+  return {
+    id: cleanText(item.id, 128) || 'agent-artifact-' + (index + 1),
+    taskId: item.taskId,
+    taskTitle: cleanText(item.taskTitle, 180) || item.taskId,
+    at,
+    kind,
+    title,
+    payload: cleanPayload
+  };
+}
+
+function normaliseAgentRevision(item, index) {
+  if (!item || typeof item !== 'object' || Array.isArray(item) || typeof item.essay !== 'string') return null;
+  const essay = item.essay.slice(0, 20000);
+  const at = typeof item.at === 'string' && Number.isFinite(Date.parse(item.at)) ? new Date(item.at).toISOString() : new Date().toISOString();
+  const label = cleanText(item.label, 180) || 'Bản trước khi sửa';
+  return {
+    id: cleanText(item.id, 128) || 'agent-revision-' + (index + 1),
+    at,
+    label,
+    essay
+  };
 }
