@@ -722,8 +722,19 @@ function handleWritingAgentEvent(type, payload) {
     agentAppliedPatches = new Set();
     agentResult.savedArtifacts = false;
     renderAgentResult(agentResult);
-    setAgentStatus('Agent đã hoàn tất. Xem từng thao tác và duyệt các sửa đổi trước khi áp dụng.');
-    addAgentActivity('Đã nhận kết quả cuối và các đề xuất chờ duyệt.', 'complete');
+    const status = payload.status || 'complete';
+    const statusMessage = status === 'partial'
+      ? 'Phiên dừng giữa chừng; các đề xuất đã tạo vẫn còn để bạn xem và duyệt.'
+      : status === 'failed'
+        ? 'Agent không hoàn thành do provider lỗi trước khi tạo thao tác.'
+        : status === 'cancelled'
+          ? 'Phiên bị hủy; xem lại nếu có kết quả đã tạo.'
+          : status === 'read-only'
+            ? 'Mô hình trả về văn bản thông thường; không có hành động nào được suy đoán.'
+            : 'Agent đã hoàn tất. Xem từng thao tác và duyệt các sửa đổi trước khi áp dụng.';
+    const activityStatus = status === 'complete' ? 'complete' : status === 'partial' ? 'notice' : status === 'failed' || status === 'cancelled' ? 'rejected' : 'notice';
+    setAgentStatus(statusMessage, status === 'failed');
+    addAgentActivity(statusMessage, activityStatus);
   } else if (type === 'error') {
     agentStreamError = new Error(String(payload.message || 'Writing Agent không hoàn tất.'));
     setAgentStatus(agentStreamError.message, true);
