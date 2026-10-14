@@ -125,6 +125,8 @@ test('assessment prompt injects task-specific band anchors and explains their no
   assert.match(task2, /taskResponse — Task Response/);
   assert.match(task2, /Band 5: Trả lời đề một phần/);
   assert.match(task2, /Band 9: Lập trường được phát triển sâu/);
+  assert.ok(task2.includes('\nBand 5:'), 'rubric cues should use readable newlines');
+  assert.equal(task2.includes('\\nBand 5:'), false, 'the prompt must not contain literal backslash-n separators');
   assert.match(task2, /not verbatim official IELTS descriptors/i);
   assert.match(task2, /not empirical score calibration/i);
   assert.match(task2, /clear, natural Vietnamese/i);
