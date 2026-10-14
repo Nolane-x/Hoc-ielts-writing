@@ -783,6 +783,58 @@ async function consumeWritingAgentStream(response) {
   }
   if (buffer.trim()) dispatch(buffer);
 }
+
+function buildAgentLearningContext() {
+  const records = eligibleAIRecords(history).slice(0, 30);
+  const averages = learnerCriterionSummary(history)
+    .filter(item => Number.isFinite(item.mean) && item.count > 0)
+    .map(item => ({ id: item.id, mean: item.mean, count: item.count }));
+  const recurring = buildRecurringErrorPatterns(history).patterns
+    .slice(0, 5)
+    .map(item => ({
+      category: item.category,
+      criterion: item.criterion,
+      assessmentCount: item.assessmentCount,
+      severity: item.severity
+    }));
+  const allowedCriteria = new Set(['taskAchievement', 'taskResponse', 'coherence', 'lexical', 'grammar']);
+  const allowedCategories = new Set(['task-achievement', 'task-response', 'coherence', 'lexical', 'grammar', 'data-accuracy', 'register', 'other']);
+  const recentAssessments = records.slice(0, 3).map(record => {
+    const taskType = record.report?.taskType || record.taskType;
+    const criteria = (Array.isArray(record.report?.criteria) ? record.report.criteria : [])
+      .slice(0, 5)
+      .map(item => {
+        let id = item?.id;
+        if (id === 'taskResponse' && taskType !== 'task2') id = 'taskAchievement';
+        const rawScore = item?.score;
+        const score = Number(rawScore);
+        if (!allowedCriteria.has(id) || !Number.isFinite(score) || score < 0 || score > 9 || Math.abs(score * 2 - Math.round(score * 2)) > 1e-9) return null;
+        return { id, score };
+      })
+      .filter(Boolean);
+    const issues = Array.isArray(record.report?.issues) ? record.report.issues : [];
+    const issueCategories = [...new Set(issues.map(issue => {
+      let category = issue?.category;
+      if (taskType !== 'task2' && category === 'task-response') category = 'task-achievement';
+      return allowedCategories.has(category) ? category : '';
+    }).filter(Boolean))].slice(0, 8);
+    return {
+      taskType: ['task1-academic', 'task1-general', 'task2'].includes(taskType) ? taskType : 'task2',
+      wordCount: Number.isInteger(record.report?.wordCount) ? record.report.wordCount : countWords(record.essay),
+      criteria,
+      issueCategories,
+      resolvedIssues: issues.filter(issue => issue?.userMarkedResolved === true).length,
+      unresolvedIssues: issues.filter(issue => issue?.userMarkedResolved !== true).length
+    };
+  });
+  return {
+    eligibleEssayCount: records.length,
+    criterionAverages: averages,
+    recurringPatterns: recurring,
+    recentAssessments
+  };
+}
+
 async function runWritingAgent() {
   if (agentBusy || coachBusy || submitting) return;
   const essay = $('#essay-editor').value;
@@ -798,7 +850,7 @@ async function runWritingAgent() {
   saveDraft();
   const taskSnapshot = { ...currentTask };
   agentSessionId = createAgentSessionId();
-  const input = { taskType: taskSnapshot.type, taskPrompt: taskSnapshot.prompt, essay: essay.slice(0, 20000), message, history: normaliseLocalCoachTurns(coachTurns).slice(-4), sessionId: agentSessionId };
+  const input = { taskType: taskSnapshot.type, taskPrompt: taskSnapshot.prompt, essay: essay.slice(0, 20000), message, history: normaliseLocalCoachTurns(coachTurns).slice(-4), learningContext: buildAgentLearningContext(), sessionId: agentSessionId };
   agentBusy = true;
   agentResultTaskId = taskSnapshot.id;
   agentResultTaskTitle = taskSnapshot.title;
