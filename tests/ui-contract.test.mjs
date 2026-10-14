@@ -149,3 +149,12 @@ test('Writing Agent passes an aggregate local learner profile and discloses what
   assert.match(app, /issueCategories,/);
   assert.match(app, /resolvedIssues:/);
 });
+
+
+test('Settings exposes a separate budget for a multi-turn Writing Agent session', () => {
+  assert.match(html, /id="max-agent-session-budget"[^>]*name="maxAgentSessionUsd"/);
+  assert.match(app, /maxAgentSessionUsd: Number\(\$\('#max-agent-session-budget'\)\.value\)/);
+  assert.match(app, /\$\('#max-agent-session-budget'\)\.value = settings\.maxAgentSessionUsd/);
+  assert.match(app, /cost > settings\.maxAgentSessionUsd/);
+  assert.match(html, /TỐI ĐA CẢ PHIÊN AGENT/);
+});
