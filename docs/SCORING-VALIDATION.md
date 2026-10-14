@@ -43,13 +43,13 @@ The evaluator refuses to overwrite the input or an existing output file. Create 
 
 ## Metrics and how to read them
 
-For every split, task type and criterion, the report contains:
+For every split, task type, rubric criterion, and eligible task-band composite, the report contains:
 
-- Coverage: number of valid model predictions divided by the expected number. Missing and invalid scores must not disappear from view.
+- Coverage: number of valid model predictions divided by the expected number. Missing and invalid scores must not disappear from view. Each metric also reports the number of short essays excluded from the composite-band calculation.
 - MAE and median absolute error: typical band-point distance from adjudicated reference scores; smaller is better.
 - RMSE: penalises larger errors more heavily than MAE.
 - Bias: mean model score minus reference score. Positive means over-scoring; negative means under-scoring.
-- Exact, within-half-band, and within-one-band rates; severe-error rate counts an absolute error of at least 1.5 bands.
+- Exact, within-half-band, and within-one-band rates; severe-error rate counts an absolute error of at least 1.5 bands. The additional taskBand track compares WMR's estimated band for one selected essay with the band derived from the adjudicated four-criterion reference. It is not the overall Writing band for a full test; essays under 80 words are excluded from this composite metric because WMR intentionally withholds that estimate.
 - Quadratic weighted kappa (QWK): chance-adjusted agreement that penalises larger disagreements more. Interpret cautiously when score distributions are narrow or samples are small.
 - Deterministic bootstrap 95% intervals for MAE, within-half-band rate and QWK when at least five score pairs exist. These are exploratory intervals, not a substitute for a pre-registered analysis; very small samples still produce unstable estimates.
 
@@ -59,7 +59,7 @@ The evaluator warns when task/split cells have fewer than 30 examples. This is a
 
 ## Release gate and claims
 
-Do not publish “more accurate than IELTS graders” or a single overall accuracy percentage from a tiny sample. Do not treat exact band matches alone as success, and do not combine Task Achievement with Task Response. Compare model versions on the same frozen held-out essays, disclose provider/model and settings, report coverage and all four criteria, include human-rater agreement and uncertainty, and retain failed/invalid outputs in the denominator through the coverage metric.
+Do not publish “more accurate than IELTS graders” or a single overall accuracy percentage from a tiny sample. Do not treat exact band matches alone as success, and do not combine Task Achievement with Task Response. Compare model versions on the same frozen held-out essays, disclose provider/model and settings, report coverage, all four criteria and the separate one-task composite band, include human-rater agreement and uncertainty, and retain failed/invalid outputs in the denominator through the coverage metric.
 
 There is currently no universal numerical pass threshold in this tool. Choose minimum acceptable MAE, severe-error rate, score coverage, evidence quality and task-specific tolerances before inspecting held-out results. A release should not claim validated calibration until those pre-registered gates are met and reviewed.
 
