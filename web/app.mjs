@@ -912,11 +912,10 @@ function evaluateAgentPractice(index) {
   const answer = $('[data-agent-answer="' + index + '"]')?.value.trim();
   if (!exercise || !answer) { setToast('Hãy tự viết câu trả lời trước khi yêu cầu phản hồi.'); return; }
   $('#coach-input').value = 'Hãy phản hồi câu trả lời của tôi cho bài luyện vi mô, không viết lại toàn bộ thay tôi. Kỹ năng: ' +
-    exercise.skill + '\\nCâu hỏi: ' + exercise.prompt + '\\nTiêu chí thành công: ' + exercise.successCriteria + '\\nCâu trả lời của tôi: ' + answer +
-    '\\nNêu 1 điều đã làm tốt, 1 điểm cần cải thiện và hỏi tôi một câu tự sửa.';
+    exercise.skill + '\nCâu hỏi: ' + exercise.prompt + '\nTiêu chí thành công: ' + exercise.successCriteria + '\nCâu trả lời của tôi: ' + answer +
+    '\nNêu 1 điều đã làm tốt, 1 điểm cần cải thiện và hỏi tôi một câu tự sửa.';
   coachRequest($('#coach-input').value);
 }
-
 async function coachRequest(message) {
   if (coachBusy || submitting || agentBusy) return;
   const question = String(message || '').trim().slice(0, 4000);
