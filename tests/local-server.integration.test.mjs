@@ -117,7 +117,7 @@ test('writing agent route refuses provider execution when permission is disabled
   const response = await fetch(base + '/api/agent', {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: base },
-    body: JSON.stringify({ taskType: 'task2', taskPrompt: 'Discuss a policy.', essay: 'A sufficiently long essay is not needed to verify a permission gate.', message: 'Inspect this draft.' })
+    body: JSON.stringify({ taskType: 'task2', taskPrompt: 'Discuss a policy.', essay: 'A sufficiently long essay is not needed to verify a permission gate.', message: 'Inspect this draft.', sessionId: 'agent-permission-test-0001' })
   });
   assert.equal(response.status, 409);
   assert.equal((await response.json()).error, 'Hãy bật quyền gửi nội dung tới provider trong Settings trước khi chạy Agent AI.');
@@ -173,7 +173,8 @@ test('writing agent streams tool progress and final result from a configured loc
       taskType: 'task2',
       taskPrompt: 'Discuss the benefits of public transport.',
       essay: 'Public transport can reduce traffic. It is important because buses carry many passengers. Governments should plan routes carefully.',
-      message: 'Inspect my draft and summarise one next step.'
+      message: 'Inspect my draft and summarise one next step.',
+      sessionId: 'agent-stream-test-session-0001'
     })
   });
   assert.equal(response.status, 200);
