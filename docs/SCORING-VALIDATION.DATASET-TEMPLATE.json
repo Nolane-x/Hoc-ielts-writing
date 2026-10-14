@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "replace-with-non-identifying-label",
+  "rubricVersion": "record-the-exact-rubric-version",
+  "provenance": {
+    "sourceDescription": "Describe the permissioned source without identifying a learner.",
+    "deidentified": true,
+    "permissionConfirmed": true,
+    "ratingProtocol": "double-independent-adjudicated"
+  },
+  "examples": [
+    {
+      "id": "example-001",
+      "taskType": "task2",
+      "split": "held-out",
+      "prompt": "Permissioned IELTS Writing Task 2 prompt",
+      "essay": "Permissioned and de-identified essay text goes here.",
+      "reference": {
+        "adjudicatedScores": {
+          "taskResponse": 6.5,
+          "coherence": 6,
+          "lexical": 6.5,
+          "grammar": 6
+        },
+        "raters": [
+          {
+            "id": "rater-a-pseudonym",
+            "scores": {
+              "taskResponse": 6.5,
+              "coherence": 6,
+              "lexical": 6.5,
+              "grammar": 6
+            }
+          },
+          {
+            "id": "rater-b-pseudonym",
+            "scores": {
+              "taskResponse": 6.5,
+              "coherence": 6,
+              "lexical": 6.5,
+              "grammar": 6
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "runs": [
+    {
+      "id": "model-run-001",
+      "provider": "provider-label",
+      "model": "exact-model-id-and-version",
+      "results": [
+        {
+          "exampleId": "example-001",
+          "assessment": {
+            "criteria": [
+              {"id": "taskResponse", "score": 6.5, "evidence": ["exact quote copied from essay"]},
+              {"id": "coherence", "score": 6, "evidence": []},
+              {"id": "lexical", "score": 6.5, "evidence": []},
+              {"id": "grammar", "score": 6, "evidence": []}
+            ],
+            "issues": [{"quote": "exact quote copied from essay", "explanation": "Feedback text"}],
+            "strengths": [{"quote": "exact quote copied from essay", "why": "Feedback text"}]
+          }
+        }
+      ]
+    }
+  ]
+}
