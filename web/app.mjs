@@ -45,6 +45,7 @@ let agentBusy = false;
 let agentController = null;
 let agentResult = null;
 let agentResultTaskId = null;
+let agentResultTaskTitle = '';
 let agentActivity = [];
 let agentAppliedPatches = new Set();
 let agentStreamError = null;
@@ -641,6 +642,7 @@ function renderAgentResult(result) {
   const patches = Array.isArray(result.patches) ? result.patches : [];
   const exercises = Array.isArray(result.exercises) ? result.exercises : [];
   const goals = Array.isArray(result.learningGoals) ? result.learningGoals : [];
+  const practiceMatches = Array.isArray(result.practiceMatches) ? result.practiceMatches : [];
   const patchesHtml = patches.length
     ? '<section class="agent-result-section"><div class="agent-result-heading"><div><span class="section-kicker">PROPOSED PATCHES</span><h3>Đề xuất sửa bài</h3></div><span class="count-badge">' + patches.filter((patch,index)=>!agentAppliedPatches.has(index)).length + ' đang chờ</span></div>' +
       '<p class="agent-result-note">Các thay đổi được kiểm tra bằng đoạn nguồn chính xác. Bấm một sửa đổi hoặc áp dụng tất cả; mỗi lần áp dụng đều lưu lại phiên bản trước.</p>' +
@@ -669,11 +671,17 @@ function renderAgentResult(result) {
       goals.map(item => '<article class="agent-goal-card"><strong>' + escapeHtml(item.title) + '</strong><p>' + escapeHtml(item.why) + '</p><div><small>ĐIỀU KIỆN HOÀN THÀNH</small><p>' +
         escapeHtml(item.successCriteria) + '</p></div></article>').join('') + '</section>'
     : '';
-  const hasArtifacts = Boolean(result.outline || exercises.length || goals.length || result.focus);
-  host.innerHTML = '<section class="agent-final-message"><span class="section-kicker">AGENT SUMMARY</span><p>' + escapeHtml(result.message || 'Agent đã hoàn tất.') + '</p><small>' +
+  const practiceHtml = practiceMatches.length
+    ? '<section class="agent-result-section"><div class="agent-result-heading"><div><span class="section-kicker">LOCAL PRACTICE BANK</span><h3>Đề luyện chuyển giao phù hợp</h3></div><span class="count-badge">' + practiceMatches.length + ' đề</span></div>' +
+      '<p class="agent-result-note">Đề đến từ ngân hàng bài tập cục bộ đã đóng gói trong WMR; không cần gọi mạng. Hãy chọn đề phù hợp để luyện kỹ năng ở ngữ cảnh mới.</p>' +
+      practiceMatches.map(item => '<article class="agent-practice-card"><div><span class="agent-kind-label">' + escapeHtml(item.type || '') + ' · ' + escapeHtml(item.difficulty || '') + '</span><h4>' + escapeHtml(item.title || 'Đề luyện') + '</h4><p>' + escapeHtml(item.skillFocus || '') + '</p></div><p>' + escapeHtml(item.goal || '') + '</p><details><summary>Xem đề và gợi ý</summary><blockquote>' + escapeHtml(item.prompt || '') + '</blockquote>' +
+      '<ul>' + (Array.isArray(item.tips) ? item.tips : []).map(tip => '<li>' + escapeHtml(tip) + '</li>').join('') + '</ul></details><button class="button button-secondary" type="button" data-agent-start-task="' + escapeHtml(item.id) + '">Mở đề này để luyện →</button></article>').join('') + '</section>'
+    : '';
+  const hasArtifacts = Boolean(result.outline || exercises.length || goals.length || result.focus || practiceMatches.length);
+  host.innerHTML = '<section class="agent-final-message"><span class="section-kicker">AGENT SUMMARY</span><p>' + escapeHtml(result.message || 'Agent đã hoàn tất.') + '</p><small>Phiên này thuộc đề: ' + escapeHtml(agentResultTaskTitle || 'Đề hiện tại') + '</small><small>' +
     'Model calls: ' + escapeHtml(result.usage?.modelCalls ?? '—') + ' · Workspace tools: ' + escapeHtml(result.usage?.toolCalls ?? '—') + ' · ' +
     (result.safety?.liveDraftModified ? 'Có thao tác trực tiếp' : 'Bản nháp gốc không bị tự động ghi đè') + '</small></section>' +
-    (focusHtml + patchesHtml + outlineHtml + exercisesHtml + goalsHtml) +
+    (focusHtml + patchesHtml + outlineHtml + exercisesHtml + goalsHtml + practiceHtml) +
     (hasArtifacts ? '<button class="button button-secondary agent-save-artifacts" type="button" data-agent-save-artifacts' + (result.savedArtifacts ? ' disabled' : '') + '>' +
       (result.savedArtifacts ? '✓ Đã lưu tài liệu vào thiết bị' : 'Lưu dàn ý, bài luyện và mục tiêu cục bộ') + '</button>' : '') +
     (!hasArtifacts && !patches.length ? '<div class="agent-empty-state">Agent chưa tạo thao tác có cấu trúc ở phiên này. Bạn vẫn có thể hỏi tiếp với mục tiêu cụ thể hơn.</div>' : '');
@@ -741,6 +749,7 @@ async function runWritingAgent() {
   const input = { taskType: taskSnapshot.type, taskPrompt: taskSnapshot.prompt, essay: essay.slice(0, 20000), message, history: normaliseLocalCoachTurns(coachTurns).slice(-4) };
   agentBusy = true;
   agentResultTaskId = taskSnapshot.id;
+  agentResultTaskTitle = taskSnapshot.title;
   agentResult = null;
   agentAppliedPatches = new Set();
   agentActivity = [];
@@ -793,6 +802,17 @@ function cancelWritingAgent() {
     setAgentStatus('Đang gửi yêu cầu hủy…');
     agentController.abort();
   }
+}
+function openAgentPracticeTask(taskId) {
+  const task = TASKS.find(item => item.id === taskId);
+  if (!task) { setToast('Không tìm thấy đề trong ngân hàng bài luyện cục bộ.'); return; }
+  if (agentBusy) { setToast('Hãy để phiên Agent hiện tại hoàn tất hoặc hủy trước khi chuyển đề.'); return; }
+  saveDraft();
+  $('#task-select').value = task.id;
+  loadCurrentTask();
+  showPage('workspace');
+  $('#essay-editor').focus({ preventScroll: true });
+  setToast('Đã mở đề luyện: ' + task.title + '. Bản nháp của đề trước đã được lưu cục bộ.');
 }
 function focusAgentQuote() {
   if (!agentResult?.focus?.quote) return;
@@ -1155,6 +1175,8 @@ function attachEvents() {
       return;
     }
     if (event.target.closest('[data-agent-focus]')) { focusAgentQuote(); return; }
+    const nextTask = event.target.closest('[data-agent-start-task]');
+    if (nextTask) { openAgentPracticeTask(nextTask.dataset.agentStartTask); return; }
     const saveArtifacts = event.target.closest('[data-agent-save-artifacts]');
     if (saveArtifacts) { saveAgentArtifacts(); return; }
     const evaluate = event.target.closest('[data-agent-evaluate]');
