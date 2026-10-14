@@ -12,6 +12,7 @@ export const PROVIDER_PRESETS = {
   custom: { label: 'Custom OpenAI-compatible', kind: 'openai', baseUrl: '', model: '' }
 };
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+const MAX_RESPONSE_CHARS = 1_000_000;
 
 export function normaliseProviderConfig(input = {}) {
   const id = String(input.provider || 'openai');
