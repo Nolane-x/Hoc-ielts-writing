@@ -186,3 +186,57 @@ test('agent session cost estimate is zero for local inference, null without remo
   assert.ok(estimate > 0);
   assert.ok(estimate < 1, 'the fixture should produce a conservative bounded session estimate');
 });
+
+
+test('provider failure after a staged edit returns a partial result instead of losing the proposal', async () => {
+  const events = [];
+  const result = await runWritingAgentSession({
+    input: { taskType:'task2', taskPrompt:'Discuss transport.', essay, message:'Inspect the draft and propose one precise improvement.' },
+    complete: async ({ turn }) => {
+      if (turn === 1) return { text: JSON.stringify({
+        kind:'tool_call',
+        name:'propose_edit',
+        arguments:{
+          oldText:'This policy could reduce traffic',
+          replacement:'This policy could ease congestion',
+          reason:'Cụm từ gọn và tự nhiên hơn.',
+          criterion:'lexical'
+        }
+      }) };
+      throw new Error('simulated provider outage');
+    },
+    onEvent: (type,payload) => events.push({type,payload})
+  });
+  assert.equal(result.status,'partial');
+  assert.equal(result.failureCode,'provider_failure');
+  assert.equal(result.patches.length,1);
+  assert.match(result.message,/vẫn được giữ/i);
+  assert.equal(result.safety.liveDraftModified,false);
+  assert.ok(events.some(event=>event.type==='result' && event.payload.status==='partial'));
+});
+
+test('cancelling after a tool action retains staged changes in the final native session result', async () => {
+  const controller = new AbortController();
+  const result = await runWritingAgentSession({
+    input: { taskType:'task2', taskPrompt:'Discuss transport.', essay, message:'Suggest one edit.' },
+    signal: controller.signal,
+    complete: async ({ turn }) => {
+      if (turn === 1) return { text: JSON.stringify({
+        kind:'tool_call',
+        name:'propose_edit',
+        arguments:{
+          oldText:'This policy could reduce traffic',
+          replacement:'This policy could ease congestion',
+          reason:'Cải thiện độ tự nhiên.',
+          criterion:'lexical'
+        }
+      }) };
+      controller.abort();
+      throw new Error('cancelled');
+    },
+    onEvent: () => {}
+  });
+  assert.equal(result.status,'partial');
+  assert.equal(result.failureCode,'cancelled');
+  assert.equal(result.patches.length,1);
+});
