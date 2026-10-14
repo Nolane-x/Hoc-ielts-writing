@@ -1,6 +1,6 @@
 {
   "name": "wmr-writing-mentor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Local-first IELTS Writing mentor with evidence-grounded assessment and optional multi-provider AI.",
@@ -22,9 +22,9 @@
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.3",
-    "electron": "39.2.7",
-    "electron-builder": "26.0.12",
-    "vite": "7.1.9"
+    "electron": "44.7.2",
+    "electron-builder": "26.15.3",
+    "vite": "8.3.4"
   },
   "build": {
     "appId": "org.nolane.wmrwritingmentor",
