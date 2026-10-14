@@ -182,6 +182,9 @@ test('writing agent streams tool progress and final result from a configured loc
   assert.match(events, /event: progress/);
   assert.match(events, /event: tool/);
   assert.match(events, /event: result/);
+  assert.match(events, /\"estimatedSessionCostUsd\":0/);
+  assert.match(events, /\"maximumModelTurns\":10/);
+  assert.match(events, /\"maximumToolCalls\":8/);
   assert.match(events, /Đã kiểm tra bài nháp trong workspace cục bộ/);
   assert.equal(outputs.length, 0);
 });
