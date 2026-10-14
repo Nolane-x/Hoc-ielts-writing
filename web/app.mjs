@@ -10,7 +10,7 @@ import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
 import { PROVIDER_PRESETS, normaliseProviderConfig, requestCompletion, estimateCost } from './providers.mjs';
-import { runWritingAgentSession, estimateWritingAgentSessionCost } from './writing-agent.mjs';
+import { runWritingAgentSession, estimateWritingAgentSessionCost, WRITING_AGENT_MAX_MODEL_TURNS, WRITING_AGENT_MAX_TOOL_CALLS } from './writing-agent.mjs';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -694,7 +694,7 @@ function renderAgentResult(result) {
     : '';
   const hasArtifacts = Boolean(result.outline || exercises.length || goals.length || result.focus);
   const hasStructuredOutput = Boolean(hasArtifacts || patches.length || practiceMatches.length);
-  const metadataLine = agentSessionMetadata ? '<small>Provider: ' + escapeHtml(agentSessionMetadata.provider || '—') + ' · Model: ' + escapeHtml(agentSessionMetadata.model || '—') + ' · Ước tính phiên: ' + escapeHtml(agentSessionMetadata.localEndpoint ? '0 USD · cục bộ' : Number.isFinite(agentSessionMetadata.estimatedSessionCostUsd) ? '$' + agentSessionMetadata.estimatedSessionCostUsd.toFixed(4) : 'chưa có') + ' · Giới hạn: ' + escapeHtml(agentSessionMetadata.maximumModelTurns ?? 10) + ' lượt / ' + escapeHtml(agentSessionMetadata.maximumToolCalls ?? 8) + ' thao tác</small>' : '';
+  const metadataLine = agentSessionMetadata ? '<small>Provider: ' + escapeHtml(agentSessionMetadata.provider || '—') + ' · Model: ' + escapeHtml(agentSessionMetadata.model || '—') + ' · Ước tính phiên: ' + escapeHtml(agentSessionMetadata.localEndpoint ? '0 USD · cục bộ' : Number.isFinite(agentSessionMetadata.estimatedSessionCostUsd) ? '$' + agentSessionMetadata.estimatedSessionCostUsd.toFixed(4) : 'chưa có') + ' · Giới hạn: ' + escapeHtml(agentSessionMetadata.maximumModelTurns ?? WRITING_AGENT_MAX_MODEL_TURNS) + ' lượt / ' + escapeHtml(agentSessionMetadata.maximumToolCalls ?? WRITING_AGENT_MAX_TOOL_CALLS) + ' thao tác</small>' : '';
   host.innerHTML = '<section class="agent-final-message"><span class="section-kicker">AGENT SUMMARY</span><p>' + escapeHtml(result.message || 'Agent đã hoàn tất.') + '</p><small>Phiên này thuộc đề: ' + escapeHtml(agentResultTaskTitle || 'Đề hiện tại') + '</small>' + metadataLine + '<small>' +
     'Model calls: ' + escapeHtml(result.usage?.modelCalls ?? '—') + ' · Workspace tools: ' + escapeHtml(result.usage?.toolCalls ?? '—') + ' · ' +
     (result.safety?.liveDraftModified ? 'Có thao tác trực tiếp' : 'Bản nháp gốc không bị tự động ghi đè') + '</small></section>' +
@@ -798,8 +798,8 @@ async function runWritingAgent() {
         model: config.model,
         localEndpoint: Boolean(config.localEndpoint),
         estimatedSessionCostUsd,
-        maximumModelTurns: 10,
-        maximumToolCalls: 8
+        maximumModelTurns: WRITING_AGENT_MAX_MODEL_TURNS,
+        maximumToolCalls: WRITING_AGENT_MAX_TOOL_CALLS
       };
       await runWritingAgentSession({
         input,
