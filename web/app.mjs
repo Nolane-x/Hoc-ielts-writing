@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { parseLocalBackup } from './local-data.mjs';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
@@ -554,14 +555,56 @@ function downloadFile(filename, content, type = 'application/json') {
 }
 function exportData() {
   const drafts = {};
-  for (const task of TASKS) drafts[task.id] = readDraft(task.id);
+  const coachHistories = {};
+  for (const task of TASKS) {
+    drafts[task.id] = readDraft(task.id);
+    coachHistories[task.id] = normaliseLocalCoachTurns(safeParse(localStorage.getItem(COACH_PREFIX + task.id), []));
+  }
   const payload = {
-    schemaVersion: 1, exportedAt: new Date().toISOString(),
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    theme: localStorage.getItem(THEME_KEY) || 'system',
     settings: { ...settings, apiKey: undefined },
-    drafts, history
+    drafts,
+    history,
+    coachHistories
   };
   downloadFile('wmr-local-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(payload, null, 2));
-  setToast('Đã xuất dữ liệu riêng tư. Hãy giữ file ở nơi an toàn.');
+  setToast('Đã xuất bản sao lưu cục bộ. File không chứa API key.');
+}
+async function importBackupFile(file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    setToast('File sao lưu vượt quá giới hạn 5 MB.');
+    return;
+  }
+  try {
+    const backup = parseLocalBackup(await file.text(), TASKS.map(task => task.id));
+    const draftCount = Object.keys(backup.drafts).length;
+    if (!confirm('Khôi phục ' + draftCount + ' bản nháp và ' + backup.history.length + ' báo cáo? Lịch sử Mentor sẽ được thay thế. Provider, quyền gửi dữ liệu và API key hiện tại sẽ không thay đổi.')) return;
+    for (const task of TASKS) {
+      localStorage.setItem(DRAFT_PREFIX + task.id, backup.drafts[task.id] || '');
+      const turns = backup.coachHistories[task.id] || [];
+      if (turns.length) localStorage.setItem(COACH_PREFIX + task.id, JSON.stringify(turns));
+      else localStorage.removeItem(COACH_PREFIX + task.id);
+    }
+    history = backup.history;
+    persistHistory();
+    setTheme(backup.theme);
+    latestReport = history[0]?.report || null;
+    loadCurrentTask();
+    renderLearning();
+    renderReport(latestReport);
+    setToast('Đã khôi phục bản sao lưu. Cài đặt AI và khóa hiện tại được giữ nguyên.');
+  } catch (error) {
+    const reason = String(error?.message || '');
+    const known = {
+      backup_invalid_json: 'JSON không hợp lệ.',
+      backup_size_invalid: 'File sao lưu vượt quá giới hạn.',
+      backup_schema_unsupported: 'Phiên bản dữ liệu sao lưu không được hỗ trợ.'
+    };
+    setToast('Không thể nhập bản sao lưu: ' + (known[reason] || 'cấu trúc hoặc dữ liệu trong file không hợp lệ.'));
+  }
 }
 function exportReport() {
   if (!latestReport) { setToast('Chưa có báo cáo để xuất.'); return; }
@@ -569,17 +612,22 @@ function exportReport() {
   downloadFile('wmr-report-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(record, null, 2));
 }
 async function clearLocalData() {
-  if (!confirm('Xóa toàn bộ bản nháp, lịch sử đánh giá và tiến độ trên thiết bị này? Không thể hoàn tác.')) return;
-  for (const task of TASKS) localStorage.removeItem(DRAFT_PREFIX + task.id);
+  if (!confirm('Xóa toàn bộ bản nháp, báo cáo, hội thoại Mentor và tiến độ trên thiết bị này? Không thể hoàn tác.')) return;
+  for (const task of TASKS) {
+    localStorage.removeItem(DRAFT_PREFIX + task.id);
+    localStorage.removeItem(COACH_PREFIX + task.id);
+  }
   localStorage.removeItem(HISTORY_KEY);
   if (NATIVE) localStorage.removeItem(USAGE_KEY);
   history = [];
+  coachTurns = [];
   latestReport = null;
   $('#essay-editor').value = '';
   loadHistory();
+  loadCurrentTask();
   renderReport(null);
   renderLearning();
-  setToast('Đã xóa bản nháp và lịch sử cục bộ.');
+  setToast('Đã xóa bản nháp, hội thoại Mentor và lịch sử cục bộ.');
 }
 function attachEvents() {
   $$('[data-page]').forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
@@ -626,6 +674,12 @@ function attachEvents() {
   $('#test-provider').addEventListener('click', testProvider);
   $('#export-history').addEventListener('click', exportData);
   $('#export-all').addEventListener('click', exportData);
+  $('#import-backup').addEventListener('click', () => $('#import-file').click());
+  $('#import-file').addEventListener('change', async () => {
+    const file = $('#import-file').files?.[0];
+    try { await importBackupFile(file); }
+    finally { $('#import-file').value = ''; }
+  });
   $('#export-report').addEventListener('click', exportReport);
   $('#export-current-report').addEventListener('click', exportReport);
   $('#clear-local-data').addEventListener('click', clearLocalData);
