@@ -171,8 +171,8 @@ async function handleWritingAgentStream(req, res, input) {
   const ledger = currentUsage();
   if (!usageHealthy) throw httpError(503, 'Không xác minh được sổ ngân sách; Agent bị chặn.');
   if (ledger.calls >= settings.maxDailyCalls) throw httpError(429, 'Đã đạt giới hạn số lượt AI/ngày.');
-  if (cost === null || (!provider.localEndpoint && cost > settings.maxCallUsd) || ledger.estimatedUsd + (cost || 0) > settings.dailyBudgetUsd) {
-    throw httpError(429, 'Phiên Agent nhiều lượt có thể vượt giới hạn chi phí hiện tại. Hãy tăng hạn mức mỗi lượt/ngày trong Settings hoặc dùng model cục bộ.');
+  if (cost === null || (!provider.localEndpoint && cost > settings.maxAgentSessionUsd) || ledger.estimatedUsd + (cost || 0) > settings.dailyBudgetUsd) {
+    throw httpError(429, 'Ước tính phiên Agent vượt hạn mức riêng của phiên hoặc ngân sách ngày. Hãy điều chỉnh các giới hạn tương ứng trong Settings hoặc dùng model cục bộ.');
   }
   if (aiInFlight) throw httpError(429, 'Một phiên AI khác đang chạy. Hãy để phiên đó kết thúc hoặc hủy trước khi khởi chạy Agent.');
   aiInFlight = true;
