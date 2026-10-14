@@ -25,7 +25,7 @@ The agent is allowed to suggest patches without asking before every inspection o
 
 The UI shows source text beside the replacement. A learner can apply one patch or all current non-overlapping patches. Before applying, the app revalidates all anchors against the *current* editor, checks overlaps again, confirms the resulting length, and saves a local pre-edit snapshot. Stale, repeated or missing anchors are rejected rather than guessed. Revisions are capped at five per task and can be restored; restoring over a different current draft asks for confirmation and saves the current content first.
 
-The app also displays outlines, micro-exercises, success criteria, goals and quote-focus notes. Learners choose when to save these items to the local artifact library. Each exercise has a response field which can be submitted to Mentor for formative feedback. Artifacts and the last five draft revisions per task are included in validated local backups. Credentials and provider settings are not imported from a backup.
+The app also displays outlines, micro-exercises, success criteria, goals and quote-focus notes. Learners choose when to save these items to the local artifact library. Each exercise has a response field which can be submitted to Mentor for formative feedback. Up to 100 bounded micro-practice attempts, including the learner's answer and verified returned feedback, are stored on this device and included in validated local backups alongside artifacts and the last five draft revisions per task. Provider setup messages are never counted as teaching feedback. The journal reports activity counts only, not band scores or mastery. Credentials and provider settings are not imported from a backup.
 
 ## Permission and safety boundary
 
@@ -49,7 +49,7 @@ The following are checked in CI via unit and local integration tests:
 - Provider opt-out rejects agent calls.
 - A configured local-compatible provider produces the expected SSE progress/tool/result event chain.
 - UI controls exist for cancellation, approval, revision restoration and artifact library.
-- Backup validation constrains artifact kinds, task IDs, lengths and revision counts.
+- Backup validation constrains artifact kinds, task IDs, practice-feedback provenance, lengths and record/revision counts; unsupported IDs and malformed attempts are dropped.
 - Existing provider, cost-ledger, loopback and dependency-audit checks still run.
 
 Manual production validation is still needed for real provider cancellation semantics, accessibility with keyboard/screen readers, physical Windows/Linux/Android builds and pedagogical quality. The agent's structured actions are not proof that its advice is correct; score quality still requires a permissioned, independently rated writing corpus.
