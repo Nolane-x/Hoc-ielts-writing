@@ -20,7 +20,7 @@ const STARTUP_TOKEN = String(process.env.WMR_STARTUP_TOKEN || '');
 const DEFAULT_SETTINGS = {
   provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: '',
   inputUsdPerMillion: 0, outputUsdPerMillion: 0, externalAllowed: false,
-  dailyBudgetUsd: 0.5, maxDailyCalls: 8, maxCallUsd: 0.1, maxOutputTokens: 1800
+  dailyBudgetUsd: 0.5, maxDailyCalls: 8, maxCallUsd: 0.1, maxAgentSessionUsd: 0.5, maxOutputTokens: 1800
 };
 let settings = { ...DEFAULT_SETTINGS };
 let activeApiKey = '';
