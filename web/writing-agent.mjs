@@ -37,7 +37,7 @@ export const WRITING_AGENT_SYSTEM_PROMPT = [
   'focus_on_quote {"quote":"unique exact quote from original essay","reason":"why to inspect this part"}',
   'search_practice_bank {"query":"skill, problem or topic for a next IELTS practice task","taskType":"task1-academic|task1-general|task2 or empty for any type"}',
   'You have at most eight tool calls and ten model turns. If enough work is done, finish early. If a tool rejects an unsafe, ambiguous or ungrounded action, use its result to adjust.'
-].join('\\n');
+].join('\n');
 
 export function estimateWritingAgentSessionCost(provider, input = {}, maxOutputTokens = 1200) {
   if (provider?.localEndpoint) return 0;
