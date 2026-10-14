@@ -1,6 +1,6 @@
 {
   "name": "wmr-writing-mentor",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "description": "Local-first IELTS Writing mentor with evidence-grounded assessment and optional multi-provider AI.",
