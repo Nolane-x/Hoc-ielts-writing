@@ -1196,16 +1196,22 @@ async function evaluateAgentPractice(index) {
   const current = agentPracticeAttempts();
   const updated = current.map(item => {
     if (item.id !== attemptId) return item;
-    if (response?.answer) {
+    if (response?.answer && ['ai-provider', 'local-guide'].includes(response.source)) {
       return {
         ...item,
         status: 'feedback-received',
         feedback: String(response.answer).slice(0, 3000),
-        feedbackSource: response.source || 'unavailable',
+        feedbackSource: response.source,
         reviewedAt: new Date().toISOString()
       };
     }
-    return { ...item, status: 'feedback-unavailable', feedback: '', feedbackSource: 'unavailable', reviewedAt: '' };
+    return {
+      ...item,
+      status: 'feedback-unavailable',
+      feedback: '',
+      feedbackSource: response?.source === 'configuration-message' ? 'configuration-message' : 'unavailable',
+      reviewedAt: ''
+    };
   });
   try {
     persistAgentPracticeAttempts(updated);
