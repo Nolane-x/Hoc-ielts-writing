@@ -318,20 +318,46 @@ export async function runWritingAgentSession({ input = {}, complete, onEvent = (
   ];
   let finalMessage = '';
   let modelCalls = 0;
+  let sessionStatus = 'complete';
+  let failureCode = '';
   const emit = (type, payload) => {
     try { onEvent(type, payload); } catch {}
   };
 
   for (let turn = 1; turn <= WRITING_AGENT_MAX_MODEL_TURNS; turn++) {
-    if (signal?.aborted) throw new Error('writing_agent_cancelled');
+    if (signal?.aborted) {
+      sessionStatus = state.toolCallCount ? 'partial' : 'cancelled';
+      failureCode = 'cancelled';
+      finalMessage = state.toolCallCount
+        ? 'Phiên đã dừng theo yêu cầu hủy. Các đề xuất đã tạo vẫn được giữ để bạn xem và duyệt; không có thay đổi nào tự áp dụng.'
+        : 'Phiên đã bị hủy trước khi tạo được thao tác workspace.';
+      emit('progress', { phase: 'notice', turn, message: finalMessage });
+      break;
+    }
     emit('progress', { phase: 'thinking', turn, maximum: WRITING_AGENT_MAX_MODEL_TURNS, message: turn === 1 ? 'Agent đang đọc đề và bài nháp…' : 'Agent đang tổng hợp kết quả thao tác…' });
-    const completion = await complete({
-      messages,
-      maxOutputTokens: turn === WRITING_AGENT_MAX_MODEL_TURNS ? Math.max(300, Math.min(1800, Number(input.maxOutputTokens) || 1200)) : 900,
-      signal,
-      turn
-    });
-    modelCalls++;
+    let completion;
+    try {
+      completion = await complete({
+        messages,
+        maxOutputTokens: turn === WRITING_AGENT_MAX_MODEL_TURNS ? Math.max(300, Math.min(1800, Number(input.maxOutputTokens) || 1200)) : 900,
+        signal,
+        turn
+      });
+      modelCalls++;
+    } catch (error) {
+      const cancelled = Boolean(signal?.aborted) || error?.name === 'AbortError';
+      sessionStatus = cancelled ? (state.toolCallCount ? 'partial' : 'cancelled') : (state.toolCallCount ? 'partial' : 'failed');
+      failureCode = cancelled ? 'cancelled' : 'provider_failure';
+      finalMessage = cancelled
+        ? (state.toolCallCount
+          ? 'Phiên đã dừng theo yêu cầu hủy. Các đề xuất đã tạo vẫn được giữ để bạn xem và duyệt; không có thay đổi nào tự áp dụng.'
+          : 'Phiên đã bị hủy trước khi tạo được thao tác workspace.')
+        : (state.toolCallCount
+          ? 'Provider gặp lỗi giữa phiên. Những thao tác và đề xuất đã tạo vẫn được giữ bên dưới; hãy xem chúng trước khi thử lại.'
+          : 'Provider gặp lỗi trước khi tạo được thao tác. Bản nháp vẫn được giữ nguyên; kiểm tra model/kết nối rồi thử lại.');
+      emit('progress', { phase: cancelled ? 'notice' : 'error', turn, message: finalMessage });
+      break;
+    }
     const instruction = parseAgentInstruction(completion?.text);
     if (instruction.kind === 'final') {
       finalMessage = instruction.message;
@@ -339,16 +365,22 @@ export async function runWritingAgentSession({ input = {}, complete, onEvent = (
       break;
     }
     if (instruction.kind === 'unstructured') {
+      sessionStatus = 'read-only';
+      failureCode = 'unstructured_reply';
       finalMessage = instruction.message || 'Agent đã trả về một phản hồi văn bản nhưng không tạo được giao thức thao tác hợp lệ.';
       emit('progress', { phase: 'notice', turn, message: 'Mô hình không trả về định dạng thao tác; đã giữ phản hồi ở chế độ chỉ đọc.' });
       break;
     }
     if (turn === WRITING_AGENT_MAX_MODEL_TURNS) {
+      sessionStatus = 'partial';
+      failureCode = 'turn_limit';
       finalMessage = 'Đã đạt giới hạn số lượt suy luận trong phiên. Những đề xuất đã tạo vẫn ở trạng thái chờ bạn duyệt; chưa có thay đổi nào tự áp dụng.';
       emit('progress', { phase: 'limit', turn, message: finalMessage });
       break;
     }
     if (state.toolCallCount >= WRITING_AGENT_MAX_TOOL_CALLS) {
+      sessionStatus = 'partial';
+      failureCode = 'tool_limit';
       finalMessage = 'Đã đạt giới hạn thao tác workspace trong phiên. Những đề xuất đã tạo vẫn chờ bạn duyệt.';
       emit('progress', { phase: 'limit', turn, message: finalMessage });
       break;
@@ -366,6 +398,8 @@ export async function runWritingAgentSession({ input = {}, complete, onEvent = (
 
   if (!finalMessage) finalMessage = 'Agent đã kết thúc phiên nhưng không có lời tổng kết bổ sung. Hãy xem các đề xuất bên dưới.';
   const result = {
+    status: sessionStatus,
+    failureCode: failureCode || null,
     message: finalMessage,
     taskType: state.taskType,
     patches: state.patches,
