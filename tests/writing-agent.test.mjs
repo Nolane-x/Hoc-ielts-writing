@@ -60,7 +60,7 @@ test('edit proposals require unique exact anchors and remain staged until the le
 });
 
 test('edit proposals reject ambiguous or fabricated quotations and never overlap', () => {
-  const state = createWritingAgentState({ essay: essay + ' Public transport matters.', message:'Edit a phrase.' });
+  const state = createWritingAgentState({ essay: essay + ' public transport matters.', message:'Edit a phrase.' });
   const duplicate = executeWritingAgentTool(state,'propose_edit',{
     oldText:'public transport',replacement:'mass transport',reason:'Test reason.',criterion:'lexical'
   });
