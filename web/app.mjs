@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { parseLocalBackup } from './local-data.mjs';
 import { createLearningRecord } from './learning-records.mjs';
+import { buildStudyPlan } from './study-plan.mjs';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
@@ -319,6 +320,8 @@ function renderLearning() {
     ['Vấn đề được ghi nhận', allIssues.length, 'Tính cả mục chưa xác minh sâu'],
     ['Tiêu chí có dữ liệu AI', criteriaScores.filter(x => x.count > 0).length + '/4', 'Không phải xác nhận thành thạo']
   ].map(x => '<div class="metric-card"><span>' + x[0] + '</span><strong>' + x[1] + '</strong><small>' + x[2] + '</small></div>').join('');
+  const plan = buildStudyPlan(history, TASKS);
+  $('#study-plan').innerHTML = '<section class="panel study-plan-panel"><div class="panel-heading"><div><span class="section-kicker">NEXT BEST SESSION</span><h2>' + (plan.adaptive ? 'Luyện theo điểm cần cải thiện' : 'Lộ trình khởi động') + '</h2></div><span class="plan-badge">' + (plan.adaptive ? 'Dựa trên lịch sử AI' : 'Bước đầu tiên') + '</span></div><p class="study-plan-basis">' + escapeHtml(plan.basis) + '</p><div class="study-plan-steps">' + plan.steps.map((step, index) => '<article class="study-step"><div class="study-step-index">' + (index + 1) + '</div><div class="study-step-body"><div class="study-step-meta"><span>' + escapeHtml(step.criterion) + '</span><span>~' + step.minutes + ' phút</span><span>' + escapeHtml(step.difficulty) + '</span></div><h3>' + escapeHtml(step.title) + '</h3><p class="study-step-focus">' + escapeHtml(step.focus) + '</p><p class="study-step-success"><strong>Đích đến:</strong> ' + escapeHtml(step.success) + '</p><p class="study-step-basis">' + escapeHtml(step.basis) + '</p><button class="button button-secondary" type="button" data-start-task="' + escapeHtml(step.taskId) + '">Mở đề luyện này →</button></div></article>').join('') + '</div></section>';
   $('#learn-grid').innerHTML = skills.map(skill => {
     const records = history.flatMap(record => record.report?.criteria || []).filter(item => skill.test.includes(item.id) && Number.isFinite(item.score));
     const mean = records.length ? records.reduce((sum, item) => sum + item.score, 0) / records.length : null;
@@ -712,6 +715,17 @@ function attachEvents() {
       }
       return;
     }
+  });
+  $('#study-plan').addEventListener('click', event => {
+    const button = event.target.closest('[data-start-task]');
+    if (!button) return;
+    const task = TASKS.find(item => item.id === button.dataset.startTask);
+    if (!task) { setToast('Không tìm thấy đề luyện tập này.'); return; }
+    $('#task-select').value = task.id;
+    loadCurrentTask();
+    showPage('workspace');
+    $('#essay-editor').focus();
+    setToast('Đã mở đề luyện theo lộ trình: ' + task.title);
   });
   $('#history-list').addEventListener('click', event => {
     const button = event.target.closest('[data-open-history]');
