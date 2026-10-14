@@ -707,7 +707,8 @@ function renderAgentResult(result) {
     : '';
   const hasArtifacts = Boolean(result.outline || exercises.length || goals.length || result.focus);
   const hasStructuredOutput = Boolean(hasArtifacts || patches.length || practiceMatches.length);
-  const metadataLine = agentSessionMetadata ? '<small>Provider: ' + escapeHtml(agentSessionMetadata.provider || '—') + ' · Model: ' + escapeHtml(agentSessionMetadata.model || '—') + ' · Ước tính phiên: ' + escapeHtml(agentSessionMetadata.localEndpoint ? '0 USD · cục bộ' : Number.isFinite(agentSessionMetadata.estimatedSessionCostUsd) ? '$' + agentSessionMetadata.estimatedSessionCostUsd.toFixed(4) : 'chưa có') + ' · Giới hạn: ' + escapeHtml(agentSessionMetadata.maximumModelTurns ?? WRITING_AGENT_MAX_MODEL_TURNS) + ' lượt / ' + escapeHtml(agentSessionMetadata.maximumToolCalls ?? WRITING_AGENT_MAX_TOOL_CALLS) + ' thao tác</small>' : '';
+  const learningMeta = agentSessionMetadata?.learningSignals ? ' · Tín hiệu học tập: ' + escapeHtml(agentSessionMetadata.learningSignals.eligibleEssayCount) + ' bài AI đủ điều kiện, ' + escapeHtml(agentSessionMetadata.learningSignals.recurringPatternCount) + ' nhóm lỗi lặp lại' : '';
+  const metadataLine = agentSessionMetadata ? '<small>Provider: ' + escapeHtml(agentSessionMetadata.provider || '—') + ' · Model: ' + escapeHtml(agentSessionMetadata.model || '—') + ' · Ước tính phiên: ' + escapeHtml(agentSessionMetadata.localEndpoint ? '0 USD · cục bộ' : Number.isFinite(agentSessionMetadata.estimatedSessionCostUsd) ? '$' + agentSessionMetadata.estimatedSessionCostUsd.toFixed(4) : 'chưa có') + ' · Giới hạn: ' + escapeHtml(agentSessionMetadata.maximumModelTurns ?? WRITING_AGENT_MAX_MODEL_TURNS) + ' lượt / ' + escapeHtml(agentSessionMetadata.maximumToolCalls ?? WRITING_AGENT_MAX_TOOL_CALLS) + ' thao tác' + learningMeta + '</small>' : '';
   host.innerHTML = '<section class="agent-final-message"><span class="section-kicker">AGENT SUMMARY</span><p>' + escapeHtml(result.message || 'Agent đã hoàn tất.') + '</p><small>Phiên này thuộc đề: ' + escapeHtml(agentResultTaskTitle || 'Đề hiện tại') + '</small>' + metadataLine + '<small>' +
     'Model calls: ' + escapeHtml(result.usage?.modelCalls ?? '—') + ' · Workspace tools: ' + escapeHtml(result.usage?.toolCalls ?? '—') + ' · ' +
     (result.safety?.liveDraftModified ? 'Có thao tác trực tiếp' : 'Bản nháp gốc không bị tự động ghi đè') + '</small></section>' +
@@ -720,7 +721,9 @@ function handleWritingAgentEvent(type, payload) {
   if (type === 'progress') {
     if (payload.phase === 'started') {
       $('#cancel-writing-agent').disabled = false;
+      const learningSignals = agentSessionMetadata?.learningSignals || null;
       agentSessionMetadata = {
+      learningSignals,
       provider: String(payload.provider || ''), model: String(payload.model || ''),
       localEndpoint: payload.localEndpoint === true,
       estimatedSessionCostUsd: Number.isFinite(payload.estimatedSessionCostUsd) ? payload.estimatedSessionCostUsd : null,
@@ -858,7 +861,10 @@ async function runWritingAgent() {
   agentAppliedPatches = new Set();
   agentActivity = [];
   agentStreamError = null;
-  agentSessionMetadata = null;
+  agentSessionMetadata = { learningSignals: {
+    eligibleEssayCount: input.learningContext.eligibleEssayCount,
+    recurringPatternCount: input.learningContext.recurringPatterns.length
+  } };
   agentCancelRequested = false;
   agentController = new AbortController();
   $('#run-writing-agent').disabled = true;
@@ -877,6 +883,7 @@ async function runWritingAgent() {
       const estimatedSessionCostUsd = await reserveNativeAgentSession(config, input);
       $('#cancel-writing-agent').disabled = false;
       agentSessionMetadata = {
+        learningSignals: { eligibleEssayCount: input.learningContext.eligibleEssayCount, recurringPatternCount: input.learningContext.recurringPatterns.length },
         provider: config.label,
         model: config.model,
         localEndpoint: Boolean(config.localEndpoint),
