@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   evaluateBenchmarkDataset,
   isValidBand,
@@ -295,4 +296,51 @@ test('essays under 80 words are excluded only from the composite band metric', (
   assert.equal(band.excludedShortEssays, 1);
   assert.equal(taskResponse.expected, 3);
   assert.equal(taskResponse.n, 3);
+});
+
+
+test('benchmark reports use row ordinals instead of echoing supplied private identifiers', () => {
+  const data = datasetFactory();
+  data.datasetId = 'private-dataset-id-not-for-sharing';
+  data.runs[0].id = 'private-run-id-not-for-sharing';
+  data.examples[0].id = 'learner.name@example.invalid';
+  data.examples[1].id = 'student-identifier-123456';
+  data.runs[0].results[0].exampleId = data.examples[0].id;
+  data.runs[0].results[1].exampleId = data.examples[1].id;
+  data.examples[1].essay = data.examples[0].essay;
+  data.examples[1].split = 'development';
+  data.runs[0].results[1].assessment.criteria.find(item => item.id === 'lexical').score = 7.3;
+
+  const report = evaluateBenchmarkDataset(data);
+  const serialized = JSON.stringify(report);
+  for (const secret of [
+    'private-dataset-id-not-for-sharing',
+    'private-run-id-not-for-sharing',
+    'learner.name@example.invalid',
+    'student-identifier-123456'
+  ]) {
+    assert.equal(serialized.includes(secret), false);
+  }
+  assert.equal(report.runs[0].runOrdinal, 1);
+  assert.equal(report.dataset.id, undefined);
+  assert.ok(report.warnings.some(warning => /row numbers: 1, 2/.test(warning)));
+  assert.deepEqual(report.runs[0].invalidPredictions, [{
+    exampleOrdinal: 2,
+    criterion: 'lexical',
+    reason: 'not_a_valid_half_band_score'
+  }]);
+});
+
+test('published benchmark template refuses to assert consent or supply fake gold scores', async () => {
+  const template = JSON.parse(await readFile(new URL('../docs/SCORING-VALIDATION.DATASET-TEMPLATE.json', import.meta.url), 'utf8'));
+  assert.equal(template.provenance.permissionConfirmed, false);
+  assert.equal(template.provenance.deidentified, false);
+  assert.equal(template.provenance.ratingProtocol, 'not-configured');
+  assert.throws(() => validateBenchmarkDataset(template), /benchmark_provenance_not_confirmed/);
+
+  const mistakenlyConfirmed = structuredClone(template);
+  mistakenlyConfirmed.provenance.permissionConfirmed = true;
+  mistakenlyConfirmed.provenance.deidentified = true;
+  mistakenlyConfirmed.provenance.ratingProtocol = 'double-independent-adjudicated';
+  assert.throws(() => validateBenchmarkDataset(mistakenlyConfirmed), /benchmark_invalid_reference_band/);
 });

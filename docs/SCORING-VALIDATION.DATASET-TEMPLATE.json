@@ -1,44 +1,44 @@
 {
   "schemaVersion": 1,
-  "datasetId": "replace-with-non-identifying-label",
-  "rubricVersion": "record-the-exact-rubric-version",
+  "datasetId": "REPLACE_WITH_NON_IDENTIFYING_DATASET_LABEL",
+  "rubricVersion": "REPLACE_WITH_EXACT_RUBRIC_VERSION",
   "provenance": {
-    "sourceDescription": "Describe the permissioned source without identifying a learner.",
-    "deidentified": true,
-    "permissionConfirmed": true,
-    "ratingProtocol": "double-independent-adjudicated"
+    "sourceDescription": "REPLACE_WITH_PERMISSIONED_SOURCE_DESCRIPTION",
+    "deidentified": false,
+    "permissionConfirmed": false,
+    "ratingProtocol": "not-configured"
   },
   "examples": [
     {
-      "id": "example-001",
+      "id": "REPLACE_WITH_RANDOM_NON_IDENTIFYING_EXAMPLE_ID",
       "taskType": "task2",
       "split": "held-out",
-      "prompt": "Permissioned IELTS Writing Task 2 prompt",
-      "essay": "Permissioned and de-identified essay text goes here.",
+      "prompt": "REPLACE_WITH_PERMISSIONED_TASK_PROMPT",
+      "essay": "REPLACE_WITH_PERMISSIONED_AND_DEIDENTIFIED_ESSAY",
       "reference": {
         "adjudicatedScores": {
-          "taskResponse": 6.5,
-          "coherence": 6,
-          "lexical": 6.5,
-          "grammar": 6
+          "taskResponse": null,
+          "coherence": null,
+          "lexical": null,
+          "grammar": null
         },
         "raters": [
           {
-            "id": "rater-a-pseudonym",
+            "id": "REPLACE_WITH_RATER_A_PSEUDONYM",
             "scores": {
-              "taskResponse": 6.5,
-              "coherence": 6,
-              "lexical": 6.5,
-              "grammar": 6
+              "taskResponse": null,
+              "coherence": null,
+              "lexical": null,
+              "grammar": null
             }
           },
           {
-            "id": "rater-b-pseudonym",
+            "id": "REPLACE_WITH_RATER_B_PSEUDONYM",
             "scores": {
-              "taskResponse": 6.5,
-              "coherence": 6,
-              "lexical": 6.5,
-              "grammar": 6
+              "taskResponse": null,
+              "coherence": null,
+              "lexical": null,
+              "grammar": null
             }
           }
         ]
@@ -47,21 +47,37 @@
   ],
   "runs": [
     {
-      "id": "model-run-001",
-      "provider": "provider-label",
-      "model": "exact-model-id-and-version",
+      "id": "REPLACE_WITH_RUN_ID",
+      "provider": "REPLACE_WITH_PROVIDER_NAME",
+      "model": "REPLACE_WITH_EXACT_MODEL_ID",
       "results": [
         {
-          "exampleId": "example-001",
+          "exampleId": "REPLACE_WITH_RANDOM_NON_IDENTIFYING_EXAMPLE_ID",
           "assessment": {
             "criteria": [
-              {"id": "taskResponse", "score": 6.5, "evidence": ["exact quote copied from essay"]},
-              {"id": "coherence", "score": 6, "evidence": []},
-              {"id": "lexical", "score": 6.5, "evidence": []},
-              {"id": "grammar", "score": 6, "evidence": []}
+              {
+                "id": "taskResponse",
+                "score": null,
+                "evidence": []
+              },
+              {
+                "id": "coherence",
+                "score": null,
+                "evidence": []
+              },
+              {
+                "id": "lexical",
+                "score": null,
+                "evidence": []
+              },
+              {
+                "id": "grammar",
+                "score": null,
+                "evidence": []
+              }
             ],
-            "issues": [{"quote": "exact quote copied from essay", "explanation": "Feedback text"}],
-            "strengths": [{"quote": "exact quote copied from essay", "why": "Feedback text"}]
+            "issues": [],
+            "strengths": []
           }
         }
       ]
