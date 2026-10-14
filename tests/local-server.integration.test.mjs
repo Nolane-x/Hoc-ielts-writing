@@ -68,3 +68,36 @@ test('opting out prevents provider transmission even if a client requests AI sco
   assert.equal(result.aiStatus, 'offline-by-choice');
   assert.equal(result.report.estimatedTaskBand, null);
 });
+
+
+test('write endpoints reject unsupported media types before parsing request bodies', async t => {
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const response = await fetch(base + '/api/settings', {
+    method: 'POST', headers: { 'content-type': 'text/plain', origin: base }, body: 'externalAllowed=true'
+  });
+  assert.equal(response.status, 415);
+});
+
+test('write endpoints cap the request body size', async t => {
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const body = JSON.stringify({ taskType: 'task2', essay: 'x'.repeat(120_000) });
+  const response = await fetch(base + '/api/assessment', {
+    method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body
+  });
+  assert.equal(response.status, 413);
+});
+
+test('encoded traversal paths cannot read files outside the built web root', async t => {
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const response = await fetch(base + '/%2e%2e%2f%2e%2e%2fetc/passwd');
+  assert.equal(response.status, 403);
+});
