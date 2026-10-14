@@ -75,3 +75,13 @@ test('issue-category badges map technical category keys to Vietnamese and task-a
   assert.match(app, /'task-response': 'Task Response'/);
   assert.match(app, /grammar: 'Ngữ pháp'/);
 });
+
+
+test('annotated essay report uses an exact-match annotation engine and links spans to issue cards', () => {
+  assert.match(app, /buildEssayAnnotations\(currentRecord\.essay, issues\)/);
+  assert.match(app, /renderAnnotatedEssayText\(currentRecord\.essay, annotationResult, escapeHtml\)/);
+  assert.match(app, /data-annotation-issue/);
+  assert.match(app, /report-issue-' \+ index/);
+  assert.match(app, /Chỉ trích dẫn khớp duy nhất và không chồng lấn mới được tô sáng/);
+  assert.match(app, /Bản gốc không bị sửa/);
+});
