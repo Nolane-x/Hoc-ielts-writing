@@ -33,7 +33,7 @@ test('release tags and display labels derive from package.json version', () => {
   assert.match(releaseWorkflow, /node -p 'require\("\.\/package\.json"\)\.version'/);
   assert.match(releaseWorkflow, /tag_name:\s*wmr-v\$\{\{ steps\.appmeta\.outputs\.version \}\}-build\.\$\{\{ github\.run_number \}\}/);
   assert.match(releaseWorkflow, /name:\s*WMR Writing Mentor v\$\{\{ steps\.appmeta\.outputs\.version \}\}/);
-  assert.equal(packageJson.version, '1.2.0');
+  assert.equal(packageJson.version, '1.2.1');
 });
 
 test('CI is read-only, uses the lockfile and blocks high-severity dependency advisories', () => {

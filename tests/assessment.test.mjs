@@ -96,3 +96,17 @@ test('assessment prompt names the correct first criterion for Task 1 and Task 2'
  assert.match(buildAssessmentMessages({taskType:'task1-academic',taskPrompt:'Describe the chart.',essay:'Draft'})[0].content,/Task Achievement for Task 1/i);
  assert.match(buildAssessmentMessages({taskType:'task2',taskPrompt:'Discuss both views.',essay:'Draft'})[0].content,/Task Response for Task 2/i);
 });
+
+
+test('Task 1 issue categories are normalised to Task Achievement while Task 2 retains Task Response', async () => {
+  const { normaliseAssessment } = await import('../web/assessment.mjs');
+  const essay = ('The chart shows a clear change over time. ').repeat(24);
+  const issue = { category: 'task-response', severity: 'high', quote: 'The chart shows a clear change', explanation: 'Example finding.' };
+  const criteria = ['taskResponse','coherence','lexical','grammar'].map(id => ({ id, score: 6.5, rationale: 'Test', evidence: [] }));
+  const task1 = normaliseAssessment({ criteria, issues: [issue] }, { taskType: 'task1-academic', taskPrompt: 'Describe a chart.', essay });
+  const task2 = normaliseAssessment({ criteria, issues: [issue] }, { taskType: 'task2', taskPrompt: 'Discuss both views.', essay });
+  assert.equal(task1.issues[0].category, 'task-achievement');
+  assert.equal(task1.issues[0].title, 'Task Achievement');
+  assert.equal(task2.issues[0].category, 'task-response');
+  assert.equal(task2.issues[0].title, 'Task Response');
+});

@@ -66,3 +66,12 @@ test('rubric guide and revision comparison are wired into the learning/report fl
  assert.match(app,/So sánh với bản trước của cùng đề/);
  assert.match(app,/Model có thể dao động giữa các lượt/);
 });
+
+
+test('issue-category badges map technical category keys to Vietnamese and task-aware labels', () => {
+  assert.match(app, /function issueCategoryLabel\(category, taskType\)/);
+  assert.match(app, /escapeHtml\(issueCategoryLabel\(item\.category, report\.taskType\)\)/);
+  assert.match(app, /'task-achievement': 'Task Achievement'/);
+  assert.match(app, /'task-response': 'Task Response'/);
+  assert.match(app, /grammar: 'Ngữ pháp'/);
+});

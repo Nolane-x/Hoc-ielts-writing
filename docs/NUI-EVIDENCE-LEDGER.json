@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "WMR Writing Mentor",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "status": "source-and-ci-verified; release build and real-device validation are separate gates",
   "contract": "docs/NUI-UI-CONTRACT.md",
   "evidence": [
@@ -172,6 +172,19 @@
         "tests/ui-contract.test.mjs"
       ],
       "verification": "UI contract tests ensure the guide is task-aware and rendered through escaped text.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Task 1 issue categories are normalized to Task Achievement, Task 2 retains Task Response, and category badges render localized task-aware labels.",
+      "source": [
+        "web/assessment.mjs",
+        "web/local-data.mjs",
+        "web/app.mjs",
+        "tests/assessment.test.mjs",
+        "tests/local-data.test.mjs",
+        "tests/ui-contract.test.mjs"
+      ],
+      "verification": "Automated tests assert task-aware AI issue normalization, legacy backup migration, and localized issue-category badge mapping.",
       "status": "automated-test"
     }
   ],

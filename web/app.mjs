@@ -269,6 +269,21 @@ async function runReview(useProvider) {
   }
 }
 
+function issueCategoryLabel(category, taskType) {
+  let key = typeof category === 'string' ? category : 'other';
+  if (taskType !== 'task2' && key === 'task-response') key = 'task-achievement';
+  const labels = {
+    grammar: 'Ngữ pháp',
+    lexical: 'Từ vựng',
+    coherence: 'Mạch lạc',
+    'task-achievement': 'Task Achievement',
+    'task-response': 'Task Response',
+    'data-accuracy': 'Độ chính xác dữ liệu',
+    register: 'Văn phong',
+    other: 'Khác'
+  };
+  return labels[key] || labels.other;
+}
 function renderReport(report, loading = false) {
   const container = $('#report-content');
   if (!report) {
@@ -293,7 +308,7 @@ function renderReport(report, loading = false) {
       (item?.evidence?.length ? '<div class="criterion-evidence"><strong>BẰNG CHỨNG TRONG BÀI</strong>' + item.evidence.map(x => '<div class="quote-box">' + escapeHtml(x) + '</div>').join('') + '</div>' : '') +
       '</article>';
   }).join('');
-  const issuesHtml = issues.length ? issues.map((item, index) => '<article class="issue-item"><div class="issue-top"><span class="severity ' + escapeHtml(item.severity || 'medium') + '">' + escapeHtml(item.severity || 'medium') + '</span><span class="count-badge">' + escapeHtml(item.category || 'other') + '</span></div><h3>' + escapeHtml(item.title || 'Điểm cần xem xét') + '</h3>' +
+  const issuesHtml = issues.length ? issues.map((item, index) => '<article class="issue-item"><div class="issue-top"><span class="severity ' + escapeHtml(item.severity || 'medium') + '">' + escapeHtml(item.severity || 'medium') + '</span><span class="count-badge">' + escapeHtml(issueCategoryLabel(item.category, report.taskType)) + '</span></div><h3>' + escapeHtml(item.title || 'Điểm cần xem xét') + '</h3>' +
     (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') +
     '<p>' + escapeHtml(item.explanation || '') + '</p>' +
     (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
