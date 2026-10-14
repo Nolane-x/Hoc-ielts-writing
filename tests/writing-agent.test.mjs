@@ -4,6 +4,7 @@ import {
   WRITING_AGENT_MAX_MODEL_TURNS,
   WRITING_AGENT_MAX_TOOL_CALLS,
   WRITING_AGENT_SYSTEM_PROMPT,
+  WRITING_AGENT_TOOLS,
   createWritingAgentState,
   executeWritingAgentTool,
   runWritingAgentSession
@@ -145,4 +146,31 @@ test('agent session limits tool calls and model turns', async () => {
   assert.equal(result.usage.maximumModelTurns,WRITING_AGENT_MAX_MODEL_TURNS);
   assert.ok(result.usage.toolCalls <= WRITING_AGENT_MAX_TOOL_CALLS);
   assert.ok(result.usage.modelCalls <= WRITING_AGENT_MAX_MODEL_TURNS);
+});
+
+
+test('agent can search the bundled task bank for transferable practice without network tools', () => {
+  const state = createWritingAgentState({ taskType:'task2', essay, message:'Find a transfer practice.' });
+  const result = executeWritingAgentTool(state, 'search_practice_bank', { query:'public transport', taskType:'task2' });
+  assert.equal(result.ok, true);
+  assert.equal(result.source, 'bundled-local-task-bank');
+  assert.ok(result.results.length > 0);
+  assert.ok(result.results.some(task => task.id === 'task2-public-transport'));
+  assert.ok(result.results.every(task => task.type === 'task2' && task.prompt.length > 10 && task.tips.length <= 3));
+  assert.equal(WRITING_AGENT_TOOLS.includes('execute_shell'), false);
+  assert.equal(WRITING_AGENT_TOOLS.includes('fetch_url'), false);
+  assert.equal(executeWritingAgentTool(state, 'search_practice_bank', { query:'x' }).code, 'practice_query_too_short');
+});
+
+test('agent session exposes the expanded ten-turn/eight-tool ceilings', async () => {
+  const responses = Array.from({length:24},()=>JSON.stringify({kind:'tool_call',name:'inspect_draft',arguments:{}}));
+  const result=await runWritingAgentSession({
+    input:{essay,message:'Inspect repeatedly.'},
+    complete:async()=>({text:responses.shift()}),
+    onEvent:()=>{}
+  });
+  assert.equal(result.usage.maximumToolCalls,8);
+  assert.equal(result.usage.maximumModelTurns,10);
+  assert.ok(result.usage.toolCalls <= 8);
+  assert.ok(result.usage.modelCalls <= 10);
 });
