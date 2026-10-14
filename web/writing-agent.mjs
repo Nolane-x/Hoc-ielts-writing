@@ -54,6 +54,7 @@ export function estimateWritingAgentSessionCost(provider, input = {}, maxOutputT
     String(input.essay || '').slice(0, 20000).length +
     String(input.message || '').slice(0, 4000).length +
     history.reduce((sum, turn) => sum + (typeof turn?.content === 'string' ? Math.min(1500, turn.content.length) : 0), 0) +
+    JSON.stringify(normaliseAgentLearningContext(input.learningContext)).length +
     1200;
   let estimatedInputTokens = 0;
   for (let turn = 0; turn < WRITING_AGENT_MAX_MODEL_TURNS; turn++) {
