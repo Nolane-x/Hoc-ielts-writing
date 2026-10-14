@@ -10,7 +10,7 @@ import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
 import { PROVIDER_PRESETS, normaliseProviderConfig, requestCompletion, estimateCost } from './providers.mjs';
-import { runWritingAgentSession } from './writing-agent.mjs';
+import { runWritingAgentSession, estimateWritingAgentSessionCost } from './writing-agent.mjs';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -49,6 +49,7 @@ let agentResultTaskTitle = '';
 let agentActivity = [];
 let agentAppliedPatches = new Set();
 let agentStreamError = null;
+let agentSessionMetadata = null;
 
 function safeParse(value, fallback) { try { return JSON.parse(value); } catch { return fallback; } }
 function escapeHtml(value) {
@@ -212,6 +213,20 @@ async function nativeCompletion(messages, inputChars, options = {}) {
   const result = await requestCompletion({ config, messages, maxOutputTokens, timeoutMs: options.timeoutMs || 45000, signal: options.signal });
   return { ...result, estimatedCostUsd: cost, provider: config.label };
 }
+async function reserveNativeAgentSession(config, input) {
+  const cost = estimateWritingAgentSessionCost(config, input, settings.maxOutputTokens);
+  if (cost === null) throw new Error('Nhập giá input và output hiện hành của model trước khi chạy Agent nhiều lượt.');
+  if (!usageHealthy) throw new Error('Sổ ngân sách không đáng tin cậy.');
+  const ledger = getNativeUsage();
+  if (ledger.calls >= settings.maxDailyCalls) throw new Error('Đã đạt giới hạn số phiên AI/ngày.');
+  if (!config.localEndpoint && cost > settings.maxCallUsd) throw new Error('Ước tính chi phí cả phiên Agent vượt giới hạn mỗi lượt. Hãy điều chỉnh hạn mức trong Settings hoặc chọn model rẻ hơn.');
+  if (ledger.estimatedUsd + cost > settings.dailyBudgetUsd) throw new Error('Ước tính chi phí phiên Agent vượt ngân sách ngày.');
+  ledger.calls += 1;
+  ledger.estimatedUsd += cost;
+  localStorage.setItem(USAGE_KEY, JSON.stringify(ledger));
+  return cost;
+}
+
 async function assessWithNativeProvider(input) {
   const messages = buildAssessmentMessages(input);
   const result = await nativeCompletion(messages, input.essay.length + input.taskPrompt.length);
@@ -679,7 +694,8 @@ function renderAgentResult(result) {
     : '';
   const hasArtifacts = Boolean(result.outline || exercises.length || goals.length || result.focus);
   const hasStructuredOutput = Boolean(hasArtifacts || patches.length || practiceMatches.length);
-  host.innerHTML = '<section class="agent-final-message"><span class="section-kicker">AGENT SUMMARY</span><p>' + escapeHtml(result.message || 'Agent đã hoàn tất.') + '</p><small>Phiên này thuộc đề: ' + escapeHtml(agentResultTaskTitle || 'Đề hiện tại') + '</small><small>' +
+  const metadataLine = agentSessionMetadata ? '<small>Provider: ' + escapeHtml(agentSessionMetadata.provider || '—') + ' · Model: ' + escapeHtml(agentSessionMetadata.model || '—') + ' · Ước tính phiên: ' + escapeHtml(agentSessionMetadata.localEndpoint ? '0 USD · cục bộ' : Number.isFinite(agentSessionMetadata.estimatedSessionCostUsd) ? '$' + agentSessionMetadata.estimatedSessionCostUsd.toFixed(4) : 'chưa có') + ' · Giới hạn: ' + escapeHtml(agentSessionMetadata.maximumModelTurns ?? 10) + ' lượt / ' + escapeHtml(agentSessionMetadata.maximumToolCalls ?? 8) + ' thao tác</small>' : '';
+  host.innerHTML = '<section class="agent-final-message"><span class="section-kicker">AGENT SUMMARY</span><p>' + escapeHtml(result.message || 'Agent đã hoàn tất.') + '</p><small>Phiên này thuộc đề: ' + escapeHtml(agentResultTaskTitle || 'Đề hiện tại') + '</small>' + metadataLine + '<small>' +
     'Model calls: ' + escapeHtml(result.usage?.modelCalls ?? '—') + ' · Workspace tools: ' + escapeHtml(result.usage?.toolCalls ?? '—') + ' · ' +
     (result.safety?.liveDraftModified ? 'Có thao tác trực tiếp' : 'Bản nháp gốc không bị tự động ghi đè') + '</small></section>' +
     (focusHtml + patchesHtml + outlineHtml + exercisesHtml + goalsHtml + practiceHtml) +
@@ -689,6 +705,13 @@ function renderAgentResult(result) {
 }
 function handleWritingAgentEvent(type, payload) {
   if (type === 'progress') {
+    if (payload.phase === 'started') agentSessionMetadata = {
+      provider: String(payload.provider || ''), model: String(payload.model || ''),
+      localEndpoint: payload.localEndpoint === true,
+      estimatedSessionCostUsd: Number.isFinite(payload.estimatedSessionCostUsd) ? payload.estimatedSessionCostUsd : null,
+      maximumModelTurns: Number.isInteger(payload.maximumModelTurns) ? payload.maximumModelTurns : null,
+      maximumToolCalls: Number.isInteger(payload.maximumToolCalls) ? payload.maximumToolCalls : null
+    };
     setAgentStatus(payload.message || 'Agent đang làm việc…');
     addAgentActivity(payload.message || 'Đang suy luận', payload.phase === 'notice' || payload.phase === 'limit' ? 'notice' : 'progress');
   } else if (type === 'tool') {
@@ -755,6 +778,7 @@ async function runWritingAgent() {
   agentAppliedPatches = new Set();
   agentActivity = [];
   agentStreamError = null;
+  agentSessionMetadata = null;
   agentController = new AbortController();
   $('#run-writing-agent').disabled = true;
   $('#cancel-writing-agent').hidden = false;
@@ -764,14 +788,26 @@ async function runWritingAgent() {
   addAgentActivity('Đã khóa task/prompt và lấy snapshot bài nháp cho phiên này.', 'complete');
   try {
     if (NATIVE) {
+      const config = configuredProvider();
+      if (!config.ok) throw new Error(config.reason);
+      if (!config.isConfigured && !config.localEndpoint) throw new Error('Hãy nhập API key và model ID trong Settings.');
+      if (config.localEndpoint) throw new Error('Trên Android, địa chỉ loopback trỏ tới thiết bị này, không phải máy tính chạy Ollama/LM Studio.');
+      const estimatedSessionCostUsd = await reserveNativeAgentSession(config, input);
+      agentSessionMetadata = {
+        provider: config.label,
+        model: config.model,
+        localEndpoint: Boolean(config.localEndpoint),
+        estimatedSessionCostUsd,
+        maximumModelTurns: 10,
+        maximumToolCalls: 8
+      };
       await runWritingAgentSession({
         input,
         signal: agentController.signal,
         onEvent: handleWritingAgentEvent,
-        complete: async ({ messages, maxOutputTokens, signal }) => {
-          const characters = messages.reduce((sum, item) => sum + String(item.content || '').length, 0);
-          return await nativeCompletion(messages, characters, { maxOutputTokens, timeoutMs: 35000, signal });
-        }
+        complete: async ({ messages, maxOutputTokens, signal }) => await requestCompletion({
+          config, messages, maxOutputTokens, timeoutMs: 35000, signal
+        })
       });
     } else {
       const response = await fetch('/api/agent', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'omit', cache: 'no-store', redirect: 'error', signal: agentController.signal, body: JSON.stringify(input) });
