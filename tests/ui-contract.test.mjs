@@ -171,3 +171,13 @@ test('micro-practice answers persist locally and the practice journal clearly di
   assert.match(app, /không phải band hay bằng chứng đã thành thạo/i);
   assert.match(app, /Đã xóa lượt luyện khỏi nhật ký cục bộ/);
 });
+
+
+test('adaptive learning page surfaces device-local micro-practice coverage without inferring mastery', () => {
+  assert.match(html, /id="agent-practice-overview"/);
+  assert.match(app, /function renderAgentPracticeOverview\(\)/);
+  assert.match(app, /renderAgentPracticeOverview\(\);/);
+  assert.match(app, /buildAgentPracticeSummary\(attempts\)/);
+  assert.match(app, /không phải band IELTS, đánh giá chất lượng câu trả lời hay bằng chứng người học đã thành thạo/i);
+  assert.match(app, /agent-practice-overview-metrics/);
+});

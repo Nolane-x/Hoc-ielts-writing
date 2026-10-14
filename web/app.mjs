@@ -451,6 +451,7 @@ function renderLearning() {
   }).join('');
 
   $('#history-list').innerHTML = history.length ? history.slice(0, 12).map(record => '<div class="history-row"><div class="history-icon">▥</div><div><strong>' + escapeHtml(record.taskTitle || 'Bài viết') + '</strong><small>' + escapeHtml(new Date(record.at).toLocaleString()) + ' · ' + (record.source === 'ai' ? 'AI formative' : 'Local check') + '</small></div><span class="history-score">' + (Number.isFinite(record.report?.estimatedTaskBand) ? record.report.estimatedTaskBand.toFixed(1) : '—') + '</span><button class="small-link" type="button" data-open-history="' + escapeHtml(record.id) + '">Mở ↗</button></div>').join('') : '<div class="history-empty">Chưa có bài nào được đánh giá. Hãy nộp bài đầu tiên để bắt đầu hồ sơ kỹ năng.</div>';
+  renderAgentPracticeOverview();
 }
 function renderProviders() {
   $('#provider-select').innerHTML = Object.entries(PROVIDER_PRESETS).map(([id, p]) => '<option value="' + escapeHtml(id) + '">' + escapeHtml(p.label) + '</option>').join('');
@@ -674,6 +675,31 @@ function deleteAgentPracticeAttempt(id) {
   } catch {
     setToast('Không thể cập nhật nhật ký do bộ nhớ cục bộ không khả dụng.');
   }
+}
+
+function renderAgentPracticeOverview() {
+  const host = $('#agent-practice-overview');
+  if (!host) return;
+  const attempts = agentPracticeAttempts().sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt));
+  const summary = buildAgentPracticeSummary(attempts);
+  if (!attempts.length) {
+    host.innerHTML = '<div class="panel-heading"><div><span class="section-kicker">MICRO-PRACTICE JOURNAL</span><h2>Luyện tập có thể xem lại</h2></div><span class="count-badge">Cục bộ</span></div><div class="recurrence-empty"><strong>Chưa có lượt luyện vi mô</strong><p>Khi Writing Agent tạo bài luyện, hãy tự viết câu trả lời và yêu cầu phản hồi. WMR sẽ giữ câu trả lời và trạng thái phản hồi trên thiết bị để bạn quay lại sau.</p></div>';
+    return;
+  }
+  const skillChips = summary.skills.slice(0, 6).map(item =>
+    '<span class="agent-practice-overview-chip">' + escapeHtml(item.skill) + ' · ' + item.attemptCount + ' lượt</span>'
+  ).join('');
+  const recentRows = attempts.slice(0, 5).map(item => {
+    const status = item.status === 'feedback-received' ? 'Đã có phản hồi' : item.status === 'feedback-unavailable' ? 'Phản hồi chưa khả dụng' : 'Đang chờ phản hồi';
+    return '<article class="agent-practice-overview-row"><div><strong>' + escapeHtml(item.skill) + '</strong><small>' +
+      escapeHtml(item.taskTitle || item.taskId) + ' · ' + escapeHtml(Number.isFinite(Date.parse(item.submittedAt)) ? new Date(item.submittedAt).toLocaleDateString() : '') +
+      '</small><span>' + escapeHtml(status) + '</span></div><button class="quiet-button" type="button" data-start-task="' + escapeHtml(item.taskId) + '">Mở đề →</button></article>';
+  }).join('');
+  host.innerHTML = '<div class="panel-heading"><div><span class="section-kicker">MICRO-PRACTICE JOURNAL</span><h2>Lượt luyện và phản hồi gần đây</h2><p>Câu trả lời được lưu cục bộ. Chỉ tính phản hồi thực nhận, không suy diễn mức thành thạo.</p></div><span class="count-badge">' + summary.attemptCount + ' lượt</span></div>' +
+    '<div class="agent-practice-overview-metrics"><div><strong>' + summary.attemptCount + '</strong><span>Lượt đã gửi</span></div><div><strong>' + summary.feedbackCount + '</strong><span>Lượt có phản hồi</span></div><div><strong>' + summary.awaitingFeedbackCount + '</strong><span>Đang chờ</span></div></div>' +
+    (skillChips ? '<div class="agent-practice-overview-skills">' + skillChips + '</div>' : '') +
+    '<div class="agent-practice-overview-list">' + recentRows + '</div>' +
+    '<p class="agent-practice-overview-caveat">Các con số này mô tả hoạt động luyện tập, không phải band IELTS, đánh giá chất lượng câu trả lời hay bằng chứng người học đã thành thạo.</p>';
 }
 
 function renderSavedAgentArtifacts() {
@@ -1565,6 +1591,7 @@ function attachEvents() {
   };
   $('#study-plan').addEventListener('click', startRecommendedTask);
   $('#recurring-errors').addEventListener('click', startRecommendedTask);
+  $('#agent-practice-overview').addEventListener('click', startRecommendedTask);
   $('#history-list').addEventListener('click', event => {
     const button = event.target.closest('[data-open-history]');
     if (!button) return;
