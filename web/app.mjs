@@ -83,15 +83,28 @@ function setTheme(mode) {
   $$('[data-theme-choice]').forEach(el => el.classList.toggle('selected', el.dataset.themeChoice === selected));
 }
 function renderTaskOptions() {
-  $('#task-select').innerHTML = TASKS.map(task => '<option value="' + escapeHtml(task.id) + '">' + escapeHtml(task.title) + '</option>').join('');
+  const groups = new Map();
+  for (const task of TASKS) {
+    if (!groups.has(task.group)) groups.set(task.group, []);
+    groups.get(task.group).push(task);
+  }
+  $('#task-select').innerHTML = [...groups].map(([group, items]) =>
+    '<optgroup label="' + escapeHtml(group) + '">' +
+    items.map(task => '<option value="' + escapeHtml(task.id) + '">' + escapeHtml(task.title) + '</option>').join('') +
+    '</optgroup>'
+  ).join('');
   currentTask = TASKS[0];
   $('#task-select').value = currentTask.id;
   loadCurrentTask();
 }
+function renderTaskDetails(task) {
+  $('#task-prompt').textContent = task.prompt;
+  $('#task-goal').textContent = task.goal;
+  $('#task-meta').textContent = task.difficulty + ' · ~' + task.estimatedMinutes + ' phút · Trọng tâm: ' + task.skillFocus;
+}
 function loadCurrentTask() {
   currentTask = TASKS.find(x => x.id === $('#task-select').value) || TASKS[0];
-  $('#task-prompt').textContent = currentTask.prompt;
-  $('#task-goal').textContent = currentTask.goal;
+  renderTaskDetails(currentTask);
   $('#essay-editor').value = readDraft(currentTask.id);
   $('#autosave-label').textContent = 'Bản nháp cục bộ';
   $('#word-count').textContent = String(countWords($('#essay-editor').value));
@@ -649,8 +662,7 @@ function attachEvents() {
     latestReport = record.report;
     currentTask = TASKS.find(task => task.id === record.taskId) || currentTask;
     $('#task-select').value = currentTask.id;
-    $('#task-prompt').textContent = record.taskPrompt || currentTask.prompt;
-    $('#task-goal').textContent = currentTask.goal;
+    renderTaskDetails({ ...currentTask, prompt: record.taskPrompt || currentTask.prompt });
     $('#essay-editor').value = record.essay;
     renderReport(latestReport); showPage('report');
   });
