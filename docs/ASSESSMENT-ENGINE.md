@@ -30,3 +30,7 @@ The Tutor has no execution tools, shell, arbitrary file access or browser automa
 ## Evaluation gate
 
 Before claiming scoring accuracy, curate representative Task 1 and Task 2 essays with expert reference ratings, measure agreement and error by criterion, track fabricated feedback, and test consistency across repeated runs and provider/model changes.
+
+## Reproducible validation toolkit
+
+The local evaluator and dataset contract are documented in docs/SCORING-VALIDATION.md. It keeps Task Achievement and Task Response separate; requires adjudicated half-band references and two independent rater scores; reports coverage, disagreement, repeated-run consistency and quote integrity; and emits aggregate metrics without essay text. Its existence is not evidence of accuracy: WMR remains uncalibrated until a permissioned held-out dataset is collected, scored independently and evaluated against pre-defined criteria.

@@ -8,3 +8,7 @@ android/
 coverage/
 *.keystore
 *.jks
+
+# Local, permissioned benchmark data and derived reports must stay out of Git.
+benchmarks/private/
+benchmark-results/

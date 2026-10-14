@@ -94,3 +94,7 @@ The publish job verifies all five installer/package outputs are present before c
 Automated tests cover local HTTP security boundaries, API-key handling, provider adapters, response timeout/size limits, assessment evidence, backup import, task-bank metadata and desktop navigation/environment policy. CI checks syntax, tests, web build and dependency advisories. Cross-platform release builds are separately verified by Actions.
 
 This is not a third-party security certification. Live provider billing/interoperability, installation on physical Android/Windows/Linux devices, screen-reader and manual keyboard testing, and assessment accuracy against human-rated essays still need direct verification. The original full v0.9 knowledge corpus was not part of the empty-repository bootstrap and is not claimed to be present.
+
+## Scoring validation toolkit
+
+The local benchmark evaluator reports criterion-specific MAE, RMSE, bias, exact and adjacent-band rates, severe-error rate, quadratic weighted kappa, exploratory bootstrap intervals, coverage, human-rater agreement, repeated-run consistency, and exact quote integrity. Run it against permissioned, de-identified essays and independently adjudicated ratings; see docs/SCORING-VALIDATION.md. The evaluator makes no network calls and its report omits essay text. The included synthetic unit tests are not a scoring benchmark, and this tool does not claim that WMR is calibrated.
