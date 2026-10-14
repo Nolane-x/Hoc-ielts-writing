@@ -41,8 +41,9 @@ function validBand(value){
 }
 function mapCriterion(record,item){
  const taskType=record.report?.taskType||record.taskType;
- if(item?.id==='taskResponse'&&taskType!=='task2')return 'taskAchievement';
- return ['taskAchievement','taskResponse','coherence','lexical','grammar'].includes(item?.id)?item.id:'other';
+ const rawId=item?.id??item?.criterion;
+ if(rawId==='taskResponse'&&taskType!=='task2')return 'taskAchievement';
+ return ['taskAchievement','taskResponse','coherence','lexical','grammar'].includes(rawId)?rawId:'other';
 }
 function mapCategory(record,item){
  let category=Object.hasOwn(CATEGORIES,item?.category)?item.category:'other';
