@@ -259,7 +259,7 @@ test('learner profile context is bounded and contains only aggregate learning si
       criteria: [
         { id: 'taskResponse', score: 6.5 },
         { id: 'grammar', score: 6.3 },
-        { id: 'grammar', score: 7 }
+        { id: 'grammar', score: 7.3 }
       ],
       issueCategories: ['grammar', 'not-a-category'],
       resolvedIssues: 1,
