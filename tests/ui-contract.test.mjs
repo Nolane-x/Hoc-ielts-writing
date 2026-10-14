@@ -158,3 +158,16 @@ test('Settings exposes a separate budget for a multi-turn Writing Agent session'
   assert.match(app, /cost > settings\.maxAgentSessionUsd/);
   assert.match(html, /TỐI ĐA CẢ PHIÊN AGENT/);
 });
+
+
+test('micro-practice answers persist locally and the practice journal clearly distinguishes feedback from mastery', () => {
+  assert.match(html, /id="agent-practice-journal"/);
+  assert.match(app, /const AGENT_PRACTICE_ATTEMPTS_KEY/);
+  assert.match(app, /function renderAgentPracticeJournal\(\)/);
+  assert.match(app, /createAgentPracticeAttempt\(/);
+  assert.match(app, /agentPracticeAttempts: agentPracticeAttempts\(\)/);
+  assert.match(app, /normaliseAgentPracticeAttempts\(backup\.agentPracticeAttempts/);
+  assert.match(app, /feedbackSource: response\?\.source === 'configuration-message'/);
+  assert.match(app, /không phải band hay bằng chứng đã thành thạo/i);
+  assert.match(app, /Xóa lượt luyện khỏi nhật ký cục bộ/);
+});
