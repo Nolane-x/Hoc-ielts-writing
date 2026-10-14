@@ -128,10 +128,12 @@ test('writing agent streams tool progress and final result from a configured loc
     JSON.stringify({ kind: 'tool_call', name: 'inspect_draft', arguments: {} }),
     JSON.stringify({ kind: 'final', message: 'Đã kiểm tra bài nháp trong workspace cục bộ.' })
   ];
+  const modelRequests = [];
   const providerServer = http.createServer(async (req, res) => {
     let body = '';
     for await (const chunk of req) body += chunk;
     const payload = JSON.parse(body);
+    modelRequests.push(payload.messages);
     assert.equal(payload.model, 'wmr-test-model');
     assert.equal(payload.stream, false);
     const text = outputs.shift();
@@ -174,6 +176,12 @@ test('writing agent streams tool progress and final result from a configured loc
       taskPrompt: 'Discuss the benefits of public transport.',
       essay: 'Public transport can reduce traffic. It is important because buses carry many passengers. Governments should plan routes carefully.',
       message: 'Inspect my draft and summarise one next step.',
+      learningContext: {
+        eligibleEssayCount: 1,
+        criterionAverages: [{ id: 'grammar', mean: 6.5, count: 1 }],
+        recentAssessments: [{ taskType: 'task2', wordCount: 280, criteria: [{ id: 'grammar', score: 7 }], issueCategories: ['grammar'], resolvedIssues: 1, unresolvedIssues: 2, essayText: 'old-essay-sentinel-should-be-dropped' }],
+        extraField: 'ignore-this-field'
+      },
       sessionId: 'agent-stream-test-session-0001'
     })
   });
@@ -187,5 +195,10 @@ test('writing agent streams tool progress and final result from a configured loc
   assert.match(events, /\"maximumModelTurns\":10/);
   assert.match(events, /\"maximumToolCalls\":8/);
   assert.match(events, /Đã kiểm tra bài nháp trong workspace cục bộ/);
+  const upstreamText = JSON.stringify(modelRequests);
+  assert.match(upstreamText, /\"eligibleEssayCount\":1/);
+  assert.match(upstreamText, /\"learningProgress\"/);
+  assert.doesNotMatch(upstreamText, /old-essay-sentinel-should-be-dropped/);
+  assert.doesNotMatch(upstreamText, /ignore-this-field/);
   assert.equal(outputs.length, 0);
 });
