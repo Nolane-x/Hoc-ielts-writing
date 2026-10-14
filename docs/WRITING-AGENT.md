@@ -4,7 +4,7 @@
 
 WMR's Writing Agent is a bounded multi-step agent that can call named workspace tools instead of only producing a chat answer. It can inspect word/paragraph structure, find exact phrases in a draft, propose targeted edits, create an outline with blanks for the learner, create a focused micro-exercise, define a measurable learning goal, and select a unique quote for focused review.
 
-The allowlist lives in `web/writing-agent.mjs`. It is not chosen by model output and cannot be expanded by the model. Unknown tools are rejected. The agent loop currently allows at most six model turns and five tool calls per session; normal sessions finish earlier. Its per-turn output budget is bounded. Tool output and prior assistant messages are data, not policy.
+The allowlist lives in `web/writing-agent.mjs`. It is not chosen by model output and cannot be expanded by the model. Unknown tools are rejected. The agent loop currently allows at most ten model turns and eight tool calls per session; normal sessions finish earlier. Its per-turn output budget is bounded. The tool set also searches the bundled local IELTS task bank to suggest transfer practice without a network call. Tool output and prior assistant messages are data, not policy.
 
 ## Live flow
 
