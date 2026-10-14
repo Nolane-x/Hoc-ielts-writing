@@ -35,3 +35,14 @@ Before claiming scoring accuracy, curate representative Task 1 and Task 2 essays
 ## Reproducible validation toolkit
 
 The local evaluator and dataset contract are documented in docs/SCORING-VALIDATION.md. It keeps Task Achievement and Task Response separate; requires adjudicated half-band references and two independent rater scores; reports coverage, disagreement, repeated-run consistency and quote integrity; and emits aggregate metrics without essay text. Its existence is not evidence of accuracy: WMR remains uncalibrated until a permissioned held-out dataset is collected, scored independently and evaluated against pre-defined criteria.
+
+
+## Writing Agent workspace runtime
+
+The interactive Writing Agent runs up to six model turns and five tool calls per session. Its tool allowlist is intentionally tailored to writing: inspect the draft, search exact phrases, stage precise edits, produce an outline, create a focused exercise, define a measurable goal and focus a unique quote. The agent can chain tools, inspect their results and stream its work as progress/tool/result events; an unstructured model reply is kept read-only rather than interpreted as an action.
+
+Every edit is a staged source patch based on a unique exact quote from the session snapshot. Patch ranges cannot overlap. The app rechecks anchors against the current editor, saves a local revision before applying, applies multiple patches from end to start, and rejects stale/ambiguous anchors instead of guessing. Draft revisions are capped at five per task, and saved outlines/exercises/goals/focus notes are stored locally and included in validated backups. Native builds run the same agent loop directly; desktop/web use the loopback SSE route.
+
+The provider permission switch remains required. Remote cost estimates account for multiple model turns and use the existing fail-closed usage ledger; a budget estimate can be conservative because later turns see accumulated tool results. Cancellation is forwarded through AbortController and should be treated as a best-effort stop for in-flight provider calls. This agent is not allowed to operate the host OS, read arbitrary files or secrets, or call arbitrary network tools. Its greater agency is limited to learner-visible actions in the supplied writing workspace.
+
+Tests cover grounded patches, ambiguous/missing quotes, prohibited tools, bounded session loops, provider-opt-out gating and the local-provider SSE tool chain. These are behaviour tests, not proof that the provider's educational advice is correct.
