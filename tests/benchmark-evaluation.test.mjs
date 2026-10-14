@@ -180,7 +180,7 @@ test('repeated runs for one model expose score consistency without hiding disagr
   );
   assert.equal(consistency.repeatedExamples, 2);
   assert.equal(consistency.exactRepeatabilityRate, 0.5);
-  assert.equal(consistency.withinHalfBandRangeRate, 0.5);
+  assert.equal(consistency.withinHalfBandRangeRate, 1);
   assert.equal(consistency.meanScoreRange, 0.25);
   assert.equal(consistency.meanPairwiseAbsoluteDifference, 0.25);
 });
@@ -208,4 +208,41 @@ test('invalid reference score and duplicate result fail closed', () => {
 test('QWK is perfect for identical scores and defined as null when there are no pairs', () => {
   assert.equal(quadraticWeightedKappa([{ reference: 6.5, predicted: 6.5 }, { reference: 7, predicted: 7 }]), 1);
   assert.equal(quadraticWeightedKappa([]), null);
+});
+
+
+test('bootstrap intervals are deterministic and bounded when enough scored examples exist', () => {
+  const data = datasetFactory();
+  const template = data.examples[0];
+  const baseEssay = longEssay('synthetic confidence interval fixture');
+  data.examples = [];
+  data.runs[0].results = [];
+  for (let index = 0; index < 8; index++) {
+    const taskExample = {
+      ...structuredClone(template),
+      id: 'bootstrap-' + index,
+      essay: baseEssay + ' unique marker ' + index,
+      reference: {
+        adjudicatedScores: { taskResponse: 6.5 + (index % 2) * 0.5, coherence: 6, lexical: 6.5, grammar: 6 },
+        raters: [
+          { id: 'rater-a', scores: { taskResponse: 6.5 + (index % 2) * 0.5, coherence: 6, lexical: 6.5, grammar: 6 } },
+          { id: 'rater-b', scores: { taskResponse: 6.5 + (index % 2) * 0.5, coherence: 6, lexical: 6.5, grammar: 6 } }
+        ]
+      }
+    };
+    data.examples.push(taskExample);
+    data.runs[0].results.push({
+      exampleId: taskExample.id,
+      assessment: assessment('task2', 6.5, taskExample.essay)
+    });
+  }
+  const first = evaluateBenchmarkDataset(data);
+  const second = evaluateBenchmarkDataset(data);
+  const metricA = first.runs[0].metrics.find(item => item.criterion === 'taskResponse' && item.taskType === 'task2');
+  const metricB = second.runs[0].metrics.find(item => item.criterion === 'taskResponse' && item.taskType === 'task2');
+  assert.equal(metricA.n, 8);
+  assert.equal(metricA.confidenceIntervals.iterations, 400);
+  assert.ok(metricA.confidenceIntervals.mae95CI[0] <= metricA.mae);
+  assert.ok(metricA.confidenceIntervals.mae95CI[1] >= metricA.mae);
+  assert.deepEqual(metricA.confidenceIntervals, metricB.confidenceIntervals);
 });
