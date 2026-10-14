@@ -38,3 +38,12 @@ test('visual smoke captures workspace, agent, local report, learning, settings, 
   assert.match(visualWorkflow, /actions\/upload-artifact@v4/);
   assert.match(visualWorkflow, /name: wmr-ui-screenshots/);
 });
+
+test('event bindings reference real DOM IDs and avoid CSP-blocked inline styling', async () => {
+  const app = await readFile(new URL('../web/app.mjs', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../web/index.html', import.meta.url), 'utf8');
+  const boundIds = [...app.matchAll(/\$\('#([^']+)'\)\.addEventListener/g)].map(match => match[1]);
+  const htmlIds = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
+  assert.deepEqual([...new Set(boundIds.filter(id => !htmlIds.has(id)))], []);
+  assert.doesNotMatch(app, /\.style\.(?:color|background)|style="width:/);
+});
