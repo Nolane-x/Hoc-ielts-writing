@@ -29,7 +29,7 @@ The app also displays outlines, micro-exercises, success criteria, goals and quo
 
 ## Permission and safety boundary
 
-WMR is local-first. The existing Settings toggle `externalAllowed` must be enabled before the agent contacts a provider. Remote providers require a supported HTTPS endpoint, exact model ID, explicit token pricing and successful local budget reservation. The session cost estimate assumes the bounded maximum number of turns and is intentionally conservative. If it exceeds the current per-call/day limit, the user can adjust Settings or choose a local model; the server does not silently bypass the limit.
+WMR is local-first. The existing Settings toggle `externalAllowed` must be enabled before the agent contacts a provider. Remote providers require a supported HTTPS endpoint, exact model ID, explicit token pricing and successful local budget reservation. Ordinary one-request calls use `maxCallUsd`; multi-turn Writing Agent sessions use the separate `maxAgentSessionUsd` cap. Both must fit inside `dailyBudgetUsd`, and the session estimate assumes the bounded maximum number of turns. If it exceeds a cap, the user can adjust that specific limit in Settings or choose a local model; the server never silently skips a limit.
 
 The agent has no shell, arbitrary filesystem read/write, environment-variable access, API-key access, browser automation, or general HTTP/network tool. It only receives the selected task and essay snapshot, recent bounded dialogue, and results of the named writing tools. The server remains loopback-only and the API route retains Host/Origin validation and the request body limit.
 
