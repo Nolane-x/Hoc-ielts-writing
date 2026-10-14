@@ -233,7 +233,7 @@ export function executeWritingAgentTool(state, name, rawArgs = {}) {
     const query = boundedText(args.query, 180);
     const requestedTaskType = VALID_TASK_TYPES.has(args.taskType) ? args.taskType : '';
     if (query.length < 2) return { ok: false, code: 'practice_query_too_short', message: 'Mô tả kỹ năng hoặc chủ đề cần luyện bằng ít nhất 2 ký tự.' };
-    const terms = [...new Set(query.toLocaleLowerCase('en').split(/\\s+/).filter(term => term.length >= 2))].slice(0, 12);
+    const terms = [...new Set(query.toLocaleLowerCase('en').split(/\s+/).filter(term => term.length >= 2))].slice(0, 12);
     const candidates = TASKS
       .filter(task => !requestedTaskType || task.type === requestedTaskType)
       .map(task => {
