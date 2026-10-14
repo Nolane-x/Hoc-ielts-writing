@@ -81,3 +81,29 @@ test('provider errors are reduced to a safe status code and malformed JSON is re
     await assert.rejects(requestCompletion({ config, messages: [{ role: 'user', content: 'hello' }] }), /provider_invalid_json/);
   });
 });
+
+
+test('provider timeout covers a response body that never finishes after headers', async () => {
+  let cancelled = false;
+  await withMockFetch(async (_url, options) => {
+    let streamController;
+    const body = new ReadableStream({
+      start(controller) {
+        streamController = controller;
+        options.signal.addEventListener('abort', () => {
+          cancelled = true;
+          try { controller.error(new DOMException('aborted', 'AbortError')); } catch {}
+        }, { once: true });
+      },
+      cancel() { cancelled = true; }
+    });
+    return new Response(body, { status: 200, headers: { 'content-type': 'application/json' } });
+  }, async () => {
+    const config = normaliseProviderConfig({ provider: 'openai', model: 'test-model', apiKey: 'test-key' });
+    await assert.rejects(
+      requestCompletion({ config, messages: [{ role: 'user', content: 'hello' }], timeoutMs: 40 }),
+      /provider_timeout_or_cancelled/
+    );
+    assert.equal(cancelled, true);
+  });
+});
