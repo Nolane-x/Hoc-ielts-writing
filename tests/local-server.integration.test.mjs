@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,11 +8,12 @@ const dataDir = await mkdtemp(path.join(os.tmpdir(), 'wmr-integration-'));
 process.env.WMR_DATA_DIR = dataDir;
 const { createWmrServer, initialise } = await import('../server/index.mjs');
 await initialise();
+after(async () => { await rm(dataDir, { recursive: true, force: true }); });
 
 test('local HTTP runtime binds to loopback, reports health, and defaults to opt-out', async t => {
   const server = createWmrServer();
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
-  t.after(async () => { await new Promise(resolve => server.close(resolve)); await rm(dataDir, { recursive: true, force: true }); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
   const address = server.address();
   const base = 'http://127.0.0.1:' + address.port;
   const health = await fetch(base + '/api/health');
