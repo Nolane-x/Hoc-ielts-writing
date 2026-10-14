@@ -9,13 +9,6 @@ export function buildEssayAnnotations(essayValue, issueValue) {
     quote: typeof issue?.quote === 'string' ? issue.quote : '',
     severity: Object.hasOwn(SEVERITY_RANK, issue?.severity) ? issue.severity : 'medium'
   }));
-  const usageCount = new Map();
-  for (const item of candidates) {
-    if (item.quote.length >= 5 && essay.includes(item.quote)) {
-      usageCount.set(item.quote, (usageCount.get(item.quote) || 0) + 1);
-    }
-  }
-
   const allocated = [];
   const unavailable = [];
   const ordered = candidates.sort((left, right) =>
@@ -37,7 +30,7 @@ export function buildEssayAnnotations(essayValue, issueValue) {
     }
 
     const last = essay.indexOf(item.quote, first + 1);
-    if (last >= 0 || usageCount.get(item.quote) > 1) {
+    if (last >= 0) {
       unavailable.push({ issueIndex: item.issueIndex, quote: item.quote, reason: 'ambiguous' });
       continue;
     }
