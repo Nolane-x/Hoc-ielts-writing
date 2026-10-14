@@ -110,3 +110,8 @@ The model has no shell, arbitrary file access, environment-variable or API-key a
 ## Micro-practice journal
 
 Answers to Writing Agent micro-exercises can be submitted for a tutor response and saved to a device-local practice journal. The journal stores the learner's answer, exercise criteria, and only verified tutoring feedback from a provider or the local guide; provider setup messages are not presented as pedagogical feedback. Users can inspect or delete individual attempts. The journal is included in validated local backups, and its attempt counts are not presented as band scores or proof of mastery.
+
+
+## WMR 1.6.0 — Adaptive micro-practice
+
+The Writing Agent's micro-exercises now form a persistent learning loop. Answers, exercise criteria and verified tutor feedback can be reviewed or deleted from the on-device practice journal, included in validated local backups, and summarized across tasks on the adaptive Learning page. Provider configuration notices are never treated as teaching feedback; activity counts are not represented as band scores or proof of mastery.
