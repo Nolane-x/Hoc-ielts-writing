@@ -27,6 +27,7 @@ let activeApiKey = '';
 let usage = { date: new Date().toISOString().slice(0, 10), calls: 0, estimatedUsd: 0 };
 let usageHealthy = true;
 let aiInFlight = false;
+const activeAgentSessions = new Map();
 
 export async function initialise() {
   await mkdir(DATA_ROOT, { recursive: true, mode: 0o700 });
@@ -152,6 +153,9 @@ async function runConfiguredAI(kind, input) {
 }
 
 async function handleWritingAgentStream(req, res, input) {
+  const sessionId = typeof input.sessionId === 'string' && /^[a-zA-Z0-9-]{16,80}$/.test(input.sessionId) ? input.sessionId : '';
+  if (!sessionId) throw httpError(400, 'Writing Agent session ID is missing or invalid.');
+  if (activeAgentSessions.has(sessionId)) throw httpError(409, 'Writing Agent session ID is already active.');
   if (!input.essay.trim()) throw httpError(400, 'Viết một bản nháp trước khi chạy Writing Agent.');
   if (!input.message.trim()) throw httpError(400, 'Hãy mô tả mục tiêu phiên làm việc của Agent.');
   if (!settings.externalAllowed) throw httpError(409, 'Hãy bật quyền gửi nội dung tới provider trong Settings trước khi chạy Agent AI.');
@@ -182,12 +186,13 @@ async function handleWritingAgentStream(req, res, input) {
   }
 
   const controller = new AbortController();
+  activeAgentSessions.set(sessionId, controller);
   const onResponseClose = () => {
     if (!res.writableEnded) controller.abort();
   };
   res.on('close', onResponseClose);
   const sendEvent = (type, payload) => {
-    if (controller.signal.aborted || res.writableEnded || res.destroyed) return;
+    if (res.writableEnded || res.destroyed) return;
     try {
       res.write('event: ' + type + '\\ndata: ' + JSON.stringify(payload) + '\\n\\n');
     } catch {
@@ -228,9 +233,9 @@ async function handleWritingAgentStream(req, res, input) {
         signal
       })
     });
-    if (!controller.signal.aborted && !res.writableEnded) res.end();
+    if (!res.writableEnded && !res.destroyed) res.end();
   } catch (error) {
-    if (!controller.signal.aborted && !res.writableEnded) {
+    if (!res.writableEnded && !res.destroyed) {
       sendEvent('error', {
         message: 'Writing Agent không hoàn tất phiên. Kiểm tra kết nối/model rồi thử lại. Hạn mức dự phòng đã được giữ để tránh coi request chưa xác định là miễn phí.',
         code: String(error?.message || 'agent_session_failed').slice(0, 80)
@@ -239,6 +244,7 @@ async function handleWritingAgentStream(req, res, input) {
     }
   } finally {
     res.off('close', onResponseClose);
+    if (activeAgentSessions.get(sessionId) === controller) activeAgentSessions.delete(sessionId);
     aiInFlight = false;
   }
 }
@@ -259,9 +265,17 @@ async function handle(req, res) {
     const matches = TASKS.filter(task => (task.title + ' ' + task.prompt + ' ' + task.goal + ' ' + task.tips.join(' ')).toLowerCase().includes(query)).slice(0, 8);
     return json(res, 200, { localOnly: true, results: matches.map(task => ({ id: task.id, title: task.title, content: task.goal, tips: task.tips })) });
   }
-  if (req.method === 'POST' && ['/api/settings', '/api/assessment', '/api/coach', '/api/agent', '/api/key/clear'].includes(url.pathname)) {
+  if (req.method === 'POST' && ['/api/settings', '/api/assessment', '/api/coach', '/api/agent', '/api/agent/cancel', '/api/key/clear'].includes(url.pathname)) {
     if (!validateOrigin(req)) throw httpError(403, 'Blocked request origin. Open WMR through its loopback URL.');
     const body = await readJson(req);
+    if (url.pathname === '/api/agent/cancel') {
+      const sessionId = typeof body.sessionId === 'string' && /^[a-zA-Z0-9-]{16,80}$/.test(body.sessionId) ? body.sessionId : '';
+      if (!sessionId) throw httpError(400, 'Writing Agent session ID is missing or invalid.');
+      const controller = activeAgentSessions.get(sessionId);
+      if (!controller) return json(res, 404, { error: 'Không tìm thấy phiên Agent đang chạy; phiên có thể đã kết thúc.' });
+      controller.abort();
+      return json(res, 200, { ok: true, cancelRequested: true });
+    }
     if (url.pathname === '/api/settings') {
       settings = sanitiseSettings(body);
       if (typeof body.apiKey === 'string' && body.apiKey.trim()) activeApiKey = body.apiKey.trim().slice(0, 4096);
@@ -273,7 +287,7 @@ async function handle(req, res) {
       activeApiKey = '';
       return json(res, 200, { ok: true, hasApiKey: false });
     }
-    const input = { taskType: body.taskType, taskPrompt: String(body.taskPrompt || '').slice(0, 5000), essay: String(body.essay || '').slice(0, 20000), message: String(body.message || '').slice(0, 4000), history: normaliseCoachHistory(body.history) };
+    const input = { taskType: body.taskType, taskPrompt: String(body.taskPrompt || '').slice(0, 5000), essay: String(body.essay || '').slice(0, 20000), message: String(body.message || '').slice(0, 4000), history: normaliseCoachHistory(body.history), sessionId: String(body.sessionId || '').slice(0, 80) };
     if (url.pathname === '/api/assessment') {
       if (!input.essay.trim()) throw httpError(400, 'Write a draft before submitting it for review.');
       if (!body.sendToProvider) return json(res, 200, { report: createLocalReport(input), aiStatus: 'offline-by-choice', message: 'Chưa gửi bài viết tới AI bên ngoài.' });
