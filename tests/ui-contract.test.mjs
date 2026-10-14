@@ -64,5 +64,5 @@ test('rubric guide and revision comparison are wired into the learning/report fl
  assert.match(app,/getRubricGuide\(currentTask\?\.type \|\| 'task2'\)/);
  assert.match(app,/buildRevisionComparison\(currentRecord, history\)/);
  assert.match(app,/So sánh với bản trước của cùng đề/);
- assert.match(app,/Band chỉ là ước lượng hình thành/);
+ assert.match(app,/Model có thể dao động giữa các lượt/);
 });
