@@ -1,5 +1,6 @@
-const { app, BrowserWindow, utilityProcess, shell } = require('electron');
+const { app, BrowserWindow, utilityProcess } = require('electron');
 const path = require('node:path');
+const { createRuntimeEnvironment, isInternalNavigation } = require('./runtime-policy.cjs');
 
 let runtime = null;
 let mainWindow = null;
@@ -26,7 +27,7 @@ async function waitForRuntime() {
 async function createWindow() {
   runtime = utilityProcess.fork(path.join(app.getAppPath(), 'server/index.mjs'), [], {
     serviceName: 'WMR Local Runtime', stdio: 'pipe',
-    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), WMR_DATA_DIR: app.getPath('userData') }
+    env: createRuntimeEnvironment(process.env, app.getPath('userData'), port)
   });
   runtime.on('exit', code => {
     if (code && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('wmr-runtime-error', 'Local runtime stopped. Restart WMR to continue.');
@@ -37,8 +38,10 @@ async function createWindow() {
     backgroundColor: '#f6f7fb', title: 'WMR Writing Mentor',
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true }
   });
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => { if (url.startsWith('https://')) shell.openExternal(url); return { action: 'deny' }; });
-  mainWindow.webContents.on('will-navigate', (event, url) => { if (!url.startsWith(baseUrl + '/')) event.preventDefault(); });
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isInternalNavigation(url, baseUrl)) event.preventDefault();
+  });
   await mainWindow.loadURL(baseUrl);
   mainWindow.on('closed', () => { mainWindow = null; });
 }
