@@ -22,6 +22,15 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm install --no-audit --no-fund
+      - name: Upload generated lockfile for reproducible dependency resolution
+        uses: actions/upload-artifact@v4
+        with:
+          name: wmr-package-lock-node-${{ matrix.node }}
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Audit dependencies for high and critical advisories
+        run: npm audit --audit-level=high
       - run: npm run check
       - run: npm run build:web
       - name: Verify built files and no remote web assets
