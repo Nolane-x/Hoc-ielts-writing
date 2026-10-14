@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { TASKS } from '../web/tasks.mjs';
 import { buildAssessmentMessages, createLocalReport, normaliseAssessment } from '../web/assessment.mjs';
 import { normaliseProviderConfig, requestCompletion, estimateCost, PROVIDER_PRESETS } from '../web/providers.mjs';
+import { runWritingAgentSession, WRITING_AGENT_MAX_MODEL_TURNS, WRITING_AGENT_SYSTEM_PROMPT } from '../web/writing-agent.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(HERE, '../dist');
@@ -150,6 +151,110 @@ async function runConfiguredAI(kind, input) {
   } finally { aiInFlight = false; }
 }
 
+function estimateWritingAgentSessionCost(provider, input) {
+  if (provider.localEndpoint) return 0;
+  const fixedCharacters = WRITING_AGENT_SYSTEM_PROMPT.length +
+    String(input.taskPrompt || '').length +
+    String(input.essay || '').length +
+    String(input.message || '').length +
+    normaliseCoachHistory(input.history).reduce((sum, turn) => sum + turn.content.length, 0) +
+    1200;
+  let estimatedInputTokens = 0;
+  for (let turn = 0; turn < WRITING_AGENT_MAX_MODEL_TURNS; turn++) {
+    estimatedInputTokens += Math.ceil((fixedCharacters + turn * 2400) / 3) + 1200;
+  }
+  const finalTokens = Math.max(300, Math.min(1800, settings.maxOutputTokens));
+  const estimatedOutputTokens = (WRITING_AGENT_MAX_MODEL_TURNS - 1) * 900 + finalTokens;
+  return ((estimatedInputTokens * settings.inputUsdPerMillion) +
+    (estimatedOutputTokens * settings.outputUsdPerMillion)) / 1_000_000 * 1.5;
+}
+
+async function handleWritingAgentStream(req, res, input) {
+  if (!input.essay.trim()) throw httpError(400, 'Viết một bản nháp trước khi chạy Writing Agent.');
+  if (!input.message.trim()) throw httpError(400, 'Hãy mô tả mục tiêu phiên làm việc của Agent.');
+  if (!settings.externalAllowed) throw httpError(409, 'Hãy bật quyền gửi nội dung tới provider trong Settings trước khi chạy Agent AI.');
+  const localProvider = ['ollama', 'lmstudio'].includes(settings.provider);
+  if ((!activeApiKey && !localProvider) || !settings.model) throw httpError(409, 'Hãy cấu hình provider, khóa API và model ID trong Settings.');
+  const provider = normaliseProviderConfig({ ...settings, apiKey: activeApiKey || (localProvider ? 'local' : '') });
+  if (!provider.ok) throw httpError(400, provider.reason);
+  if (!provider.localEndpoint && !(settings.inputUsdPerMillion > 0 && settings.outputUsdPerMillion > 0)) {
+    throw httpError(409, 'Nhập giá input/output hiện hành của model trước khi chạy Agent nhiều lượt.');
+  }
+  const cost = estimateWritingAgentSessionCost(provider, input);
+  const ledger = currentUsage();
+  if (!usageHealthy) throw httpError(503, 'Không xác minh được sổ ngân sách; Agent bị chặn.');
+  if (ledger.calls >= settings.maxDailyCalls) throw httpError(429, 'Đã đạt giới hạn số lượt AI/ngày.');
+  if (cost === null || (!provider.localEndpoint && cost > settings.maxCallUsd) || ledger.estimatedUsd + (cost || 0) > settings.dailyBudgetUsd) {
+    throw httpError(429, 'Phiên Agent nhiều lượt có thể vượt giới hạn chi phí hiện tại. Hãy tăng hạn mức mỗi lượt/ngày trong Settings hoặc dùng model cục bộ.');
+  }
+  if (aiInFlight) throw httpError(429, 'Một phiên AI khác đang chạy. Hãy để phiên đó kết thúc hoặc hủy trước khi khởi chạy Agent.');
+  aiInFlight = true;
+  ledger.calls += 1;
+  ledger.estimatedUsd += cost || 0;
+  try {
+    await persistJson(USAGE_PATH, ledger);
+  } catch {
+    usageHealthy = false;
+    aiInFlight = false;
+    throw httpError(503, 'Không lưu được sổ sử dụng; Agent đã bị chặn.');
+  }
+
+  const controller = new AbortController();
+  const onResponseClose = () => {
+    if (!res.writableEnded) controller.abort();
+  };
+  res.on('close', onResponseClose);
+  const sendEvent = (type, payload) => {
+    if (controller.signal.aborted || res.writableEnded || res.destroyed) return;
+    try {
+      res.write('event: ' + type + '\\ndata: ' + JSON.stringify(payload) + '\\n\\n');
+    } catch {
+      controller.abort();
+    }
+  };
+
+  try {
+    res.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-store, no-transform',
+      'connection': 'keep-alive',
+      'x-accel-buffering': 'no',
+      'x-content-type-options': 'nosniff'
+    });
+    res.flushHeaders?.();
+    sendEvent('progress', {
+      phase: 'started',
+      message: provider.localEndpoint
+        ? 'Writing Agent đã kết nối provider cục bộ.'
+        : 'Writing Agent đã bắt đầu phiên nhiều bước; mọi sửa đổi đều cần bạn duyệt.'
+    });
+    await runWritingAgentSession({
+      input: { ...input, maxOutputTokens: settings.maxOutputTokens },
+      signal: controller.signal,
+      onEvent: sendEvent,
+      complete: async ({ messages, maxOutputTokens, signal }) => requestCompletion({
+        config: provider,
+        messages,
+        maxOutputTokens,
+        timeoutMs: 35000,
+        signal
+      })
+    });
+    if (!controller.signal.aborted && !res.writableEnded) res.end();
+  } catch (error) {
+    if (!controller.signal.aborted && !res.writableEnded) {
+      sendEvent('error', {
+        message: 'Writing Agent không hoàn tất phiên. Kiểm tra kết nối/model rồi thử lại. Hạn mức dự phòng đã được giữ để tránh coi request chưa xác định là miễn phí.',
+        code: String(error?.message || 'agent_session_failed').slice(0, 80)
+      });
+      res.end();
+    }
+  } finally {
+    res.off('close', onResponseClose);
+    aiInFlight = false;
+  }
+}
+
 async function handle(req, res) {
   const url = new URL(req.url, 'http://127.0.0.1');
   if (req.method === 'GET' && url.pathname === '/api/health') {
@@ -166,7 +271,7 @@ async function handle(req, res) {
     const matches = TASKS.filter(task => (task.title + ' ' + task.prompt + ' ' + task.goal + ' ' + task.tips.join(' ')).toLowerCase().includes(query)).slice(0, 8);
     return json(res, 200, { localOnly: true, results: matches.map(task => ({ id: task.id, title: task.title, content: task.goal, tips: task.tips })) });
   }
-  if (req.method === 'POST' && ['/api/settings', '/api/assessment', '/api/coach', '/api/key/clear'].includes(url.pathname)) {
+  if (req.method === 'POST' && ['/api/settings', '/api/assessment', '/api/coach', '/api/agent', '/api/key/clear'].includes(url.pathname)) {
     if (!validateOrigin(req)) throw httpError(403, 'Blocked request origin. Open WMR through its loopback URL.');
     const body = await readJson(req);
     if (url.pathname === '/api/settings') {
@@ -190,6 +295,7 @@ async function handle(req, res) {
       if (!input.message.trim()) throw httpError(400, 'Enter a question first.');
       return json(res, 200, await runConfiguredAI('coach', input));
     }
+    if (url.pathname === '/api/agent') return await handleWritingAgentStream(req, res, input);
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') throw httpError(405, 'Method not allowed.');
   let pathname;
