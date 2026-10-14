@@ -85,3 +85,17 @@ test('annotated essay report uses an exact-match annotation engine and links spa
   assert.match(app, /Chỉ trích dẫn khớp duy nhất và không chồng lấn mới được tô sáng/);
   assert.match(app, /Bản gốc không bị sửa/);
 });
+
+
+test('learner profile only derives criteria and recurring patterns from eligible AI assessments', () => {
+  assert.match(app, /buildRecurringErrorPatterns\(history\)/);
+  assert.match(app, /learnerCriterionSummary\(history\)/);
+  assert.match(app, /eligibleAIRecords\(history\)/);
+  assert.match(app, /Nhóm lỗi xuất hiện qua nhiều bài/);
+  assert.match(app, /Tách Task Achievement và Task Response/);
+});
+
+test('resolved issue buttons restore their persisted state when a report is reopened', () => {
+  assert.match(app, /aria-pressed="' \+ String\(item\.userMarkedResolved === true\)/);
+  assert.match(app, /item\.userMarkedResolved === true \? '✓ Đã xử lý · Hoàn tác'/);
+});
