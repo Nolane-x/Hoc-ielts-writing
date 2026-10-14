@@ -2,9 +2,11 @@ import { Capacitor } from '@capacitor/core';
 import { parseLocalBackup } from './local-data.mjs';
 import { createLearningRecord } from './learning-records.mjs';
 import { buildStudyPlan } from './study-plan.mjs';
+import { getRubricGuide } from './rubric-guide.mjs';
+import { buildRevisionComparison } from './revision-analysis.mjs';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { TASKS } from './tasks.mjs';
-import { CRITERIA, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
+import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
 import { PROVIDER_PRESETS, normaliseProviderConfig, requestCompletion, estimateCost } from './providers.mjs';
 
 const $ = (selector) => document.querySelector(selector);
@@ -114,6 +116,7 @@ function loadCurrentTask() {
   updateWordTarget();
   coachTurns = normaliseLocalCoachTurns(safeParse(localStorage.getItem(COACH_PREFIX + currentTask.id), []));
   renderCoachTurns();
+  renderRubricGuide();
 }
 function renderHistoryCount() { $('#draft-count').textContent = String(history.length); }
 function loadHistory() {
@@ -279,7 +282,12 @@ function renderReport(report, loading = false) {
   const strengths = Array.isArray(report.strengths) ? report.strengths : [];
   const priorities = Array.isArray(report.priorities) ? report.priorities : [];
   const uncertainties = Array.isArray(report.uncertainties) ? report.uncertainties : [];
-  const criteriaHtml = CRITERIA.map(def => {
+  const scoreRationale = typeof report.scoreRationale === 'string' ? report.scoreRationale : '';
+  const lengthWarnings = Array.isArray(report.lengthWarnings) ? report.lengthWarnings : [];
+  const currentRecord = history.find(item => item.report === report) || null;
+  const revision = buildRevisionComparison(currentRecord, history);
+  const criterionDefinitions = getCriterionDefinitions(report.taskType);
+  const criteriaHtml = criterionDefinitions.map(def => {
     const item = criteria.find(x => x.id === def.id);
     return '<article class="criterion-card"><div class="criterion-head"><span>' + escapeHtml(def.short) + '</span><strong>' + (item && Number.isFinite(item.score) ? escapeHtml(item.score.toFixed(1)) : '—') + '</strong></div><h3>' + escapeHtml(def.title) + '</h3><p>' + escapeHtml(item?.rationale || (report.status === 'ai-formative' ? 'Chưa có giải thích cho tiêu chí này.' : 'Chưa được chấm bằng AI.')) + '</p>' +
       (item?.evidence?.length ? '<div class="criterion-evidence"><strong>BẰNG CHỨNG TRONG BÀI</strong>' + item.evidence.map(x => '<div class="quote-box">' + escapeHtml(x) + '</div>').join('') + '</div>' : '') +
@@ -294,12 +302,36 @@ function renderReport(report, loading = false) {
   const strengthsHtml = strengths.length ? strengths.map(item => '<div class="strength-item">' + (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') + '<p>' + escapeHtml(item.why || '') + '</p></div>').join('') : '<p class="history-empty">Điểm mạnh sẽ xuất hiện khi AI đưa ra nhận xét cụ thể có trích dẫn khớp bài gốc.</p>';
   const prioritiesHtml = priorities.length ? priorities.map((item, index) => '<div class="priority-item"><span class="priority-number">' + (index + 1) + '</span><div><strong>' + escapeHtml(item.title || 'Bước tiếp theo') + '</strong><p>' + escapeHtml(item.action || '') + '</p></div></div>').join('') : '<p class="history-empty">Chưa đủ dữ liệu để chọn ưu tiên.</p>';
   container.innerHTML = (loading ? '<div class="report-loading" role="status"><span></span>Đang kiểm tra bài viết và tạo báo cáo. Kết quả cục bộ hiển thị trước; chưa có band AI cho tới khi đánh giá hoàn tất.</div>' : '') +
-    '<section class="report-summary"><div><span class="section-kicker">' + escapeHtml(report.taskType || 'IELTS Writing') + ' / ASSESSMENT</span><h2>' + escapeHtml(report.scoreLabel || 'Báo cáo bài viết') + '</h2><p>' + escapeHtml(report.summary || '') + '</p><span class="report-status">' + reportStatus + ' · ' + escapeHtml(report.wordCount ?? countWords($('#essay-editor').value)) + ' từ</span></div><div class="report-band"><strong>' + score + '</strong><span>' + (Number.isFinite(report.estimatedTaskBand) ? 'Band ước lượng cho bài này' : 'Chưa có band AI') + '</span></div></section>' +
+    '<section class="report-summary"><div><span class="section-kicker">' + escapeHtml(report.taskType || 'IELTS Writing') + ' / ASSESSMENT</span><h2>' + escapeHtml(report.scoreLabel || 'Báo cáo bài viết') + '</h2><p>' + escapeHtml(report.summary || '') + '</p><span class="report-status">' + reportStatus + ' · ' + escapeHtml(report.wordCount ?? countWords($('#essay-editor').value)) + ' từ</span>' +
+    (scoreRationale ? '<p class="report-score-note">' + escapeHtml(scoreRationale) + '</p>' : '') +
+    (lengthWarnings.length ? '<div class="report-length-warnings">' + lengthWarnings.map(x => '<p>' + escapeHtml(x) + '</p>').join('') + '</div>' : '') +
+    '</div><div class="report-band"><strong>' + score + '</strong><span>' + (Number.isFinite(report.estimatedTaskBand) ? 'Band ước lượng cho bài này' : 'Chưa đủ căn cứ cho band') + '</span></div></section>' +
     '<div class="report-criteria">' + criteriaHtml + '</div>' +
+    (revision ? '<section class="panel revision-panel"><div class="report-panel-heading"><div><span class="section-kicker">REVISION TRACKING</span><h2>So sánh với bản trước của cùng đề</h2></div><span class="count-badge">Lần sửa</span></div>' +
+      '<div class="revision-metrics"><div><span>Band ước lượng</span><strong>' + (revision.previousBand === null ? '—' : revision.previousBand.toFixed(1)) + ' → ' + (revision.currentBand === null ? '—' : revision.currentBand.toFixed(1)) + '</strong><small>' + (revision.bandDelta === null ? 'Chưa đủ căn cứ so sánh band' : 'Thay đổi ' + (revision.bandDelta > 0 ? '+' : '') + revision.bandDelta.toFixed(1)) + '</small></div>' +
+      '<div><span>Số từ</span><strong>' + revision.previousWords + ' → ' + revision.currentWords + '</strong><small>' + (revision.wordDelta > 0 ? '+' : '') + revision.wordDelta + ' từ</small></div>' +
+      '<div><span>Mục AI ghi nhận</span><strong>' + revision.issueCountBefore + ' → ' + revision.issueCountAfter + '</strong><small>' + (revision.issueDelta < 0 ? Math.abs(revision.issueDelta) + ' mục ít hơn' : revision.issueDelta > 0 ? revision.issueDelta + ' mục nhiều hơn' : 'Số mục không đổi') + '</small></div></div>' +
+      (revision.criteria.length ? '<div class="revision-criteria">' + revision.criteria.map(item => '<div class="revision-criterion"><span>' + escapeHtml(item.label) + '</span><strong>' + item.before.toFixed(1) + ' → ' + item.after.toFixed(1) + '</strong><small class="' + (item.delta > 0 ? 'delta-up' : item.delta < 0 ? 'delta-down' : 'delta-flat') + '">' + (item.delta > 0 ? '+' : '') + item.delta.toFixed(1) + '</small></div>').join('') + '</div>' : '') +
+      '<p class="revision-caveat">Đây là so sánh hai báo cáo AI trên cùng đề, không phải phép đo chắc chắn về tiến bộ. Model có thể dao động giữa các lượt; hãy kiểm tra giải thích và sửa đổi thực tế, không chỉ nhìn band.</p></section>' : '') +
     '<div class="report-split"><div><section class="panel report-panel"><div class="report-panel-heading"><h2>Những điểm cần xử lý</h2><span class="count-badge">' + issues.length + ' mục</span></div><div class="issue-list">' + issuesHtml + '</div></section><section class="panel report-panel"><div class="report-panel-heading"><h2>Điểm làm tốt</h2><span class="count-badge">' + strengths.length + ' mục</span></div>' + strengthsHtml + '</section></div>' +
     '<div><section class="panel report-panel"><div class="report-panel-heading"><h2>Ưu tiên tiếp theo</h2><span class="count-badge">Kế hoạch</span></div>' + prioritiesHtml + '</section><section class="panel report-panel"><div class="report-panel-heading"><h2>Thông tin về độ tin cậy</h2></div><div class="report-note"><strong>Đây không phải điểm IELTS chính thức.</strong><br>Band từ AI chưa được hiệu chuẩn trên tập bài viết có điểm tham chiếu độc lập. Kiểm tra cục bộ không chấm band.</div>' +
     (uncertainties.length ? '<div class="uncertainty-box"><strong>Điều còn chưa chắc:</strong><ul>' + uncertainties.map(x => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '') +
     '<div class="report-note">Trích dẫn chỉ được giữ nếu khớp với văn bản đã nộp; điều này không tự chứng minh rằng mọi lời giải thích đều đúng.</div><div class="issue-actions"><button type="button" id="revise-current">Quay lại sửa bài</button><button type="button" id="export-current-report">Xuất JSON</button></div></section></div></div>';
+}
+function renderRubricGuide() {
+  const host = $('#rubric-guide');
+  if (!host) return;
+  const criterionBefore = $('#rubric-criterion-select')?.value;
+  const bandBefore = Number($('#rubric-band-select')?.value || 6);
+  const criteria = getRubricGuide(currentTask?.type || 'task2');
+  const selectedCriterion = criteria.find(item => item.id === criterionBefore) || criteria[0];
+  const band = selectedCriterion.bands.find(item => item.score === bandBefore) || selectedCriterion.bands.find(item => item.score === 6) || selectedCriterion.bands[0];
+  host.innerHTML = '<div class="rubric-guide-heading"><div><span class="section-kicker">RUBRIC FIELD GUIDE</span><h2>Hiểu rõ từng band trước khi sửa bài</h2><p>Hướng dẫn diễn giải bằng lời của WMR, tóm lược tín hiệu thường gặp chứ không phải bản sao rubric chính thức.</p></div></div>' +
+    '<div class="rubric-guide-controls"><div class="field"><label for="rubric-criterion-select">TIÊU CHÍ</label><select id="rubric-criterion-select">' + criteria.map(item => '<option value="' + escapeHtml(item.id) + '"' + (item.id === selectedCriterion.id ? ' selected' : '') + '>' + escapeHtml(item.title) + '</option>').join('') + '</select></div>' +
+    '<div class="field"><label for="rubric-band-select">BAND THAM CHIẾU</label><select id="rubric-band-select">' + [5,6,7,8,9].map(value => '<option value="' + value + '"' + (value === band.score ? ' selected' : '') + '>Band ' + value + '</option>').join('') + '</select></div></div>' +
+    '<div class="rubric-overview"><strong>' + escapeHtml(selectedCriterion.title) + '</strong><p>' + escapeHtml(selectedCriterion.overview) + '</p></div>' +
+    '<div class="rubric-band-card"><div class="rubric-band-number">BAND ' + band.score + '</div><div><h3>Tín hiệu có thể quan sát</h3><p>' + escapeHtml(band.signal) + '</p><h3>Điểm cần cảnh giác</h3><p>' + escapeHtml(band.risk) + '</p><h3>Bài tập tự kiểm tra</h3><p>' + escapeHtml(band.practice) + '</p></div></div>' +
+    '<p class="rubric-guide-footnote">Dùng mô tả để tự rà soát một bài cụ thể. Điểm thật phụ thuộc toàn bộ bài làm và người chấm; một câu riêng lẻ không đủ xác định band.</p>';
 }
 function renderLearning() {
   const skills = [
@@ -716,6 +748,7 @@ function attachEvents() {
       return;
     }
   });
+  $('#rubric-guide').addEventListener('change', () => renderRubricGuide());
   $('#study-plan').addEventListener('click', event => {
     const button = event.target.closest('[data-start-task]');
     if (!button) return;
