@@ -146,7 +146,7 @@ export function normaliseAgentLearningContext(value) {
       const value = boundedScore(score.score);
       return value === null ? null : { id: score.id, score: value };
     }).filter(Boolean) : [];
-    const issueCategories = Array.isArray(item.issueCategories) ? [...new Set(item.issueCategories.filter(category => VALID_PROFILE_CATEGORIES.has(category))].slice(0, 8) : [];
+    const issueCategories = Array.isArray(item.issueCategories) ? [...new Set(item.issueCategories.filter(category => VALID_PROFILE_CATEGORIES.has(category)))].slice(0, 8) : [];
     return {
       taskType: item.taskType,
       wordCount: boundedInteger(item.wordCount, 0, 30000),
