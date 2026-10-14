@@ -52,8 +52,8 @@ test('edit proposals require unique exact anchors and remain staged until the le
   assert.equal(state.essay, essay);
   assert.equal(state.patches[0].start, essay.indexOf(oldText));
   assert.equal(executeWritingAgentTool(state, 'propose_edit', {
-    oldText:'public transport',
-    replacement:'mass transit',
+    oldText:'could reduce traffic',
+    replacement:'ease congestion',
     reason:'Sửa từ vựng.',
     criterion:'lexical'
   }).code, 'overlapping_patch');
