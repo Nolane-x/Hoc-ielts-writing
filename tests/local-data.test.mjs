@@ -90,3 +90,26 @@ test('backup import rejects unsupported fractional bands instead of rounding the
  const result=normaliseLocalBackup({schemaVersion:1,history:[record]},taskIds);
  assert.equal(result.history[0].report.criteria[0].score,null);
 });
+
+
+test('backup restore converts a legacy Task 1 task-response category to Task Achievement', () => {
+  const essay = 'The chart shows a clear change over time. The line then rises steadily across the later years.';
+  const record = {
+    id: 'legacy-task1',
+    at: '2026-10-14T10:00:00.000Z',
+    taskId: 'task1-line',
+    taskTitle: 'Task 1 · Line graph',
+    taskType: 'task1-academic',
+    taskPrompt: 'Describe the chart.',
+    essay,
+    source: 'ai',
+    report: {
+      status: 'ai-formative',
+      wordCount: 20,
+      criteria: [],
+      issues: [{ category: 'task-response', severity: 'high', quote: 'The chart shows a clear change', explanation: 'Task coverage.' }]
+    }
+  };
+  const result = normaliseLocalBackup({ schemaVersion: 1, history: [record] }, taskIds);
+  assert.equal(result.history[0].report.issues[0].category, 'task-achievement');
+});
