@@ -1,0 +1,96 @@
+name: Build and Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run dist:desktop -- --win nsis portable --x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wmr-windows
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run dist:desktop -- --linux AppImage deb --x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wmr-linux
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:web
+      - run: npx cap add android
+      - run: npx cap sync android
+      - name: Build APK and Android App Bundle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug bundleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wmr-android
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    needs: [windows, linux, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: wmr-v1.0.${{ github.run_number }}
+          name: WMR Writing Mentor v1.0.${{ github.run_number }}
+          prerelease: true
+          generate_release_notes: true
+          files: release-assets/*
