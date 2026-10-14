@@ -56,6 +56,7 @@ export function sanitiseSettings(input = {}) {
     dailyBudgetUsd: number(input.dailyBudgetUsd, 0.5, 0.05, 10),
     maxDailyCalls: Math.floor(number(input.maxDailyCalls, 8, 1, 50)),
     maxCallUsd: number(input.maxCallUsd, 0.1, 0.005, 1),
+    maxAgentSessionUsd: number(input.maxAgentSessionUsd, 0.5, 0.01, 3),
     maxOutputTokens: Math.floor(number(input.maxOutputTokens, 1800, 80, 3000))
   };
 }
