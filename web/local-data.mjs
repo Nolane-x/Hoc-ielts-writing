@@ -27,12 +27,24 @@ export function normaliseLocalBackup(input, validTaskIds) {
   const history = Array.isArray(input.history)
     ? input.history.slice(0, 30).map((item, index) => normaliseRecord(item, index, taskIds)).filter(Boolean)
     : [];
+  const coachHistories = {};
+  if (input.coachHistories && typeof input.coachHistories === 'object' && !Array.isArray(input.coachHistories)) {
+    for (const [id, turns] of Object.entries(input.coachHistories)) {
+      if (!taskIds.has(id) || !Array.isArray(turns)) continue;
+      coachHistories[id] = turns.slice(-8).map(turn => {
+        const role = turn?.role;
+        const content = cleanText(turn?.content, 3000);
+        return ['user', 'assistant'].includes(role) && content ? { role, content } : null;
+      }).filter(Boolean).slice(-8);
+    }
+  }
   return {
     schemaVersion: 1,
     exportedAt: cleanText(input.exportedAt, 80),
     theme: THEMES.has(input.theme) ? input.theme : 'system',
     drafts,
-    history
+    history,
+    coachHistories
   };
 }
 
