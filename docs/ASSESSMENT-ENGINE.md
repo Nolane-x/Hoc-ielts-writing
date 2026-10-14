@@ -12,6 +12,7 @@ The assessment pipeline separates deterministic checks, rubric-based AI judgemen
 4. **Evidence validation:** quotation text in criteria, issues and strengths must match the submitted essay exactly, including case. Unsupported quotes are discarded.
 5. **Report:** criterion estimates, explanations, severity-ranked issues, strengths, priorities and uncertainty.
 6. **Learning loop:** the learner reviews, revises, marks feedback resolved and practises a targeted skill. The bounded Mentor conversation can carry a few recent turns for the current task.
+7. **Adaptive study plan:** aggregate only finite criterion scores in range 0–9; rank criteria by observed mean, then choose a primary task and a transfer task. Missing/null scores are not converted to zero. Without a valid criterion score, show a labelled starter path, not a diagnosis.
 
 ## Scoring integrity
 
