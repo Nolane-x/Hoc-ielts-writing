@@ -37,7 +37,28 @@ export const WRITING_AGENT_SYSTEM_PROMPT = [
   'focus_on_quote {"quote":"unique exact quote from original essay","reason":"why to inspect this part"}',
   'search_practice_bank {"query":"skill, problem or topic for a next IELTS practice task","taskType":"task1-academic|task1-general|task2 or empty for any type"}',
   'You have at most eight tool calls and ten model turns. If enough work is done, finish early. If a tool rejects an unsafe, ambiguous or ungrounded action, use its result to adjust.'
-].join('\n');
+].join('\\n');
+
+export function estimateWritingAgentSessionCost(provider, input = {}, maxOutputTokens = 1200) {
+  if (provider?.localEndpoint) return 0;
+  const inputPrice = Number(provider?.inputUsdPerMillion);
+  const outputPrice = Number(provider?.outputUsdPerMillion);
+  if (!(inputPrice > 0) || !(outputPrice > 0) || !Number.isFinite(inputPrice) || !Number.isFinite(outputPrice)) return null;
+  const history = Array.isArray(input.history) ? input.history.slice(-4) : [];
+  const fixedCharacters = WRITING_AGENT_SYSTEM_PROMPT.length +
+    String(input.taskPrompt || '').slice(0, 5000).length +
+    String(input.essay || '').slice(0, 20000).length +
+    String(input.message || '').slice(0, 4000).length +
+    history.reduce((sum, turn) => sum + (typeof turn?.content === 'string' ? Math.min(1500, turn.content.length) : 0), 0) +
+    1200;
+  let estimatedInputTokens = 0;
+  for (let turn = 0; turn < WRITING_AGENT_MAX_MODEL_TURNS; turn++) {
+    estimatedInputTokens += Math.ceil((fixedCharacters + turn * 2400) / 3) + 1200;
+  }
+  const finalTokens = Math.max(300, Math.min(1800, Number(maxOutputTokens) || 1200));
+  const estimatedOutputTokens = (WRITING_AGENT_MAX_MODEL_TURNS - 1) * 900 + finalTokens;
+  return ((estimatedInputTokens * inputPrice) + (estimatedOutputTokens * outputPrice)) / 1_000_000 * 1.5;
+}
 
 function boundedText(value, max) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
