@@ -138,3 +138,14 @@ test('native Writing Agent reserves one conservative session estimate and passes
   assert.match(app, /estimatedSessionCostUsd/);
   assert.match(app, /metadataLine/);
 });
+
+
+test('Writing Agent passes an aggregate local learner profile and discloses what can be sent', () => {
+  assert.match(app, /function buildAgentLearningContext\(\)/);
+  assert.match(app, /learningContext: buildAgentLearningContext\(\)/);
+  assert.match(app, /eligibleAIRecords\(history\)/);
+  assert.match(app, /recurringPatterns:/);
+  assert.match(html, /không gửi nguyên văn bài cũ/);
+  assert.match(app, /issueCategories,/);
+  assert.match(app, /resolvedIssues:/);
+});
