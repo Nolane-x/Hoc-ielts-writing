@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { TASKS } from '../web/tasks.mjs';
 import { buildAssessmentMessages, createLocalReport, normaliseAssessment } from '../web/assessment.mjs';
 import { normaliseProviderConfig, requestCompletion, estimateCost, PROVIDER_PRESETS } from '../web/providers.mjs';
-import { runWritingAgentSession, WRITING_AGENT_MAX_MODEL_TURNS, WRITING_AGENT_SYSTEM_PROMPT } from '../web/writing-agent.mjs';
+import { runWritingAgentSession, estimateWritingAgentSessionCost } from '../web/writing-agent.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(HERE, '../dist');
@@ -151,24 +151,6 @@ async function runConfiguredAI(kind, input) {
   } finally { aiInFlight = false; }
 }
 
-function estimateWritingAgentSessionCost(provider, input) {
-  if (provider.localEndpoint) return 0;
-  const fixedCharacters = WRITING_AGENT_SYSTEM_PROMPT.length +
-    String(input.taskPrompt || '').length +
-    String(input.essay || '').length +
-    String(input.message || '').length +
-    normaliseCoachHistory(input.history).reduce((sum, turn) => sum + turn.content.length, 0) +
-    1200;
-  let estimatedInputTokens = 0;
-  for (let turn = 0; turn < WRITING_AGENT_MAX_MODEL_TURNS; turn++) {
-    estimatedInputTokens += Math.ceil((fixedCharacters + turn * 2400) / 3) + 1200;
-  }
-  const finalTokens = Math.max(300, Math.min(1800, settings.maxOutputTokens));
-  const estimatedOutputTokens = (WRITING_AGENT_MAX_MODEL_TURNS - 1) * 900 + finalTokens;
-  return ((estimatedInputTokens * settings.inputUsdPerMillion) +
-    (estimatedOutputTokens * settings.outputUsdPerMillion)) / 1_000_000 * 1.5;
-}
-
 async function handleWritingAgentStream(req, res, input) {
   if (!input.essay.trim()) throw httpError(400, 'Viết một bản nháp trước khi chạy Writing Agent.');
   if (!input.message.trim()) throw httpError(400, 'Hãy mô tả mục tiêu phiên làm việc của Agent.');
@@ -180,7 +162,7 @@ async function handleWritingAgentStream(req, res, input) {
   if (!provider.localEndpoint && !(settings.inputUsdPerMillion > 0 && settings.outputUsdPerMillion > 0)) {
     throw httpError(409, 'Nhập giá input/output hiện hành của model trước khi chạy Agent nhiều lượt.');
   }
-  const cost = estimateWritingAgentSessionCost(provider, input);
+  const cost = estimateWritingAgentSessionCost(provider, input, settings.maxOutputTokens);
   const ledger = currentUsage();
   if (!usageHealthy) throw httpError(503, 'Không xác minh được sổ ngân sách; Agent bị chặn.');
   if (ledger.calls >= settings.maxDailyCalls) throw httpError(429, 'Đã đạt giới hạn số lượt AI/ngày.');
@@ -226,7 +208,13 @@ async function handleWritingAgentStream(req, res, input) {
       phase: 'started',
       message: provider.localEndpoint
         ? 'Writing Agent đã kết nối provider cục bộ.'
-        : 'Writing Agent đã bắt đầu phiên nhiều bước; mọi sửa đổi đều cần bạn duyệt.'
+        : 'Writing Agent đã bắt đầu phiên nhiều bước; mọi sửa đổi đều cần bạn duyệt.',
+      provider: provider.label,
+      model: provider.model,
+      localEndpoint: Boolean(provider.localEndpoint),
+      estimatedSessionCostUsd: cost,
+      maximumModelTurns: 10,
+      maximumToolCalls: 8
     });
     await runWritingAgentSession({
       input: { ...input, maxOutputTokens: settings.maxOutputTokens },
