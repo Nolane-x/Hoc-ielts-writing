@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { parseLocalBackup } from './local-data.mjs';
+import { createLearningRecord } from './learning-records.mjs';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
@@ -125,19 +126,12 @@ function persistHistory() {
   renderHistoryCount();
 }
 function reportStamp(report, source = 'local', snapshot = null) {
-  const task = snapshot?.task || currentTask;
-  const essay = typeof snapshot?.essay === 'string' ? snapshot.essay : $('#essay-editor').value;
-  return {
-    id: (globalThis.crypto?.randomUUID?.() || (Date.now() + '-' + Math.random().toString(16).slice(2))),
-    at: new Date().toISOString(),
-    taskId: task.id,
-    taskTitle: task.title,
-    taskType: task.type,
-    taskPrompt: task.prompt,
-    essay,
+  return createLearningRecord({
     report,
-    source
-  };
+    source,
+    task: snapshot?.task || { ...currentTask },
+    essay: typeof snapshot?.essay === 'string' ? snapshot.essay : $('#essay-editor').value
+  });
 }
 function localReview() {
   saveDraft();
