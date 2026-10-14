@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normaliseCoachHistory, sanitiseSettings } from '../server/index.mjs';
+import { isStartupTokenValid, normaliseCoachHistory, sanitiseSettings } from '../server/index.mjs';
 
 test('settings are bounded and invalid provider ids cannot enable arbitrary providers', () => {
   const settings = sanitiseSettings({ provider: 'not-real', model: 'x'.repeat(1000), maxDailyCalls: 999999, dailyBudgetUsd: 999999 });
@@ -44,4 +44,14 @@ test('coach history retains at most the latest eight valid turns', () => {
   assert.equal(normalized.length, 8);
   assert.equal(normalized[0].content, 'turn-6');
   assert.equal(normalized.at(-1).content, 'turn-13');
+});
+
+
+test('startup handshake compares the exact token and fails closed for missing or wrong values', () => {
+  const expected = 'c'.repeat(64);
+  assert.equal(isStartupTokenValid(expected, expected), true);
+  assert.equal(isStartupTokenValid('d'.repeat(64), expected), false);
+  assert.equal(isStartupTokenValid(undefined, expected), false);
+  assert.equal(isStartupTokenValid('c'.repeat(63), expected), false);
+  assert.equal(isStartupTokenValid('anything', ''), true);
 });
