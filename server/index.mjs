@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { readFile, mkdir, writeFile, rename } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,6 +15,7 @@ const SETTINGS_PATH = path.join(DATA_ROOT, 'settings.json');
 const USAGE_PATH = path.join(DATA_ROOT, 'usage.json');
 const MAX_BODY_BYTES = 100000;
 const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
+const STARTUP_TOKEN = String(process.env.WMR_STARTUP_TOKEN || '');
 const DEFAULT_SETTINGS = {
   provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: '',
   inputUsdPerMillion: 0, outputUsdPerMillion: 0, externalAllowed: false,
@@ -95,6 +97,14 @@ function json(res, status, payload) {
 }
 function httpError(status, message) { const error = new Error(message); error.status = status; return error; }
 
+export function isStartupTokenValid(presented, expected = STARTUP_TOKEN) {
+  if (!expected) return true;
+  if (typeof presented !== 'string') return false;
+  const actualBytes = Buffer.from(presented);
+  const expectedBytes = Buffer.from(expected);
+  return actualBytes.length === expectedBytes.length && timingSafeEqual(actualBytes, expectedBytes);
+}
+
 export function normaliseCoachHistory(value) {
   if (!Array.isArray(value)) return [];
   return value.slice(-8).map(item => {
@@ -142,7 +152,12 @@ async function runConfiguredAI(kind, input) {
 
 async function handle(req, res) {
   const url = new URL(req.url, 'http://127.0.0.1');
-  if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { ok: true, mode: 'local-first', providerCalls: 0 });
+  if (req.method === 'GET' && url.pathname === '/api/health') {
+    if (STARTUP_TOKEN && !isStartupTokenValid(req.headers['x-wmr-startup-token'], STARTUP_TOKEN)) {
+      return json(res, 403, { error: 'Unauthenticated local runtime handshake.' });
+    }
+    return json(res, 200, { ok: true, mode: 'local-first', providerCalls: 0 });
+  }
   if (req.method === 'GET' && url.pathname === '/api/status') return json(res, 200, { ok: true, mode: settings.externalAllowed && activeApiKey ? 'provider-enabled' : 'offline', providerCalls: 0, usageHealthy });
   if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, { tasks: TASKS });
   if (req.method === 'GET' && url.pathname === '/api/settings') return json(res, 200, publicSettings());
