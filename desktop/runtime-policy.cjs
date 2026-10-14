@@ -4,7 +4,7 @@ const ENV_ALLOWLIST = [
   'LANG', 'LC_ALL'
 ];
 
-function createRuntimeEnvironment(source, dataDirectory, port) {
+function createRuntimeEnvironment(source, dataDirectory, port, startupToken) {
   const env = {};
   for (const key of ENV_ALLOWLIST) {
     if (typeof source?.[key] === 'string' && source[key].length <= 32768) env[key] = source[key];
@@ -13,6 +13,9 @@ function createRuntimeEnvironment(source, dataDirectory, port) {
   env.HOST = '127.0.0.1';
   env.PORT = String(port);
   env.WMR_DATA_DIR = String(dataDirectory);
+  if (typeof startupToken === 'string' && /^[a-f0-9]{64}$/i.test(startupToken)) {
+    env.WMR_STARTUP_TOKEN = startupToken;
+  }
   return env;
 }
 
