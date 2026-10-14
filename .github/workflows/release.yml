@@ -17,7 +17,7 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm test
-      - run: npm run dist:desktop -- --win nsis portable --x64
+      - run: npm run dist:desktop -- --win nsis portable --x64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: wmr-windows
@@ -35,7 +35,7 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm test
-      - run: npm run dist:desktop -- --linux AppImage deb --x64
+      - run: npm run dist:desktop -- --linux AppImage deb --x64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: wmr-linux
@@ -55,7 +55,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK_ROOT" ]; then echo "ANDROID_HOME/ANDROID_SDK_ROOT is not available on this runner"; exit 1; fi
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -maxdepth 3 -type f -name sdkmanager | sort | tail -n 1)"
+          if [ -z "$SDKMANAGER" ]; then echo "sdkmanager not found under $SDK_ROOT/cmdline-tools"; exit 1; fi
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
       - run: npm install --no-audit --no-fund
       - run: npm run build:web
       - run: npx cap add android
@@ -65,12 +74,15 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug bundleRelease
+      - name: Stage platform artifacts with stable names
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/WMR-Android-debug.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab release/WMR-Android-unsigned.aab
       - uses: actions/upload-artifact@v4
         with:
           name: wmr-android
-          path: |
-            android/app/build/outputs/apk/debug/app-debug.apk
-            android/app/build/outputs/bundle/release/app-release.aab
+          path: release/*
           if-no-files-found: error
           retention-days: 14
   publish:
