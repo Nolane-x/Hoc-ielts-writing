@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { TASKS } from '../web/tasks.mjs';
 import { buildAssessmentMessages, createLocalReport, normaliseAssessment } from '../web/assessment.mjs';
 import { normaliseProviderConfig, requestCompletion, estimateCost, PROVIDER_PRESETS } from '../web/providers.mjs';
-import { runWritingAgentSession, estimateWritingAgentSessionCost } from '../web/writing-agent.mjs';
+import { runWritingAgentSession, estimateWritingAgentSessionCost, WRITING_AGENT_MAX_MODEL_TURNS, WRITING_AGENT_MAX_TOOL_CALLS } from '../web/writing-agent.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(HERE, '../dist');
@@ -213,8 +213,8 @@ async function handleWritingAgentStream(req, res, input) {
       model: provider.model,
       localEndpoint: Boolean(provider.localEndpoint),
       estimatedSessionCostUsd: cost,
-      maximumModelTurns: 10,
-      maximumToolCalls: 8
+      maximumModelTurns: WRITING_AGENT_MAX_MODEL_TURNS,
+      maximumToolCalls: WRITING_AGENT_MAX_TOOL_CALLS
     });
     await runWritingAgentSession({
       input: { ...input, maxOutputTokens: settings.maxOutputTokens },
