@@ -94,7 +94,7 @@ function issue(category, severity, title, suggestedFix) { return { id: category,
 function validTaskType(value) { return ['task1-academic', 'task1-general', 'task2'].includes(value) ? value : 'task2'; }
 function normaliseBand(value) { if (value === null || value === undefined || value === '') return null; const n = Number(value); return Number.isFinite(n) && n >= 0 && n <= 9 ? Math.round(n * 2) / 2 : null; }
 function safeText(value, max) { return typeof value === 'string' ? value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, max) : ''; }
-function safeQuote(value, essay) { const quote = safeText(value, 300); return quote.length >= 5 && essay.toLocaleLowerCase().includes(quote.toLocaleLowerCase()) ? quote : ''; }
+function safeQuote(value, essay) { const quote = safeText(value, 300); return quote.length >= 5 && essay.includes(quote) ? quote : ''; }
 function safeEvidence(value, essay, max) { return Array.isArray(value) ? value.slice(0, max).map(x => safeQuote(x, essay)).filter(Boolean) : []; }
 function safeSeverity(value) { return ['critical', 'high', 'medium', 'low'].includes(value) ? value : 'medium'; }
 function safeCategory(value) { return ['grammar', 'lexical', 'coherence', 'task-response', 'data-accuracy', 'register', 'other'].includes(value) ? value : 'other'; }
