@@ -113,3 +113,33 @@ test('backup restore converts a legacy Task 1 task-response category to Task Ach
   const result = normaliseLocalBackup({ schemaVersion: 1, history: [record] }, taskIds);
   assert.equal(result.history[0].report.issues[0].category, 'task-achievement');
 });
+
+
+test('backup restores bounded Writing Agent artifacts and revision snapshots without credentials', () => {
+  const backup = normaliseLocalBackup({
+    schemaVersion: 1,
+    apiKey: 'never import',
+    settings: { apiKey: 'never import' },
+    agentArtifacts: [
+      { id: 'outline-1', taskId: 'task2-opinion', taskTitle: 'Task 2 Opinion', at: '2026-01-01T00:00:00Z', kind: 'outline', title: 'Argument outline', payload: { title: 'Argument outline', content: 'Position: ____. Reason: ____. Evidence: ____.' } },
+      { id: 'exercise-1', taskId: 'task2-opinion', kind: 'exercise', title: 'Cohesion practice', payload: { skill: 'Cohesion', prompt: 'Write a transition sentence.', instructions: 'Connect the reason to the example.', successCriteria: 'The relationship between ideas is explicit.' } },
+      { id: 'bad-task', taskId: 'attacker-task', kind: 'goal', title: 'Ignore task boundary', payload: { why: 'This goal should be ignored.', successCriteria: 'Do something.' } },
+      { id: 'bad-kind', taskId: 'task2-opinion', kind: 'shell', title: 'Unsafe', payload: {} },
+      { id: 'bad-exercise', taskId: 'task2-opinion', kind: 'exercise', title: 'Incomplete', payload: { skill: 'x', prompt: '', instructions: '', successCriteria: '' } }
+    ],
+    agentRevisions: {
+      'task2-opinion': [
+        { id: 'revision-1', at: '2026-01-01T00:00:00Z', label: 'Before edit', essay: 'Original essay.' },
+        { id: 'bad', essay: 'E'.repeat(25000) }
+      ],
+      'attacker-task': [{ essay: 'must be ignored' }]
+    }
+  }, taskIds);
+  assert.equal(backup.agentArtifacts.length, 2);
+  assert.deepEqual(backup.agentArtifacts[0].payload, { title: 'Argument outline', content: 'Position: ____. Reason: ____. Evidence: ____.' });
+  assert.equal(backup.agentRevisions['task2-opinion'].length, 2);
+  assert.equal(backup.agentRevisions['task2-opinion'][1].essay.length, 20000);
+  assert.equal(Object.hasOwn(backup.agentRevisions, 'attacker-task'), false);
+  assert.equal(Object.hasOwn(backup, 'apiKey'), false);
+  assert.equal(Object.hasOwn(backup, 'settings'), false);
+});
