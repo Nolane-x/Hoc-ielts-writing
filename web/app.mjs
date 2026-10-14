@@ -10,6 +10,7 @@ import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
 import { PROVIDER_PRESETS, normaliseProviderConfig, requestCompletion, estimateCost } from './providers.mjs';
+import { runWritingAgentSession } from './writing-agent.mjs';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -20,6 +21,8 @@ const COACH_PREFIX = 'wmr-coach-v1:';
 const SETTINGS_KEY = 'wmr-settings-v1';
 const THEME_KEY = 'wmr-theme-v1';
 const USAGE_KEY = 'wmr-usage-v1';
+const AGENT_ARTIFACTS_KEY = 'wmr-agent-artifacts-v1';
+const AGENT_REVISION_PREFIX = 'wmr-agent-revisions-v1:';
 const KEY_NAME = 'provider-api-key';
 const DEFAULT_SETTINGS = {
   provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: '',
@@ -38,6 +41,13 @@ let submitting = false;
 let coachBusy = false;
 let coachTurns = [];
 let usageHealthy = true;
+let agentBusy = false;
+let agentController = null;
+let agentResult = null;
+let agentResultTaskId = null;
+let agentActivity = [];
+let agentAppliedPatches = new Set();
+let agentStreamError = null;
 
 function safeParse(value, fallback) { try { return JSON.parse(value); } catch { return fallback; } }
 function escapeHtml(value) {
@@ -119,6 +129,8 @@ function loadCurrentTask() {
   coachTurns = normaliseLocalCoachTurns(safeParse(localStorage.getItem(COACH_PREFIX + currentTask.id), []));
   renderCoachTurns();
   renderRubricGuide();
+  renderAgentRevisions();
+  renderSavedAgentArtifacts();
 }
 function renderHistoryCount() { $('#draft-count').textContent = String(history.length); }
 function loadHistory() {
@@ -173,8 +185,8 @@ function getNativeUsage() {
 function configuredProvider() {
   return normaliseProviderConfig({ ...settings, apiKey: activeKey || (['ollama','lmstudio'].includes(settings.provider) ? 'local' : '') });
 }
-async function reserveNativeCall(config, inputChars) {
-  const cost = estimateCost(config, inputChars, settings.maxOutputTokens);
+async function reserveNativeCall(config, inputChars, outputTokens = settings.maxOutputTokens) {
+  const cost = estimateCost(config, inputChars, outputTokens);
   if (!usageHealthy) throw new Error('Sổ ngân sách không đáng tin cậy.');
   if (cost === null) throw new Error('Nhập giá input và output hiện hành của model trước khi gọi provider từ xa.');
   const ledger = getNativeUsage();
@@ -186,7 +198,7 @@ async function reserveNativeCall(config, inputChars) {
   localStorage.setItem(USAGE_KEY, JSON.stringify(ledger));
   return cost;
 }
-async function nativeCompletion(messages, inputChars) {
+async function nativeCompletion(messages, inputChars, options = {}) {
   if (!settings.externalAllowed) throw new Error('Chưa bật quyền gửi nội dung tới provider trong Settings.');
   const config = configuredProvider();
   if (!config.ok) throw new Error(config.reason);
@@ -194,8 +206,9 @@ async function nativeCompletion(messages, inputChars) {
   if (config.localEndpoint && config.provider !== 'ollama' && config.provider !== 'lmstudio') throw new Error('Provider cục bộ không hợp lệ.');
   if (config.localEndpoint && config.baseUrl.includes('127.0.0.1') && !NATIVE) throw new Error('Không thể kết nối provider cục bộ.');
   if (NATIVE && config.localEndpoint) throw new Error('Trên Android, địa chỉ loopback trỏ tới điện thoại/tablet này, không phải máy tính chạy Ollama.');
-  const cost = await reserveNativeCall(config, inputChars);
-  const result = await requestCompletion({ config, messages, maxOutputTokens: settings.maxOutputTokens, timeoutMs: 45000 });
+  const maxOutputTokens = Number.isFinite(options.maxOutputTokens) ? Math.max(80, Math.min(3000, Math.floor(options.maxOutputTokens))) : settings.maxOutputTokens;
+  const cost = await reserveNativeCall(config, inputChars, maxOutputTokens);
+  const result = await requestCompletion({ config, messages, maxOutputTokens, timeoutMs: options.timeoutMs || 45000, signal: options.signal });
   return { ...result, estimatedCostUsd: cost, provider: config.label };
 }
 async function assessWithNativeProvider(input) {
@@ -213,7 +226,7 @@ async function assessWithNativeProvider(input) {
   };
 }
 async function runReview(useProvider) {
-  if (submitting) return;
+  if (submitting || agentBusy) return;
   const essay = $('#essay-editor').value.trim();
   if (!essay) { setToast('Hãy viết bản nháp trước khi nộp bài.'); $('#essay-editor').focus(); return; }
   saveDraft();
@@ -548,8 +561,364 @@ function renderCoachTurns() {
   answer.textContent = coachTurns.slice(-8).map(turn => (turn.role === 'user' ? 'BẠN' : 'MENTOR') + '\\n' + turn.content).join('\\n\\n────────────\\n\\n');
   $('#clear-coach-history').hidden = false;
 }
+
+function agentRevisionKey(taskId) { return AGENT_REVISION_PREFIX + taskId; }
+function agentSavedArtifacts() {
+  const raw = safeParse(localStorage.getItem(AGENT_ARTIFACTS_KEY), []);
+  return Array.isArray(raw) ? raw.filter(item => item && typeof item.id === 'string' && typeof item.taskId === 'string' && typeof item.kind === 'string' && item.payload && typeof item.payload === 'object').slice(0, 100) : [];
+}
+function agentRevisionSnapshots(taskId) {
+  const raw = safeParse(localStorage.getItem(agentRevisionKey(taskId)), []);
+  return Array.isArray(raw) ? raw.filter(item => item && typeof item.essay === 'string' && typeof item.id === 'string').slice(0, 5) : [];
+}
+function persistAgentRevision(taskId, essay, label) {
+  if (!taskId || typeof essay !== 'string' || !essay.trim()) return false;
+  const records = agentRevisionSnapshots(taskId);
+  if (records[0]?.essay === essay) return false;
+  records.unshift({ id: 'revision-' + Date.now().toString(36) + '-' + Math.random().toString(16).slice(2, 8), at: new Date().toISOString(), label: String(label || 'Bản trước khi sửa').slice(0, 180), essay: essay.slice(0, 20000) });
+  try {
+    localStorage.setItem(agentRevisionKey(taskId), JSON.stringify(records.slice(0, 5)));
+    renderAgentRevisions();
+    return true;
+  } catch {
+    setToast('Không đủ bộ nhớ để lưu phiên bản cũ; bản nháp hiện tại vẫn chưa bị thay đổi.');
+    return false;
+  }
+}
+function renderAgentRevisions() {
+  const host = $('#agent-revisions');
+  const list = $('#agent-revision-list');
+  if (!host || !list || !currentTask) return;
+  const revisions = agentRevisionSnapshots(currentTask.id);
+  host.hidden = revisions.length === 0;
+  list.innerHTML = revisions.map((item, index) =>
+    '<article class="agent-revision-row"><div><strong>' + escapeHtml(item.label || 'Bản trước khi sửa') + '</strong><small>' +
+      escapeHtml(Number.isFinite(Date.parse(item.at)) ? new Date(item.at).toLocaleString() : 'Thời gian chưa rõ') + ' · ' + countWords(item.essay) + ' từ</small></div>' +
+      '<button class="quiet-button" type="button" data-agent-restore="' + index + '">Khôi phục</button></article>'
+  ).join('');
+}
+function agentArtifactBody(item) {
+  const p = item?.payload || {};
+  if (item.kind === 'outline') return String(p.content || '');
+  if (item.kind === 'exercise') return ['Kỹ năng: ' + (p.skill || ''), 'Câu hỏi: ' + (p.prompt || ''), 'Cách làm: ' + (p.instructions || ''), 'Tiêu chí: ' + (p.successCriteria || '')].join('\n');
+  if (item.kind === 'goal') return ['Mục tiêu: ' + (p.title || item.title || ''), 'Vì sao: ' + (p.why || ''), 'Tiêu chí đạt: ' + (p.successCriteria || '')].join('\n');
+  if (item.kind === 'focus') return ['Trích dẫn: ' + (p.quote || ''), 'Lý do: ' + (p.reason || '')].join('\n');
+  return '';
+}
+function renderSavedAgentArtifacts() {
+  const host = $('#agent-saved-artifacts');
+  if (!host) return;
+  const artifacts = agentSavedArtifacts().map((item, globalIndex) => ({ item, globalIndex })).filter(row => row.item.taskId === currentTask?.id);
+  if (!artifacts.length) {
+    host.innerHTML = '<div class="agent-empty-state">Dàn ý, bài luyện và mục tiêu chỉ được lưu khi bạn chọn lưu. Các mục đã lưu nằm trên thiết bị này và có thể đưa vào bản sao lưu.</div>';
+    return;
+  }
+  host.innerHTML = artifacts.map(row =>
+    '<article class="agent-saved-item"><div><span class="agent-kind-label">' + escapeHtml(({ outline:'DÀN Ý', exercise:'BÀI LUYỆN', goal:'MỤC TIÊU', focus:'TRÍCH DẪN' })[row.item.kind] || 'TÀI LIỆU') + '</span><strong>' +
+    escapeHtml(row.item.title) + '</strong><small>' + escapeHtml(Number.isFinite(Date.parse(row.item.at)) ? new Date(row.item.at).toLocaleDateString() : '') + '</small></div><div class="agent-saved-actions">' +
+    '<button class="quiet-button" type="button" data-agent-artifact-copy="' + row.globalIndex + '">Sao chép</button>' +
+    '<button class="quiet-button" type="button" data-agent-artifact-delete="' + row.globalIndex + '">Xóa</button></div></article>'
+  ).join('');
+}
+function addAgentActivity(message, status = 'progress', name = '') {
+  agentActivity.push({ message: String(message || '').slice(0, 300), status, name: String(name || '').slice(0, 80), at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) });
+  agentActivity = agentActivity.slice(-12);
+  const host = $('#agent-activity');
+  if (host) host.innerHTML = agentActivity.map((entry, index) =>
+    '<li class="agent-activity-item agent-activity-' + escapeHtml(entry.status) + '"><span class="agent-activity-index">' + (index + 1) + '</span><div><p>' +
+    escapeHtml(entry.message) + '</p><small>' + escapeHtml(entry.at) + (entry.name ? ' · ' + escapeHtml(entry.name.replace(/_/g, ' ')) : '') + '</small></div></li>'
+  ).join('');
+}
+function setAgentStatus(message, bad = false) {
+  const host = $('#agent-live-status');
+  if (!host) return;
+  host.textContent = message;
+  host.classList.toggle('is-error', bad);
+}
+function renderAgentResult(result) {
+  const host = $('#agent-result');
+  if (!host || !result) return;
+  const patches = Array.isArray(result.patches) ? result.patches : [];
+  const exercises = Array.isArray(result.exercises) ? result.exercises : [];
+  const goals = Array.isArray(result.learningGoals) ? result.learningGoals : [];
+  const patchesHtml = patches.length
+    ? '<section class="agent-result-section"><div class="agent-result-heading"><div><span class="section-kicker">PROPOSED PATCHES</span><h3>Đề xuất sửa bài</h3></div><span class="count-badge">' + patches.filter((patch,index)=>!agentAppliedPatches.has(index)).length + ' đang chờ</span></div>' +
+      '<p class="agent-result-note">Các thay đổi được kiểm tra bằng đoạn nguồn chính xác. Bấm một sửa đổi hoặc áp dụng tất cả; mỗi lần áp dụng đều lưu lại phiên bản trước.</p>' +
+      patches.map((patch,index) => '<article class="agent-patch-card ' + (agentAppliedPatches.has(index) ? 'is-applied' : '') + '"><div class="agent-patch-header"><strong>Sửa đổi ' + (index+1) + '</strong><span>' +
+        escapeHtml(({ 'task-achievement':'Task Achievement','task-response':'Task Response',coherence:'Mạch lạc',lexical:'Từ vựng',grammar:'Ngữ pháp',other:'Khác' })[patch.criterion] || 'Khác') +
+        '</span></div><div class="agent-diff-block"><small>TRÍCH ĐOẠN GỐC</small><pre>' + escapeHtml(patch.oldText) + '</pre><small>ĐỀ XUẤT THAY THẾ</small><pre>' + escapeHtml(patch.replacement || '(Xóa đoạn đã chọn)') +
+        '</pre></div><p>' + escapeHtml(patch.reason) + '</p><button class="button ' + (agentAppliedPatches.has(index) ? 'button-secondary' : 'button-primary') + '" type="button" data-agent-patch="' + index + '"' +
+        (agentAppliedPatches.has(index) ? ' disabled' : '') + '>' + (agentAppliedPatches.has(index) ? '✓ Đã áp dụng' : 'Áp dụng sửa đổi này') + '</button></article>').join('') +
+      (patches.some((patch,index)=>!agentAppliedPatches.has(index)) ? '<button class="button button-dark agent-apply-all" type="button" data-agent-apply-all>Áp dụng tất cả sửa đổi chưa áp dụng</button>' : '') + '</section>'
+    : '';
+  const outlineHtml = result.outline
+    ? '<section class="agent-result-section agent-artifact-card"><div class="agent-result-heading"><div><span class="section-kicker">OUTLINE</span><h3>' + escapeHtml(result.outline.title) + '</h3></div></div><pre>' +
+      escapeHtml(result.outline.content) + '</pre></section>'
+    : '';
+  const focusHtml = result.focus
+    ? '<section class="agent-result-section agent-focus-card"><div><span class="section-kicker">FOCUSED EVIDENCE</span><h3>Đoạn cần chú ý</h3></div><blockquote>' +
+      escapeHtml(result.focus.quote) + '</blockquote><p>' + escapeHtml(result.focus.reason) + '</p><button class="quiet-button" type="button" data-agent-focus>Đi tới vị trí trong bài</button></section>'
+    : '';
+  const exercisesHtml = exercises.length
+    ? '<section class="agent-result-section"><div class="agent-result-heading"><div><span class="section-kicker">MICRO PRACTICE</span><h3>Bài luyện tiếp theo</h3></div><span class="count-badge">' + exercises.length + '</span></div>' +
+      exercises.map((item,index) => '<article class="agent-artifact-card"><span class="agent-kind-label">' + escapeHtml(item.skill) + '</span><h4>' + escapeHtml(item.prompt) + '</h4><p>' + escapeHtml(item.instructions) + '</p><div class="agent-success-criteria"><strong>Tiêu chí thành công</strong><p>' + escapeHtml(item.successCriteria) +
+        '</p></div><label for="agent-practice-answer-' + index + '">Câu trả lời của bạn</label><textarea id="agent-practice-answer-' + index + '" data-agent-answer="' + index + '" rows="3" maxlength="4000" placeholder="Tự viết câu hoặc đoạn ngắn tại đây…"></textarea><button class="button button-secondary" type="button" data-agent-evaluate="' + index + '">Nhận phản hồi về câu trả lời</button></article>').join('') + '</section>'
+    : '';
+  const goalsHtml = goals.length
+    ? '<section class="agent-result-section"><div class="agent-result-heading"><div><span class="section-kicker">LEARNING GOAL</span><h3>Mục tiêu có thể kiểm chứng</h3></div></div>' +
+      goals.map(item => '<article class="agent-goal-card"><strong>' + escapeHtml(item.title) + '</strong><p>' + escapeHtml(item.why) + '</p><div><small>ĐIỀU KIỆN HOÀN THÀNH</small><p>' +
+        escapeHtml(item.successCriteria) + '</p></div></article>').join('') + '</section>'
+    : '';
+  const hasArtifacts = Boolean(result.outline || exercises.length || goals.length || result.focus);
+  host.innerHTML = '<section class="agent-final-message"><span class="section-kicker">AGENT SUMMARY</span><p>' + escapeHtml(result.message || 'Agent đã hoàn tất.') + '</p><small>' +
+    'Model calls: ' + escapeHtml(result.usage?.modelCalls ?? '—') + ' · Workspace tools: ' + escapeHtml(result.usage?.toolCalls ?? '—') + ' · ' +
+    (result.safety?.liveDraftModified ? 'Có thao tác trực tiếp' : 'Bản nháp gốc không bị tự động ghi đè') + '</small></section>' +
+    (focusHtml + patchesHtml + outlineHtml + exercisesHtml + goalsHtml) +
+    (hasArtifacts ? '<button class="button button-secondary agent-save-artifacts" type="button" data-agent-save-artifacts' + (result.savedArtifacts ? ' disabled' : '') + '>' +
+      (result.savedArtifacts ? '✓ Đã lưu tài liệu vào thiết bị' : 'Lưu dàn ý, bài luyện và mục tiêu cục bộ') + '</button>' : '') +
+    (!hasArtifacts && !patches.length ? '<div class="agent-empty-state">Agent chưa tạo thao tác có cấu trúc ở phiên này. Bạn vẫn có thể hỏi tiếp với mục tiêu cụ thể hơn.</div>' : '');
+}
+function handleWritingAgentEvent(type, payload) {
+  if (type === 'progress') {
+    setAgentStatus(payload.message || 'Agent đang làm việc…');
+    addAgentActivity(payload.message || 'Đang suy luận', payload.phase === 'notice' || payload.phase === 'limit' ? 'notice' : 'progress');
+  } else if (type === 'tool') {
+    setAgentStatus(payload.message || 'Đang thao tác workspace…');
+    addAgentActivity(payload.message || 'Tool completed', payload.status === 'rejected' ? 'rejected' : payload.status === 'complete' ? 'complete' : 'running', payload.name);
+  } else if (type === 'result') {
+    agentResult = payload;
+    agentAppliedPatches = new Set();
+    agentResult.savedArtifacts = false;
+    renderAgentResult(agentResult);
+    setAgentStatus('Agent đã hoàn tất. Xem từng thao tác và duyệt các sửa đổi trước khi áp dụng.');
+    addAgentActivity('Đã nhận kết quả cuối và các đề xuất chờ duyệt.', 'complete');
+  } else if (type === 'error') {
+    agentStreamError = new Error(String(payload.message || 'Writing Agent không hoàn tất.'));
+    setAgentStatus(agentStreamError.message, true);
+    addAgentActivity(agentStreamError.message, 'rejected');
+  }
+}
+async function consumeWritingAgentStream(response) {
+  if (!response.body || typeof response.body.getReader !== 'function') throw new Error('Trình duyệt không hỗ trợ luồng sự kiện của Agent.');
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const dispatch = block => {
+    let eventName = 'message';
+    const data = [];
+    for (const line of block.split(/\r?\n/)) {
+      if (line.startsWith('event:')) eventName = line.slice(6).trim();
+      else if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+    }
+    if (!data.length) return;
+    try { handleWritingAgentEvent(eventName, JSON.parse(data.join('\n'))); }
+    catch { addAgentActivity('Một sự kiện Agent không hợp lệ đã bị bỏ qua.', 'notice'); }
+  };
+  while (true) {
+    const chunk = await reader.read();
+    buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+    const blocks = buffer.split(/\r?\n\r?\n/);
+    buffer = blocks.pop() || '';
+    for (const block of blocks) dispatch(block);
+    if (chunk.done) break;
+  }
+  if (buffer.trim()) dispatch(buffer);
+}
+async function runWritingAgent() {
+  if (agentBusy || coachBusy || submitting) return;
+  const essay = $('#essay-editor').value;
+  if (!essay.trim()) { setToast('Viết một bản nháp trước khi chạy Agent.'); $('#essay-editor').focus(); return; }
+  if (!settings.externalAllowed) {
+    setAgentStatus('Chưa bật quyền gửi nội dung tới provider. Mở Settings, bật quyền gửi và lưu; chưa có nội dung nào được gửi.', true);
+    setToast('Writing Agent cần provider đã được bạn cho phép.');
+    return;
+  }
+  const message = String($('#agent-task-input').value || '').trim().slice(0, 4000) ||
+    'Đọc đề và bài nháp. Kiểm tra cấu trúc, tìm vấn đề có ảnh hưởng lớn nhất, đề xuất tối đa 3 sửa đổi nhỏ có bằng chứng, rồi tạo một bài luyện để tôi tự cải thiện.';
+  $('#agent-task-input').value = message;
+  saveDraft();
+  const taskSnapshot = { ...currentTask };
+  const input = { taskType: taskSnapshot.type, taskPrompt: taskSnapshot.prompt, essay: essay.slice(0, 20000), message, history: normaliseLocalCoachTurns(coachTurns).slice(-4) };
+  agentBusy = true;
+  agentResultTaskId = taskSnapshot.id;
+  agentResult = null;
+  agentAppliedPatches = new Set();
+  agentActivity = [];
+  agentStreamError = null;
+  agentController = new AbortController();
+  $('#run-writing-agent').disabled = true;
+  $('#cancel-writing-agent').hidden = false;
+  $('#agent-result').innerHTML = '';
+  $('#agent-activity').innerHTML = '';
+  setAgentStatus('Đang khởi tạo phiên thao tác. Bài nháp vẫn có thể sửa trong lúc Agent chạy.');
+  addAgentActivity('Đã khóa task/prompt và lấy snapshot bài nháp cho phiên này.', 'complete');
+  try {
+    if (NATIVE) {
+      await runWritingAgentSession({
+        input,
+        signal: agentController.signal,
+        onEvent: handleWritingAgentEvent,
+        complete: async ({ messages, maxOutputTokens, signal }) => {
+          const characters = messages.reduce((sum, item) => sum + String(item.content || '').length, 0);
+          return await nativeCompletion(messages, characters, { maxOutputTokens, timeoutMs: 35000, signal });
+        }
+      });
+    } else {
+      const response = await fetch('/api/agent', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'omit', cache: 'no-store', redirect: 'error', signal: agentController.signal, body: JSON.stringify(input) });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Agent request failed (' + response.status + ').');
+      }
+      await consumeWritingAgentStream(response);
+      if (agentStreamError) throw agentStreamError;
+    }
+    if (!agentResult && !agentController.signal.aborted) setAgentStatus('Phiên đã kết thúc nhưng chưa có kết quả có cấu trúc. Hãy thử lại với một mục tiêu ngắn hơn.', true);
+  } catch (error) {
+    if (agentController?.signal.aborted || error?.name === 'AbortError') {
+      setAgentStatus('Đã hủy phiên. Bài nháp gốc vẫn được giữ nguyên; các sửa đổi chưa được áp dụng.', true);
+      addAgentActivity('Phiên bị hủy; không thay đổi live draft.', 'notice');
+    } else {
+      setAgentStatus('Agent chưa hoàn tất: ' + String(error?.message || 'Lỗi không xác định'), true);
+      addAgentActivity('Không thể hoàn tất phiên; bài nháp không bị tự động thay đổi.', 'rejected');
+    }
+  } finally {
+    agentBusy = false;
+    agentController = null;
+    $('#run-writing-agent').disabled = false;
+    $('#cancel-writing-agent').hidden = true;
+  }
+}
+function cancelWritingAgent() {
+  if (agentController && agentBusy) {
+    setAgentStatus('Đang gửi yêu cầu hủy…');
+    agentController.abort();
+  }
+}
+function focusAgentQuote() {
+  if (!agentResult?.focus?.quote) return;
+  if (currentTask?.id !== agentResultTaskId) {
+    saveDraft();
+    $('#task-select').value = agentResultTaskId;
+    loadCurrentTask();
+  }
+  const essay = $('#essay-editor').value;
+  const index = essay.indexOf(agentResult.focus.quote);
+  if (index < 0 || essay.indexOf(agentResult.focus.quote, index + 1) >= 0) {
+    setToast('Trích dẫn không còn khớp duy nhất với bài hiện tại; Agent không đoán vị trí.');
+    return;
+  }
+  $('#essay-editor').focus();
+  $('#essay-editor').setSelectionRange(index, index + agentResult.focus.quote.length);
+  setToast('Đã chọn đúng vị trí của trích dẫn trong bài.');
+}
+function applyAgentPatches(indices) {
+  if (!agentResult || !Array.isArray(agentResult.patches) || !indices.length) return;
+  if (currentTask?.id !== agentResultTaskId) {
+    saveDraft();
+    $('#task-select').value = agentResultTaskId;
+    loadCurrentTask();
+  }
+  const essay = $('#essay-editor').value;
+  const patches = [];
+  for (const index of indices) {
+    if (agentAppliedPatches.has(index)) continue;
+    const patch = agentResult.patches[index];
+    if (!patch || typeof patch.oldText !== 'string' || typeof patch.replacement !== 'string') {
+      setToast('Đề xuất không hợp lệ; không áp dụng thay đổi nào.');
+      return;
+    }
+    const start = essay.indexOf(patch.oldText);
+    if (start < 0 || essay.indexOf(patch.oldText, start + 1) >= 0) {
+      setToast('Bài đã thay đổi hoặc đoạn nguồn không còn duy nhất. Agent không áp dụng theo phỏng đoán.');
+      return;
+    }
+    patches.push({ ...patch, start, end: start + patch.oldText.length, sourceIndex: index });
+  }
+  patches.sort((a,b)=>a.start-b.start);
+  for (let i=1;i<patches.length;i++) {
+    if (patches[i].start < patches[i-1].end) {
+      setToast('Các đề xuất chồng lấn trên bài hiện tại. Hãy áp dụng từng sửa đổi riêng.');
+      return;
+    }
+  }
+  if (!patches.length) return;
+  persistAgentRevision(agentResultTaskId, essay, 'Trước khi Agent áp dụng sửa đổi');
+  let nextEssay = essay;
+  for (const patch of [...patches].sort((a,b)=>b.start-a.start)) nextEssay = nextEssay.slice(0,patch.start) + patch.replacement + nextEssay.slice(patch.end);
+  if (nextEssay.length > 20000) {
+    setToast('Bản sửa vượt giới hạn kích thước. Không có thay đổi nào được áp dụng.');
+    return;
+  }
+  $('#essay-editor').value = nextEssay;
+  saveDraft();
+  patches.forEach(patch=>agentAppliedPatches.add(patch.sourceIndex));
+  renderAgentResult(agentResult);
+  renderAgentRevisions();
+  setToast('Đã áp dụng ' + patches.length + ' sửa đổi. Có thể khôi phục phiên bản ngay bên dưới editor.');
+}
+function restoreAgentRevision(index) {
+  const revisions = agentRevisionSnapshots(currentTask.id);
+  const target = revisions[index];
+  if (!target) return;
+  const current = $('#essay-editor').value;
+  if (current !== target.essay && !confirm('Khôi phục phiên bản này sẽ thay nội dung editor hiện tại. WMR sẽ lưu bản hiện tại để bạn có thể quay lại. Tiếp tục?')) return;
+  persistAgentRevision(currentTask.id, current, 'Trước khi khôi phục phiên bản');
+  $('#essay-editor').value = target.essay;
+  saveDraft();
+  renderAgentRevisions();
+  setToast('Đã khôi phục phiên bản cũ.');
+}
+function saveAgentArtifacts() {
+  if (!agentResult || agentResult.savedArtifacts) return;
+  const task = TASKS.find(item=>item.id===agentResultTaskId) || currentTask;
+  const created = [];
+  const create = (kind,title,payload) => created.push({
+    id:'agent-artifact-'+Date.now().toString(36)+'-'+Math.random().toString(16).slice(2,8),
+    taskId:task.id,taskTitle:task.title,at:new Date().toISOString(),kind,title:String(title||'Tài liệu Agent').slice(0,160),payload
+  });
+  if (agentResult.outline) create('outline',agentResult.outline.title,agentResult.outline);
+  (agentResult.exercises||[]).forEach(item=>create('exercise',item.skill+' · Bài luyện',item));
+  (agentResult.learningGoals||[]).forEach(item=>create('goal',item.title,item));
+  if (agentResult.focus) create('focus','Trích dẫn cần chú ý',agentResult.focus);
+  if (!created.length) { setToast('Không có dàn ý, bài luyện, mục tiêu hoặc trích dẫn để lưu.'); return; }
+  try {
+    const artifacts = agentSavedArtifacts();
+    localStorage.setItem(AGENT_ARTIFACTS_KEY,JSON.stringify([...created,...artifacts].slice(0,100)));
+    agentResult.savedArtifacts = true;
+    renderAgentResult(agentResult);
+    renderSavedAgentArtifacts();
+    setToast('Đã lưu ' + created.length + ' tài liệu Agent trên thiết bị.');
+  } catch {
+    setToast('Không đủ bộ nhớ để lưu tài liệu; các đề xuất vẫn có thể xem trong phiên hiện tại.');
+  }
+}
+async function copySavedAgentArtifact(index) {
+  const item = agentSavedArtifacts()[index];
+  if (!item) return;
+  try { await navigator.clipboard.writeText(agentArtifactBody(item)); setToast('Đã sao chép tài liệu học.'); }
+  catch { setToast('Trình duyệt không cho phép sao chép tự động.'); }
+}
+function deleteSavedAgentArtifact(index) {
+  const artifacts = agentSavedArtifacts();
+  const item = artifacts[index];
+  if (!item || !confirm('Xóa tài liệu "' + item.title + '" khỏi thư viện cục bộ?')) return;
+  artifacts.splice(index,1);
+  localStorage.setItem(AGENT_ARTIFACTS_KEY,JSON.stringify(artifacts));
+  renderSavedAgentArtifacts();
+  setToast('Đã xóa tài liệu cục bộ.');
+}
+function evaluateAgentPractice(index) {
+  const exercise = agentResult?.exercises?.[index];
+  const answer = $('[data-agent-answer="' + index + '"]')?.value.trim();
+  if (!exercise || !answer) { setToast('Hãy tự viết câu trả lời trước khi yêu cầu phản hồi.'); return; }
+  $('#coach-input').value = 'Hãy phản hồi câu trả lời của tôi cho bài luyện vi mô, không viết lại toàn bộ thay tôi. Kỹ năng: ' +
+    exercise.skill + '\\nCâu hỏi: ' + exercise.prompt + '\\nTiêu chí thành công: ' + exercise.successCriteria + '\\nCâu trả lời của tôi: ' + answer +
+    '\\nNêu 1 điều đã làm tốt, 1 điểm cần cải thiện và hỏi tôi một câu tự sửa.';
+  coachRequest($('#coach-input').value);
+}
+
 async function coachRequest(message) {
-  if (coachBusy || submitting) return;
+  if (coachBusy || submitting || agentBusy) return;
   const question = String(message || '').trim().slice(0, 4000);
   const essay = $('#essay-editor').value;
   if (!question) { setStatus('#coach-status', 'Nhập một câu hỏi trước.', true); return; }
