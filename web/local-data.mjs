@@ -1,6 +1,6 @@
 const TASK_TYPES = new Set(['task1-academic', 'task1-general', 'task2']);
 const CRITERION_IDS = new Set(['taskResponse', 'coherence', 'lexical', 'grammar']);
-const CATEGORIES = new Set(['grammar', 'lexical', 'coherence', 'task-response', 'data-accuracy', 'register', 'other']);
+const CATEGORIES = new Set(['grammar', 'lexical', 'coherence', 'task-achievement', 'task-response', 'data-accuracy', 'register', 'other']);
 const SEVERITIES = new Set(['critical', 'high', 'medium', 'low']);
 const SOURCES = new Set(['local', 'ai', 'local-fallback']);
 const THEMES = new Set(['light', 'dark', 'system']);
@@ -70,7 +70,8 @@ function normaliseRecord(item, index, taskIds) {
     };
   });
   const issues = (Array.isArray(rawReport.issues) ? rawReport.issues : []).slice(0, 18).map((raw, idx) => {
-    const category = CATEGORIES.has(raw?.category) ? raw.category : 'other';
+    let category = CATEGORIES.has(raw?.category) ? raw.category : 'other';
+    if (taskType !== 'task2' && category === 'task-response') category = 'task-achievement';
     const quote = exactQuote(raw?.quote, essay);
     return {
       id: 'issue-' + (idx + 1),
