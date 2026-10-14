@@ -8,12 +8,13 @@ test('desktop utility process receives only an environment allowlist', () => {
     OPENAI_API_KEY: 'must-not-be-inherited', GH_TOKEN: 'must-not-be-inherited',
     AWS_SECRET_ACCESS_KEY: 'must-not-be-inherited', NODE_OPTIONS: '--require attacker.js',
     HOST: '0.0.0.0', PORT: '9999'
-  }, '/home/test/.wmr', 4179);
+  }, '/home/test/.wmr', 4179, 'a'.repeat(64));
   assert.equal(env.PATH, '/usr/bin');
   assert.equal(env.HOME, '/home/test');
   assert.equal(env.NODE_ENV, 'production');
   assert.equal(env.HOST, '127.0.0.1');
   assert.equal(env.PORT, '4179');
+  assert.equal(env.WMR_STARTUP_TOKEN, 'a'.repeat(64));
   assert.equal(env.WMR_DATA_DIR, '/home/test/.wmr');
   for (const key of ['OPENAI_API_KEY','GH_TOKEN','AWS_SECRET_ACCESS_KEY','NODE_OPTIONS']) assert.equal(Object.hasOwn(env, key), false);
 });
@@ -27,4 +28,12 @@ test('desktop navigation accepts only the explicit loopback origin', () => {
   assert.equal(policy.isInternalNavigation('http://127.0.0.1.evil.example:4179/', base), false);
   assert.equal(policy.isInternalNavigation('http://127.0.0.1:4179@evil.example/', base), false);
   assert.equal(policy.isInternalNavigation('javascript:alert(1)', base), false);
+});
+
+
+test('desktop runtime startup token is only passed when it has the expected random-token shape', () => {
+  const valid = policy.createRuntimeEnvironment({}, '/tmp/wmr', 40000, 'b'.repeat(64));
+  const invalid = policy.createRuntimeEnvironment({}, '/tmp/wmr', 40000, 'short');
+  assert.equal(valid.WMR_STARTUP_TOKEN, 'b'.repeat(64));
+  assert.equal(Object.hasOwn(invalid, 'WMR_STARTUP_TOKEN'), false);
 });
