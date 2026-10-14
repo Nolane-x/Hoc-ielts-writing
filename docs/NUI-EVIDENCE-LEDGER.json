@@ -111,6 +111,38 @@
       ],
       "verification": "Integration tests assert 415 for unsupported media types, 413 for a request over the configured cap and 403 for an encoded traversal path.",
       "status": "automated-test"
+    },
+    {
+      "claim": "Desktop runtime refuses to present a renderer unless the local server passes a token-authenticated readiness check on a randomly allocated loopback port.",
+      "source": [
+        "desktop/main.cjs",
+        "desktop/runtime-policy.cjs",
+        "server/index.mjs",
+        "tests/desktop-runtime-policy.test.mjs",
+        "tests/server-security.test.mjs"
+      ],
+      "verification": "The desktop chooses an ephemeral loopback port, passes a random 256-bit hex startup token to the child runtime, and the health endpoint compares the supplied token before reporting readiness.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "The learning dashboard recommends concrete follow-up tasks from observed AI criteria without converting missing scores into zero.",
+      "source": [
+        "web/study-plan.mjs",
+        "web/app.mjs",
+        "tests/study-plan.test.mjs",
+        "tests/ui-contract.test.mjs"
+      ],
+      "verification": "Tests cover starter plans, lowest-observed criterion selection, cross-task transfer and null/invalid scores; UI contract tests confirm the recommended task controls are wired.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Release workflow checks platform artifacts and tags releases from the app version only after platform jobs pass.",
+      "source": [
+        ".github/workflows/release.yml",
+        "tests/workflow-contract.test.mjs"
+      ],
+      "verification": "Contract tests assert publication dependencies, Windows/Linux/Android artifact gate, package-derived tag and read-only CI workflow permissions.",
+      "status": "automated-test"
     }
   ],
   "not_yet_verified": [
