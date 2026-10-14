@@ -1,55 +1,82 @@
-# WMR Writing Mentor 1.0
+# WMR Writing Mentor 1.1.0
 
-WMR is a local-first IELTS Writing workspace with a draft editor, offline task bank, targeted tutor tools, evidence-checked AI assessment, a detailed report and private progress tracking.
+WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking learners. It combines an essay editor, a guided 21-task practice bank, an optional multi-provider AI mentor, formative four-criterion feedback, private learning history and validated backup/restore.
 
-## Offline-first and privacy
+## Highlights in 1.1
 
-- Drafts, tasks, local checks, report history, learning summaries and theme settings work without an Internet connection.
-- AI is disabled by default. The explicit provider permission toggle must be enabled before a draft or tutor context is sent to a configured endpoint.
-- Desktop API keys stay in process memory and must be entered again after restarting WMR.
-- Android uses Android Keystore-backed secure storage for the provider key.
-- No accounts or cloud sync are implemented. The desktop runtime binds to loopback only.
-- If no AI provider is enabled, WMR gives local structural checks and does not invent a band estimate.
-- The tutor has no shell, arbitrary file access or browser automation tool. Student essay text is treated as untrusted input.
+- **21 guided tasks** across Academic Task 1, General Training Task 1 and Task 2, with difficulty, estimated time and a focus skill. Numbers and maps created for practice are explicitly labelled synthetic data.
+- **Context-aware Mentor** with up to eight recent user/assistant turns per task. The learner can clear the local conversation. Stored conversation is treated as untrusted context, not system authority.
+- **Evidence-aware reports.** Provider quotes must exactly match the submitted essay; mismatched quotes are discarded. Offline preflight does not fabricate a band. All AI scores remain formative estimates, not official IELTS scores.
+- **Multi-provider AI** for OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, Groq, Together, Mistral, Ollama, LM Studio and custom OpenAI-compatible endpoints.
+- **Backup and restore.** Import validates schema, supported task IDs, field lengths, report evidence and conversation roles. Import never replaces API keys, provider permission or provider settings.
+- **More bounded runtime.** Provider requests have deadlines through response-body reading, responses are capped, API writes are loopback/origin checked, Electron child processes receive an environment allowlist, and navigation is constrained to the expected local origin.
+- **Reproducible builds.** package-lock.json is committed; CI uses npm ci, checks high/critical dependency advisories, runs tests and builds the web bundle on Node 22 and 24.
+
+## Privacy and AI boundary
+
+- Drafts, tasks, local checks, history, learning summaries, Mentor history and theme settings work locally.
+- Provider access is disabled by default. The explicit permission switch must be enabled, and the learner must submit a review or Mentor question before text is sent.
+- On desktop, the API key stays in process memory and must be re-entered after restarting WMR. On Android, the key is stored using Android Keystore-backed secure storage.
+- No user account, cloud sync or multi-user web service is implemented. The local HTTP runtime binds to loopback only; do not expose its port through a LAN, tunnel or reverse proxy.
+- The agent has no shell, generic tool-execution or arbitrary file/browser access. Learner essay, prompt and previous conversation turns are untrusted content.
+- Hosted endpoints must use HTTPS and explicitly supplied input/output token prices. WMR estimates spend; the provider's actual billing can differ.
+- On Android, 127.0.0.1 means the Android device itself. It does not reach an Ollama/LM Studio instance on a different computer.
 
 ## Run locally
 
-Requires Node.js 22 or newer.
+Requires Node.js 22 or newer. Use a clean install:
 
-```sh
-npm install
-npm test
-npm run check
-npm run build:web
-npm start
-```
+    npm ci
+    npm test
+    npm run check
+    npm run build:web
+    npm start
 
-Open http://127.0.0.1:4179. The server must not be exposed to a LAN, reverse proxy or public network.
+Open http://127.0.0.1:4179. Keep the runtime loopback-only.
+
+For the development UI, start the backend in one terminal after building the web assets, then run the Vite dev server in another:
+
+    # terminal 1
+    npm run build:web
+    npm start
+
+    # terminal 2
+    npm run dev
+
+Vite proxies /api calls to the local runtime. The production build uses relative paths and has no remote JavaScript or CSS assets.
 
 ## Multiple AI providers
 
-Settings includes OpenAI, Anthropic, Google Gemini, OpenRouter, DeepSeek, Groq, Together AI, Mistral, Ollama, LM Studio and custom OpenAI-compatible endpoints.
+Choose a service in Settings, enter the exact model ID supported by your account, and enter current input/output prices in USD per million tokens for hosted providers. WMR does not guess prices. Local loopback HTTP is allowed only for local model servers. If the provider format is not covered by a built-in adapter, the custom endpoint expects an OpenAI-compatible Chat Completions API.
 
-Select the exact model identifier supported by your account. Hosted providers require current input and output prices to be entered explicitly in USD per million tokens before WMR enables costed requests. WMR does not guess prices. Local loopback HTTP is allowed only for local model servers. Desktop credentials are not returned by settings endpoints or written to configuration files.
+The output cap, per-call estimate, daily estimated budget and daily call limit reduce accidental spend. They do not replace provider-side quotas. Keep credentials private and do not paste a real key into an essay, chat or report.
 
-On Android, 127.0.0.1 refers to the Android device itself, not the desktop computer where Ollama may be running. Use an HTTPS endpoint reachable by the device only when you intentionally opt in to external transmission.
+## Writing Mentor and assessment
 
-## Assessment report
+The Mentor can help analyse a task, build an outline through questions, inspect an argument, and create a small practice exercise. It is designed to preserve learner authorship rather than write a complete essay on the learner's behalf. It remembers a bounded recent dialogue per task; clear it from the workspace whenever needed.
 
-Press **Nộp bài & chấm sâu**. Local preflight is shown immediately; a model assessment runs only when provider access is enabled and the provider is configured. The report contains four rubric criteria, evidence quotes that must match the essay, severity-ranked issues, targeted fixes, strengths and next-step priorities.
+When a learner submits an essay, WMR creates a local preflight immediately. AI assessment runs only when the provider permission is enabled and a valid provider is configured. The report contains four IELTS criteria, evidence quotes, prioritised issues, targeted fixes, strengths and next-step actions.
 
-The displayed band estimate is formative and uncalibrated, not an official IELTS score. A matching quotation does not prove that every explanation is true. Before claiming accuracy, WMR needs an independent dataset of expert-rated essays and evaluation by criterion.
+A single essay's criterion mean is only a formative task-level estimate. It is not an official IELTS score or a validated prediction. Quotation matching proves only that the words occur in the source; it does not prove every explanation is semantically correct. A rigorous calibration claim requires an independent expert-rated dataset, criterion-level agreement analysis and repeated-model consistency tests.
+
+## Data backup and restore
+
+Settings → Data lets you export a JSON backup and restore one later. Import is limited to 5 MB, supported schema v1 and known task IDs. It bounds drafts, report history and Mentor conversation, drops unsupported roles and mismatched quotation evidence, and does **not** overwrite the current provider, API key, permission toggle or spend settings. Treat exported backups as private files.
 
 ## GitHub Actions release
 
-The CI workflow runs tests and builds the web application on Node 22 and 24. The release workflow builds these x64 artifacts after a push to main:
+CI uses the committed lockfile, runs npm audit --audit-level=high, executes the test suite and builds the web application on Node 22/24.
 
-- Windows: NSIS installer and portable executable.
-- Linux: AppImage and Debian package.
-- Android: installable debug-signed APK and Android App Bundle.
+Pushing to main starts platform builds:
 
-Only after all three jobs finish successfully does Actions publish a GitHub prerelease. The debug APK is for sideloading/testing; the unsigned AAB is not Play Store-ready. A production Android release still needs maintainer-controlled signing configuration and a protected upload key.
+- Windows x64: NSIS installer and portable executable.
+- Linux x64: AppImage and Debian package.
+- Android: debug-signed APK for sideload/testing and an unsigned AAB.
 
-## Known limitations
+The publish job verifies all five installer/package outputs are present before creating a GitHub prerelease tagged with the package version and workflow build number. The Android AAB is not Play Store-ready without maintainer-controlled release signing. No official production signing keys are stored in this repository.
 
-This initial cross-platform foundation is not yet a claim of production certification. The starter task bank is intentionally small; assessment is not calibrated against independent examiner-rated data; the complete original v0.9 knowledge corpus is not included in this repo bootstrap; and real-device behavior, accessibility, screenshots, model-provider interoperability and release signatures must be verified before claiming they all work.
+## Validation status and limitations
+
+Automated tests cover local HTTP security boundaries, API-key handling, provider adapters, response timeout/size limits, assessment evidence, backup import, task-bank metadata and desktop navigation/environment policy. CI checks syntax, tests, web build and dependency advisories. Cross-platform release builds are separately verified by Actions.
+
+This is not a third-party security certification. Live provider billing/interoperability, installation on physical Android/Windows/Linux devices, screen-reader and manual keyboard testing, and assessment accuracy against human-rated essays still need direct verification. The original full v0.9 knowledge corpus was not part of the empty-repository bootstrap and is not claimed to be present.
