@@ -99,3 +99,22 @@ test('resolved issue buttons restore their persisted state when a report is reop
   assert.match(app, /aria-pressed="' \+ String\(item\.userMarkedResolved === true\)/);
   assert.match(app, /item\.userMarkedResolved === true \? '✓ Đã xử lý · Hoàn tác'/);
 });
+
+
+test('Writing Agent workspace exposes real-time status, staged edits, cancellation and revision recovery', () => {
+  for (const id of [
+    'agent-workspace', 'agent-task-input', 'run-writing-agent', 'cancel-writing-agent',
+    'agent-live-status', 'agent-activity', 'agent-result', 'agent-saved-artifacts',
+    'agent-revisions', 'agent-revision-list'
+  ]) assert.match(html, new RegExp('id="' + id + '"'), 'missing Writing Agent control #' + id);
+  assert.match(app, /fetch\('\/api\/agent'/);
+  assert.match(app, /consumeWritingAgentStream\(response\)/);
+  assert.match(app, /AbortController\(\)/);
+  assert.match(app, /applyAgentPatches\(\[Number\(patchButton\.dataset\.agentPatch\)\]\)/);
+  assert.match(app, /persistAgentRevision\(agentResultTaskId, essay/);
+  assert.match(app, /data-agent-restore/);
+  assert.match(css, /\.agent-activity-item/);
+  assert.match(css, /\.agent-patch-card/);
+  assert.match(app, /agentArtifacts: agentSavedArtifacts\(\)/);
+  assert.match(app, /agentRevisions\[task\.id\] = agentRevisionSnapshots\(task\.id\)/);
+});
