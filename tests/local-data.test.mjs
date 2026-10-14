@@ -81,3 +81,12 @@ test('local backup history is capped, coach turns are bounded and credentials ar
   assert.equal(Object.hasOwn(result, 'apiKey'), false);
   assert.equal(Object.hasOwn(result, 'settings'), false);
 });
+
+
+test('backup import rejects unsupported fractional bands instead of rounding them',()=>{
+ const record={...validRecord,report:{...validRecord.report,criteria:[
+  {id:'taskResponse',score:7.3,rationale:'off-scale',evidence:[]},{id:'coherence',score:6,rationale:'ok',evidence:[]},{id:'lexical',score:6,rationale:'ok',evidence:[]},{id:'grammar',score:6,rationale:'ok',evidence:[]}
+ ]}};
+ const result=normaliseLocalBackup({schemaVersion:1,history:[record]},taskIds);
+ assert.equal(result.history[0].report.criteria[0].score,null);
+});

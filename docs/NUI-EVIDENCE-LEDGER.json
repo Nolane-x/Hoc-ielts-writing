@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "WMR Writing Mentor",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "status": "source-and-ci-verified; release build and real-device validation are separate gates",
   "contract": "docs/NUI-UI-CONTRACT.md",
   "evidence": [
@@ -142,6 +142,36 @@
         "tests/workflow-contract.test.mjs"
       ],
       "verification": "Contract tests assert publication dependencies, Windows/Linux/Android artifact gate, package-derived tag and read-only CI workflow permissions.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Task 1 and Task 2 use different first-criterion names; unsupported fractional values are rejected, and essays under 80 words do not receive an aggregate band estimate.",
+      "source": [
+        "web/assessment.mjs",
+        "web/app.mjs",
+        "tests/assessment.test.mjs"
+      ],
+      "verification": "Tests assert Task Achievement for Task 1, Task Response for Task 2, rejection of 7.3 and suppression of the aggregate band under 80 words.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Revision comparison only compares a different draft of the same task/prompt when both reports are AI-formative.",
+      "source": [
+        "web/revision-analysis.mjs",
+        "web/app.mjs",
+        "tests/revision-analysis.test.mjs"
+      ],
+      "verification": "Tests cover baseline selection, score deltas, identical-draft suppression, prompt changes and exclusion of local-only reports.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "An in-app rubric field guide contains original Vietnamese summaries of common band signals for all four criteria.",
+      "source": [
+        "web/rubric-guide.mjs",
+        "web/app.mjs",
+        "tests/ui-contract.test.mjs"
+      ],
+      "verification": "UI contract tests ensure the guide is task-aware and rendered through escaped text.",
       "status": "automated-test"
     }
   ],

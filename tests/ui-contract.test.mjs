@@ -23,7 +23,7 @@ test('writer, submission status, settings and import controls are present in the
   for (const id of [
     'task-select', 'task-prompt', 'task-goal', 'task-meta', 'essay-editor',
     'word-count', 'submit-review', 'local-check', 'coach-input', 'coach-answer',
-    'clear-coach-history', 'study-plan', 'settings-form', 'external-allowed', 'provider-key',
+    'clear-coach-history', 'study-plan', 'rubric-guide', 'settings-form', 'external-allowed', 'provider-key',
     'import-backup', 'import-file', 'clear-local-data', 'toast'
   ]) {
     assert.match(html, new RegExp('id="' + id + '"'), 'missing HTML element #' + id);
@@ -57,4 +57,12 @@ test('adaptive recommendations remain connected to concrete task selection and l
   assert.match(app, /data-start-task=/);
   assert.match(app, /\$\('#study-plan'\)\.addEventListener\('click'/);
   assert.match(app, /setToast\('Đã mở đề luyện theo lộ trình:/);
+});
+
+
+test('rubric guide and revision comparison are wired into the learning/report flow',()=>{
+ assert.match(app,/getRubricGuide\(currentTask\?\.type \|\| 'task2'\)/);
+ assert.match(app,/buildRevisionComparison\(currentRecord, history\)/);
+ assert.match(app,/So sánh với bản trước của cùng đề/);
+ assert.match(app,/Model có thể dao động giữa các lượt/);
 });

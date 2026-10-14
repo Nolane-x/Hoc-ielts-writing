@@ -15,7 +15,7 @@ test('word count handles apostrophes and Unicode letters', () => {
 });
 
 test('assessment validates evidence quotes and ignores unknown criteria', () => {
-  const essay = 'This exact evidence shows a clear idea and relevant detail.';
+  const essay = 'This exact evidence shows a clear idea and relevant detail. The proposal may improve public transport because a reliable network allows workers and students to reach important destinations on time. It can also reduce the number of private cars travelling through busy streets. However, funding and route planning must reflect the needs of residents in different neighbourhoods. A successful policy therefore requires consultation, careful investment and regular evaluation. These connected points show why the recommendation depends on local conditions rather than a single universal solution.';
   const report = normaliseAssessment({
     summary: 'Clear and focused.',
     criteria: [
@@ -63,4 +63,36 @@ test('evidence quotation must preserve exact source casing, not just case-insens
   assert.deepEqual(report.criteria[0].evidence, []);
   assert.equal(report.issues[0].quote, '');
   assert.equal(report.strengths.length, 0);
+});
+
+
+test('Task 1 uses Task Achievement while Task 2 uses Task Response', async () => {
+  const { getCriterionDefinitions, normaliseAssessment } = await import('../web/assessment.mjs');
+  assert.equal(getCriterionDefinitions('task1-academic')[0].title, 'Task Achievement');
+  assert.equal(getCriterionDefinitions('task1-general')[0].title, 'Task Achievement');
+  assert.equal(getCriterionDefinitions('task2')[0].title, 'Task Response');
+  const essay = ('A sufficiently developed example sentence explains one relevant point. ').repeat(12);
+  const raw = { criteria: [
+    { id:'taskResponse', score:6.5, rationale:'ok', evidence:[] },
+    { id:'coherence', score:6.5, rationale:'ok', evidence:[] },
+    { id:'lexical', score:6.5, rationale:'ok', evidence:[] },
+    { id:'grammar', score:6.5, rationale:'ok', evidence:[] }
+  ] };
+  assert.equal(normaliseAssessment(raw,{taskType:'task1-academic',essay}).criteria[0].title,'Task Achievement');
+  assert.equal(normaliseAssessment(raw,{taskType:'task2',essay}).criteria[0].title,'Task Response');
+});
+test('very short essays cannot produce an aggregate band even if a model supplies four scores', () => {
+ const report=normaliseAssessment({criteria:['taskResponse','coherence','lexical','grammar'].map(id=>({id,score:8,rationale:'Looks strong',evidence:[]}))},{taskType:'task2',essay:'Short text only.'});
+ assert.equal(report.estimatedTaskBand,null);assert.match(report.scoreLabel,/Chưa đủ nội dung/i);assert.match(report.scoreRationale,/80 từ/);
+});
+test('non-half-band model scores are rejected instead of rounded', () => {
+ const essay=('A sufficiently developed example sentence explains one relevant point. ').repeat(12);
+ const report=normaliseAssessment({criteria:[
+  {id:'taskResponse',score:7.3,rationale:'off-scale',evidence:[]},{id:'coherence',score:7,rationale:'ok',evidence:[]},{id:'lexical',score:7,rationale:'ok',evidence:[]},{id:'grammar',score:7,rationale:'ok',evidence:[]}
+ ]},{taskType:'task2',essay});
+ assert.equal(report.criteria[0].score,null);assert.equal(report.estimatedTaskBand,null);
+});
+test('assessment prompt names the correct first criterion for Task 1 and Task 2', () => {
+ assert.match(buildAssessmentMessages({taskType:'task1-academic',taskPrompt:'Describe the chart.',essay:'Draft'})[0].content,/Task Achievement for Task 1/i);
+ assert.match(buildAssessmentMessages({taskType:'task2',taskPrompt:'Discuss both views.',essay:'Draft'})[0].content,/Task Response for Task 2/i);
 });
