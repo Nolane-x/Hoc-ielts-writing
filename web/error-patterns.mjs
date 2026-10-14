@@ -35,6 +35,7 @@ function normalizeEssay(text){
  return String(text||'').toLocaleLowerCase().replace(/\s+/g,' ').trim();
 }
 function validBand(value){
+ if(value===null||value===undefined||value==='')return false;
  const n=Number(value);
  return Number.isFinite(n)&&n>=0&&n<=9&&Math.abs(n*2-Math.round(n*2))<1e-9;
 }
