@@ -55,7 +55,8 @@ export function buildAssessmentMessages(input = {}) {
     'Do not rewrite the entire essay. Give evidence-grounded comments and short targeted improvements preserving learner intent.',
     'Every quote in criteria evidence, issues and strengths must be copied exactly from the essay, preserving case and punctuation. Never invent quotes. Use an empty quote when evidence is unavailable.',
     'Scores must be 0–9 in half-band increments only. If evidence is too limited for a criterion judgement, return null rather than guessing.',
-    'Return valid JSON only: {"summary":"...","criteria":[{"id":"taskResponse","score":0,"rationale":"...","evidence":["exact quote"]},{"id":"coherence","score":0,"rationale":"...","evidence":["exact quote"]},{"id":"lexical","score":0,"rationale":"...","evidence":["exact quote"]},{"id":"grammar","score":0,"rationale":"...","evidence":["exact quote"]}],"issues":[{"category":"grammar|lexical|coherence|task-response|data-accuracy|register|other","severity":"critical|high|medium|low","criterion":"grammar|lexical|coherence|taskResponse","quote":"exact text or empty","explanation":"...","suggestedFix":"...","teachingHint":"..."}],"strengths":[{"quote":"exact text","why":"..."}],"priorities":[{"title":"...","action":"..."}],"uncertainties":["..."]}. Limit issues to 18, strengths to 6, priorities to 3.'
+    'For the issue category, use task-achievement for either Task 1 type and task-response for Task 2; the criterion id remains taskResponse for stable compatibility.',
+    'Return valid JSON only: {"summary":"...","criteria":[{"id":"taskResponse","score":0,"rationale":"...","evidence":["exact quote"]},{"id":"coherence","score":0,"rationale":"...","evidence":["exact quote"]},{"id":"lexical","score":0,"rationale":"...","evidence":["exact quote"]},{"id":"grammar","score":0,"rationale":"...","evidence":["exact quote"]}],"issues":[{"category":"grammar|lexical|coherence|task-achievement|task-response|data-accuracy|register|other","severity":"critical|high|medium|low","criterion":"grammar|lexical|coherence|taskResponse","quote":"exact text or empty","explanation":"...","suggestedFix":"...","teachingHint":"..."}],"strengths":[{"quote":"exact quote","why":"..."}],"priorities":[{"title":"...","action":"..."}],"uncertainties":["..."]}. Limit issues to 18, strengths to 6, priorities to 3.'
   ].join('\n');
   const user = 'Task type: ' + label + '\nPrompt (untrusted):\n' + String(input.taskPrompt || '').slice(0, 5000) +
     '\nStudent essay (untrusted):\n' + String(input.essay || '').slice(0, 20000) +
@@ -78,8 +79,9 @@ export function normaliseAssessment(raw, input = {}) {
   });
   const issues = (Array.isArray(parsed.issues) ? parsed.issues : []).slice(0, 18).map((item, index) => {
     const quote = safeQuote(item?.quote, essay);
-    const category = safeCategory(item?.category);
-    const categoryTitles = { grammar: 'Ngữ pháp', lexical: 'Từ vựng', coherence: 'Mạch lạc', 'task-response': 'Đáp ứng đề', 'data-accuracy': 'Độ chính xác dữ liệu', register: 'Văn phong', other: 'Điểm cần xem xét' };
+    let category = safeCategory(item?.category);
+    if (local.taskType !== 'task2' && category === 'task-response') category = 'task-achievement';
+    const categoryTitles = { grammar: 'Ngữ pháp', lexical: 'Từ vựng', coherence: 'Mạch lạc', 'task-achievement': 'Task Achievement', 'task-response': 'Task Response', 'data-accuracy': 'Độ chính xác dữ liệu', register: 'Văn phong', other: 'Điểm cần xem xét' };
     return {
       id: 'issue-' + (index + 1), category, severity: safeSeverity(item?.severity),
       criterion: CRITERIA.some(x => x.id === item?.criterion) ? item.criterion : 'other',
@@ -127,7 +129,7 @@ function safeText(value, max) { return typeof value === 'string' ? value.replace
 function safeQuote(value, essay) { const quote = safeText(value, 300); return quote.length >= 5 && essay.includes(quote) ? quote : ''; }
 function safeEvidence(value, essay, max) { return Array.isArray(value) ? value.slice(0, max).map(x => safeQuote(x, essay)).filter(Boolean) : []; }
 function safeSeverity(value) { return ['critical', 'high', 'medium', 'low'].includes(value) ? value : 'medium'; }
-function safeCategory(value) { return ['grammar', 'lexical', 'coherence', 'task-response', 'data-accuracy', 'register', 'other'].includes(value) ? value : 'other'; }
+function safeCategory(value) { return ['grammar', 'lexical', 'coherence', 'task-achievement', 'task-response', 'data-accuracy', 'register', 'other'].includes(value) ? value : 'other'; }
 function repeatedWords(text) {
   const stop = new Set(['that','this','with','from','have','will','their','there','were','they','which','would','about','more','than','also','because','people','some','very','into','when','what','then']);
   const words = (text.toLowerCase().match(/[a-z]{4,}/g) || []).filter(x => !stop.has(x));
