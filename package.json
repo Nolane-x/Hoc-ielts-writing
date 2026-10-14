@@ -1,6 +1,6 @@
 {
   "name": "wmr-writing-mentor",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "Local-first IELTS Writing mentor with evidence-grounded assessment and optional multi-provider AI.",
@@ -14,7 +14,9 @@
     "dist:desktop": "npm run build:web && electron-builder",
     "mobile:sync": "npm run build:web && cap sync android"
   },
-  "engines": { "node": ">=22.0.0" },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.1",
     "@capacitor/android": "8.5.3",
@@ -30,10 +32,33 @@
     "appId": "org.nolane.wmrwritingmentor",
     "productName": "WMR Writing Mentor",
     "asar": true,
-    "files": ["dist/**/*", "server/**/*", "web/**/*", "desktop/**/*", "package.json"],
-    "directories": { "output": "release" },
-    "win": { "target": ["nsis", "portable"] },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
-    "linux": { "target": ["AppImage", "deb"], "category": "Education", "maintainer": "Nolane-x" }
+    "files": [
+      "dist/**/*",
+      "server/**/*",
+      "web/**/*",
+      "desktop/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Education",
+      "maintainer": "Nolane-x"
+    }
   }
 }
