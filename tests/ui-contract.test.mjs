@@ -118,3 +118,14 @@ test('Writing Agent workspace exposes real-time status, staged edits, cancellati
   assert.match(app, /agentArtifacts: agentSavedArtifacts\(\)/);
   assert.match(app, /agentRevisions\[task\.id\] = agentRevisionSnapshots\(task\.id\)/);
 });
+
+
+test('Writing Agent task-bank suggestions are rendered from local results and revisions fail safely', () => {
+  assert.match(app, /const practiceMatches = Array\.isArray\(result\.practiceMatches\)/);
+  assert.match(app, /data-agent-start-task=/);
+  assert.match(app, /function openAgentPracticeTask\(taskId\)/);
+  assert.match(app, /TASKS\.find\(item => item\.id === taskId\)/);
+  assert.match(app, /hasStructuredOutput/);
+  assert.match(app, /Không áp dụng sửa đổi vì WMR chưa thể lưu bản trước để hoàn tác/);
+  assert.match(app, /Không thể khôi phục vì chưa lưu được nội dung editor hiện tại/);
+});
