@@ -27,9 +27,10 @@ export function normaliseAgentPracticeAttempts(input, validTaskIds) {
     if (!skill || prompt.length < 8 || instructions.length < 8 || successCriteria.length < 8 || !answer) return null;
     const feedback = cleanText(item.feedback, 3000);
     const rawStatus = VALID_STATUSES.has(item.status) ? item.status : 'awaiting-feedback';
-    const status = feedback ? 'feedback-received' : rawStatus === 'feedback-received' ? 'feedback-unavailable' : rawStatus;
     const rawSource = VALID_SOURCES.has(item.feedbackSource) ? item.feedbackSource : 'unavailable';
-    const feedbackSource = feedback ? rawSource : (status === 'feedback-unavailable' ? 'unavailable' : 'unavailable');
+    const verifiedFeedback = feedback && ['ai-provider', 'local-guide'].includes(rawSource) ? feedback : '';
+    const status = verifiedFeedback ? 'feedback-received' : rawStatus === 'feedback-received' || rawSource === 'configuration-message' ? 'feedback-unavailable' : rawStatus;
+    const feedbackSource = verifiedFeedback ? rawSource : (rawSource === 'configuration-message' ? rawSource : 'unavailable');
     return {
       id: cleanText(item.id, 128) || 'practice-attempt-' + (index + 1),
       taskId: item.taskId,
@@ -42,9 +43,9 @@ export function normaliseAgentPracticeAttempts(input, validTaskIds) {
       answer,
       submittedAt: parseDate(item.submittedAt) || new Date(0).toISOString(),
       status,
-      feedback,
+      feedback: verifiedFeedback,
       feedbackSource,
-      reviewedAt: feedback ? (parseDate(item.reviewedAt) || parseDate(item.submittedAt) || new Date(0).toISOString()) : ''
+      reviewedAt: verifiedFeedback ? (parseDate(item.reviewedAt) || parseDate(item.submittedAt) || new Date(0).toISOString()) : ''
     };
   }).filter(Boolean).slice(0, MAX_ATTEMPTS);
 }
