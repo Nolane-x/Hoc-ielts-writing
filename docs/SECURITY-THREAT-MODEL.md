@@ -35,3 +35,12 @@
 ## Release posture
 
 This application is intended for one local user. Do not expose the runtime port, add public multi-user hosting or claim official IELTS scoring. Before broad public distribution, run independent dependency, platform, accessibility, privacy and human-rated assessment reviews. Android Play Store distribution requires a protected release-signing setup.
+
+
+## Writing Agent workspace boundary
+
+The Writing Agent uses a fixed, named tool allowlist for the supplied IELTS task and draft: inspect, search exact phrases, stage an anchored patch, create an outline, create a micro-exercise, create a measurable learning goal, or focus a quote. The model does not receive shell, arbitrary filesystem, environment variables, secrets, browser automation or a general HTTP tool. It cannot change this tool registry through its own output.
+
+A patch must match one unique source substring, must not overlap another staged patch, and is applied only after a learner clicks an explicit apply control. Applying changes records the previous draft locally; recovery replaces the editor only after a confirmation when the current text differs. The server streams progress and tool results with SSE; disconnecting aborts the session/provider request where supported. Each run is bounded by model-turn/tool-call limits, request timeout, body-size bound and the existing cost ledger. The existing Settings permission switch remains the explicit boundary for sending essay content to a configured provider.
+
+These controls intentionally grant broad agency inside the writing workspace without granting control over the host operating system, credentials or arbitrary network destinations. Tool output and essays remain untrusted content; exact quotes prove location only, not semantic correctness.
