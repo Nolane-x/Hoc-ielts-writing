@@ -13,6 +13,7 @@
 
 - The essay editor stays primary during writing.
 - Task selectors expose task identity plus focus, difficulty and suggested time.
+- Learning recommendations use only valid saved criterion scores and link directly to real tasks; if evidence is absent, they state that the plan is a starter path.
 - Submission shows local preflight; AI runs only after explicit opt-in.
 - Reports preserve exact evidence quotes and discard quotations absent from the source essay.
 - Offline mode never claims a model produced a band.
