@@ -113,6 +113,8 @@ function normaliseRecord(item, index, taskIds) {
       officialScore: false,
       estimatedTaskBand: status === 'ai-formative' ? bandValue(rawReport.estimatedTaskBand) : null,
       scoreLabel: cleanText(rawReport.scoreLabel, 120) || (status === 'ai-formative' ? 'Band ước lượng chưa hiệu chuẩn' : 'Chưa có band AI'),
+      scoreRationale: cleanText(rawReport.scoreRationale, 500),
+      lengthWarnings: (Array.isArray(rawReport.lengthWarnings) ? rawReport.lengthWarnings : []).slice(0, 3).map(x => cleanText(x, 300)).filter(Boolean),
       criteria,
       issues,
       strengths,
@@ -136,7 +138,9 @@ function exactQuote(value, essay) {
 function bandValue(value) {
   if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
-  return Number.isFinite(n) && n >= 0 && n <= 9 ? Math.round(n * 2) / 2 : null;
+  if (!Number.isFinite(n) || n < 0 || n > 9) return null;
+  const half = Math.round(n * 2) / 2;
+  return Math.abs(n - half) < 1e-9 ? half : null;
 }
 function cleanText(value, max) {
   return typeof value === 'string' ? value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, max) : '';
