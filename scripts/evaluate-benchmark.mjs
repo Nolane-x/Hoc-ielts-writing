@@ -18,7 +18,7 @@ function tracksFor(taskType) {
 }
 
 function essayWordCount(essay) {
-  return String(essay || '').trim().match(/\\b[\\p{L}\\p{N}]+(?:['’-][\\p{L}\\p{N}]+)*/gu)?.length || 0;
+  return String(essay || '').trim().match(/\b[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)?.length || 0;
 }
 
 function isObject(value) {
