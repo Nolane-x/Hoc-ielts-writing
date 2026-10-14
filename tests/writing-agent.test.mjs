@@ -5,6 +5,7 @@ import {
   WRITING_AGENT_MAX_TOOL_CALLS,
   WRITING_AGENT_SYSTEM_PROMPT,
   WRITING_AGENT_TOOLS,
+  estimateWritingAgentSessionCost,
   createWritingAgentState,
   executeWritingAgentTool,
   runWritingAgentSession
@@ -173,4 +174,15 @@ test('agent session exposes the expanded ten-turn/eight-tool ceilings', async ()
   assert.equal(result.usage.maximumModelTurns,10);
   assert.ok(result.usage.toolCalls <= 8);
   assert.ok(result.usage.modelCalls <= 10);
+});
+
+
+test('agent session cost estimate is zero for local inference, null without remote prices and bounded for remote inference', () => {
+  const input = { taskType:'task2', taskPrompt:'A prompt.', essay:'A short learner essay.', message:'Inspect and help.' };
+  assert.equal(estimateWritingAgentSessionCost({ localEndpoint:true }, input, 1200), 0);
+  assert.equal(estimateWritingAgentSessionCost({ localEndpoint:false, inputUsdPerMillion:0, outputUsdPerMillion:0 }, input, 1200), null);
+  const estimate = estimateWritingAgentSessionCost({ localEndpoint:false, inputUsdPerMillion:0.15, outputUsdPerMillion:0.6 }, input, 1200);
+  assert.ok(Number.isFinite(estimate));
+  assert.ok(estimate > 0);
+  assert.ok(estimate < 1, 'the fixture should produce a conservative bounded session estimate');
 });
