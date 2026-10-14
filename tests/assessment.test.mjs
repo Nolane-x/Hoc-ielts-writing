@@ -45,3 +45,22 @@ test('assessment prompt treats student text as untrusted and forbids instruction
 test('malformed AI JSON is rejected instead of represented as a completed score', () => {
   assert.throws(() => normaliseAssessment('not JSON', { essay: 'text' }), /assessment_invalid_json/);
 });
+
+
+test('evidence quotation must preserve exact source casing, not just case-insensitive similarity', () => {
+  const essay = 'The government should improve public transport.';
+  const report = normaliseAssessment({
+    summary: 'Test',
+    criteria: [
+      { id: 'taskResponse', score: 6, rationale: 'Test', evidence: ['the government should improve public transport'] },
+      { id: 'coherence', score: 6, rationale: 'Test', evidence: [] },
+      { id: 'lexical', score: 6, rationale: 'Test', evidence: [] },
+      { id: 'grammar', score: 6, rationale: 'Test', evidence: [] }
+    ],
+    issues: [{ category: 'grammar', severity: 'high', quote: 'the government should improve public transport', explanation: 'Test' }],
+    strengths: [{ quote: 'the government should improve public transport', why: 'Test' }]
+  }, { taskType: 'task2', essay });
+  assert.deepEqual(report.criteria[0].evidence, []);
+  assert.equal(report.issues[0].quote, '');
+  assert.equal(report.strengths.length, 0);
+});
