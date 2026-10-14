@@ -50,6 +50,8 @@ let agentActivity = [];
 let agentAppliedPatches = new Set();
 let agentStreamError = null;
 let agentSessionMetadata = null;
+let agentSessionId = '';
+let agentCancelRequested = false;
 
 function safeParse(value, fallback) { try { return JSON.parse(value); } catch { return fallback; } }
 function escapeHtml(value) {
@@ -645,6 +647,17 @@ function addAgentActivity(message, status = 'progress', name = '') {
     escapeHtml(entry.message) + '</p><small>' + escapeHtml(entry.at) + (entry.name ? ' · ' + escapeHtml(entry.name.replace(/_/g, ' ')) : '') + '</small></div></li>'
   ).join('');
 }
+function createAgentSessionId() {
+  try {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+    if (globalThis.crypto?.getRandomValues) {
+      const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+      const hex = [...bytes].map(value => value.toString(16).padStart(2, '0')).join('');
+      return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-4' + hex.slice(13, 16) + '-a' + hex.slice(17, 20) + '-' + hex.slice(20);
+    }
+  } catch {}
+  return 'agent-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
 function setAgentStatus(message, bad = false) {
   const host = $('#agent-live-status');
   if (!host) return;
@@ -705,13 +718,16 @@ function renderAgentResult(result) {
 }
 function handleWritingAgentEvent(type, payload) {
   if (type === 'progress') {
-    if (payload.phase === 'started') agentSessionMetadata = {
+    if (payload.phase === 'started') {
+      $('#cancel-writing-agent').disabled = false;
+      agentSessionMetadata = {
       provider: String(payload.provider || ''), model: String(payload.model || ''),
       localEndpoint: payload.localEndpoint === true,
       estimatedSessionCostUsd: Number.isFinite(payload.estimatedSessionCostUsd) ? payload.estimatedSessionCostUsd : null,
       maximumModelTurns: Number.isInteger(payload.maximumModelTurns) ? payload.maximumModelTurns : null,
       maximumToolCalls: Number.isInteger(payload.maximumToolCalls) ? payload.maximumToolCalls : null
-    };
+      };
+    }
     setAgentStatus(payload.message || 'Agent đang làm việc…');
     addAgentActivity(payload.message || 'Đang suy luận', payload.phase === 'notice' || payload.phase === 'limit' ? 'notice' : 'progress');
   } else if (type === 'tool') {
@@ -781,7 +797,8 @@ async function runWritingAgent() {
   $('#agent-task-input').value = message;
   saveDraft();
   const taskSnapshot = { ...currentTask };
-  const input = { taskType: taskSnapshot.type, taskPrompt: taskSnapshot.prompt, essay: essay.slice(0, 20000), message, history: normaliseLocalCoachTurns(coachTurns).slice(-4) };
+  agentSessionId = createAgentSessionId();
+  const input = { taskType: taskSnapshot.type, taskPrompt: taskSnapshot.prompt, essay: essay.slice(0, 20000), message, history: normaliseLocalCoachTurns(coachTurns).slice(-4), sessionId: agentSessionId };
   agentBusy = true;
   agentResultTaskId = taskSnapshot.id;
   agentResultTaskTitle = taskSnapshot.title;
@@ -790,9 +807,11 @@ async function runWritingAgent() {
   agentActivity = [];
   agentStreamError = null;
   agentSessionMetadata = null;
+  agentCancelRequested = false;
   agentController = new AbortController();
   $('#run-writing-agent').disabled = true;
   $('#cancel-writing-agent').hidden = false;
+  $('#cancel-writing-agent').disabled = true;
   $('#agent-result').innerHTML = '';
   $('#agent-activity').innerHTML = '';
   setAgentStatus('Đang khởi tạo phiên thao tác. Bài nháp vẫn có thể sửa trong lúc Agent chạy.');
@@ -804,6 +823,7 @@ async function runWritingAgent() {
       if (!config.isConfigured && !config.localEndpoint) throw new Error('Hãy nhập API key và model ID trong Settings.');
       if (config.localEndpoint) throw new Error('Trên Android, địa chỉ loopback trỏ tới thiết bị này, không phải máy tính chạy Ollama/LM Studio.');
       const estimatedSessionCostUsd = await reserveNativeAgentSession(config, input);
+      $('#cancel-writing-agent').disabled = false;
       agentSessionMetadata = {
         provider: config.label,
         model: config.model,
@@ -843,13 +863,44 @@ async function runWritingAgent() {
     agentController = null;
     $('#run-writing-agent').disabled = false;
     $('#cancel-writing-agent').hidden = true;
+    $('#cancel-writing-agent').disabled = false;
+    agentCancelRequested = false;
+    agentSessionId = '';
   }
 }
 function cancelWritingAgent() {
-  if (agentController && agentBusy) {
-    setAgentStatus('Đang gửi yêu cầu hủy…');
+  if (!agentController || !agentBusy || agentCancelRequested) return;
+  agentCancelRequested = true;
+  $('#cancel-writing-agent').disabled = true;
+  setAgentStatus('Đang yêu cầu dừng phiên; WMR sẽ giữ lại các đề xuất đã tạo nếu có thể.');
+  if (NATIVE) {
     agentController.abort();
+    return;
   }
+  if (!agentSessionId) {
+    agentCancelRequested = false;
+    $('#cancel-writing-agent').disabled = false;
+    setAgentStatus('Chưa có mã phiên để hủy. Hãy thử lại hoặc đợi phiên kết thúc.', true);
+    return;
+  }
+  fetch('/api/agent/cancel', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    credentials: 'omit',
+    cache: 'no-store',
+    redirect: 'error',
+    body: JSON.stringify({ sessionId: agentSessionId })
+  }).then(async response => {
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || 'Không nhận được xác nhận hủy từ server.');
+    setAgentStatus('Server đã nhận yêu cầu dừng. Đang thu kết quả còn lại của phiên…');
+    addAgentActivity('Đã gửi yêu cầu hủy riêng; đang chờ kết quả một phần nếu có.', 'notice');
+  }).catch(error => {
+    agentCancelRequested = false;
+    $('#cancel-writing-agent').disabled = false;
+    setAgentStatus('Không gửi được yêu cầu hủy: ' + String(error?.message || 'lỗi kết nối') + '. Luồng hiện tại vẫn mở; bạn có thể thử lại.', true);
+    addAgentActivity('Yêu cầu hủy chưa được xác nhận; luồng vẫn mở để giữ cơ hội nhận kết quả.', 'notice');
+  });
 }
 function openAgentPracticeTask(taskId) {
   const task = TASKS.find(item => item.id === taskId);
