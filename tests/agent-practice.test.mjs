@@ -64,3 +64,27 @@ test('practice summaries report attempts and feedback coverage without implying 
   assert.ok(summary.skills.some(item => item.skill === 'Cohesion' && item.attemptCount === 2));
   assert.match(summary.interpretation, /not a band score/i);
 });
+
+
+test('provider configuration notices are not counted as tutoring feedback', () => {
+  const records = normaliseAgentPracticeAttempts([
+    {
+      id: 'configuration-message',
+      taskId: 'task2-opinion',
+      skill: 'Cohesion',
+      prompt: 'Connect the reason to an example.',
+      instructions: 'Write one linking sentence.',
+      successCriteria: 'The logical link is clear.',
+      answer: 'This matters because the example supports the reason.',
+      submittedAt: '2026-10-14T12:00:00Z',
+      status: 'feedback-received',
+      feedback: 'Please configure the provider first.',
+      feedbackSource: 'configuration-message'
+    }
+  ], taskIds);
+  assert.equal(records.length, 1);
+  assert.equal(records[0].status, 'feedback-unavailable');
+  assert.equal(records[0].feedback, '');
+  assert.equal(records[0].feedbackSource, 'configuration-message');
+  assert.equal(buildAgentPracticeSummary(records, 'task2-opinion').feedbackCount, 0);
+});
