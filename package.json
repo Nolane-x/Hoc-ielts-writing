@@ -1,0 +1,39 @@
+{
+  "name": "wmr-writing-mentor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first IELTS Writing mentor with evidence-grounded assessment and optional multi-provider AI.",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "start": "node server/index.mjs",
+    "test": "node --test",
+    "check": "node --check server/index.mjs && node --check web/app.mjs && node --test",
+    "build:web": "vite build",
+    "dist:desktop": "npm run build:web && electron-builder",
+    "mobile:sync": "npm run build:web && cap sync android"
+  },
+  "engines": { "node": ">=22.0.0" },
+  "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3",
+    "electron": "39.2.7",
+    "electron-builder": "26.0.12",
+    "vite": "7.1.9"
+  },
+  "build": {
+    "appId": "org.nolane.wmrwritingmentor",
+    "productName": "WMR Writing Mentor",
+    "asar": true,
+    "files": ["dist/**/*", "server/**/*", "web/**/*", "desktop/**/*", "package.json"],
+    "directories": { "output": "release" },
+    "win": { "target": ["nsis", "portable"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
+    "linux": { "target": ["AppImage", "deb"], "category": "Education" }
+  }
+}
