@@ -47,7 +47,7 @@ export function buildAssessmentMessages(input = {}) {
     criterion.id + ' — ' + criterion.title,
     'Scope: ' + criterion.overview,
     ...criterion.bands.map(band => 'Band ' + band.score + ': ' + band.signal + ' Risk signal: ' + band.risk)
-  ].join('\\n')).join('\\n\\n');
+  ].join('\n')).join('\n\n');
   const taskSpecificRule = type === 'task2'
     ? 'For Task 2, assess whether the position answers every part of the prompt and whether main ideas are explained and supported.'
     : type === 'task1-general'
