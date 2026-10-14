@@ -27,7 +27,7 @@ const KEY_NAME = 'provider-api-key';
 const DEFAULT_SETTINGS = {
   provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: '',
   inputUsdPerMillion: 0, outputUsdPerMillion: 0, externalAllowed: false,
-  dailyBudgetUsd: 0.5, maxDailyCalls: 8, maxCallUsd: 0.1, maxOutputTokens: 1800
+  dailyBudgetUsd: 0.5, maxDailyCalls: 8, maxCallUsd: 0.1, maxAgentSessionUsd: 0.5, maxOutputTokens: 1800
 };
 let settings = { ...DEFAULT_SETTINGS };
 let activeKey = '';
@@ -221,7 +221,7 @@ async function reserveNativeAgentSession(config, input) {
   if (!usageHealthy) throw new Error('Sổ ngân sách không đáng tin cậy.');
   const ledger = getNativeUsage();
   if (ledger.calls >= settings.maxDailyCalls) throw new Error('Đã đạt giới hạn số phiên AI/ngày.');
-  if (!config.localEndpoint && cost > settings.maxCallUsd) throw new Error('Ước tính chi phí cả phiên Agent vượt giới hạn mỗi lượt. Hãy điều chỉnh hạn mức trong Settings hoặc chọn model rẻ hơn.');
+  if (!config.localEndpoint && cost > settings.maxAgentSessionUsd) throw new Error('Ước tính chi phí phiên Agent vượt hạn mức phiên. Hãy điều chỉnh ngân sách phiên trong Settings hoặc chọn model rẻ hơn.');
   if (ledger.estimatedUsd + cost > settings.dailyBudgetUsd) throw new Error('Ước tính chi phí phiên Agent vượt ngân sách ngày.');
   ledger.calls += 1;
   ledger.estimatedUsd += cost;
@@ -464,6 +464,7 @@ function fillSettingsForm() {
   $('#external-allowed').checked = Boolean(settings.externalAllowed);
   $('#daily-budget').value = settings.dailyBudgetUsd;
   $('#max-call-budget').value = settings.maxCallUsd;
+  $('#max-agent-session-budget').value = settings.maxAgentSessionUsd;
   $('#daily-calls').value = settings.maxDailyCalls;
   $('#output-tokens').value = settings.maxOutputTokens;
   $('#budget-status').textContent = NATIVE ? 'Ngân sách cục bộ: ' + (getNativeUsageSafe().calls || 0) + ' lượt đã dùng hôm nay. Giá vẫn là ước tính.' : 'Ngân sách và số lượt được ghi trên máy cục bộ; provider từ xa bị khóa nếu không xác minh được sổ.';
@@ -504,6 +505,7 @@ function formSettings() {
     externalAllowed: $('#external-allowed').checked,
     dailyBudgetUsd: Number($('#daily-budget').value),
     maxCallUsd: Number($('#max-call-budget').value),
+    maxAgentSessionUsd: Number($('#max-agent-session-budget').value),
     maxDailyCalls: Number($('#daily-calls').value),
     maxOutputTokens: Number($('#output-tokens').value)
   };
