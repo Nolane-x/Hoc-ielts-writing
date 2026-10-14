@@ -98,3 +98,10 @@ This is not a third-party security certification. Live provider billing/interope
 ## Scoring validation toolkit
 
 The local benchmark evaluator reports criterion-specific and one-task composite-band MAE, RMSE, bias, exact and adjacent-band rates, severe-error rate, quadratic weighted kappa, exploratory bootstrap intervals, coverage, human-rater agreement, repeated-run consistency, and exact quote integrity. Run it against permissioned, de-identified essays and independently adjudicated ratings; see docs/SCORING-VALIDATION.md. The evaluator makes no network calls and its report omits essay text. The included synthetic unit tests are not a scoring benchmark, and this tool does not claim that WMR is calibrated.
+
+
+## Real-time Writing Agent workspace
+
+The Writing Agent can inspect draft structure, locate exact phrases, propose anchored sentence edits, create a learner-completable outline, generate a micro-exercise, define a measurable practice goal and focus an exact quote. Its multi-step sessions stream progress and tool actions into the workspace. You can apply individual changes or a set of non-overlapping changes, save agent-created learning materials locally, and restore prior draft revisions.
+
+The model has no shell, arbitrary file access, environment-variable or API-key access, browser automation, or general-purpose network tool. Agency is broad inside the writing task but remains bounded to named workspace actions; the AI cannot silently overwrite the editor. Remote execution still requires the existing provider opt-in and a budget estimate for multi-turn use. See docs/WRITING-AGENT.md for the tool protocol, data flow, cancellation behaviour and production limitations.
