@@ -69,6 +69,7 @@ jobs:
       - run: npm run build:web
       - run: npx cap add android
       - run: npx cap sync android
+      - run: node scripts/sync-android-version.mjs
       - name: Build APK and Android App Bundle
         run: |
           cd android

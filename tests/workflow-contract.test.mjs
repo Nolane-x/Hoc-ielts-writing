@@ -44,3 +44,11 @@ test('CI is read-only, uses the lockfile and blocks high-severity dependency adv
   assert.doesNotMatch(ciWorkflow, /git push origin/);
   assert.doesNotMatch(ciWorkflow, /One-time lockfile version synchronization/);
 });
+
+
+test('Android release packages derive versionName and versionCode from package metadata', () => {
+  const syncStep = releaseWorkflow.indexOf('node scripts/sync-android-version.mjs');
+  const buildStep = releaseWorkflow.indexOf('- name: Build APK and Android App Bundle');
+  assert.ok(syncStep >= 0, 'missing generated Android version alignment step');
+  assert.ok(buildStep > syncStep, 'Android version alignment must occur before Gradle builds');
+});
