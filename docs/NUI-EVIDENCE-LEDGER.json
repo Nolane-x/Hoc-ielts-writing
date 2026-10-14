@@ -7,57 +7,110 @@
   "evidence": [
     {
       "claim": "Application has a responsive semantic shell and task-priority hierarchy.",
-      "source": ["web/index.html", "web/styles.css", "web/app.mjs"],
+      "source": [
+        "web/index.html",
+        "web/styles.css",
+        "web/app.mjs"
+      ],
       "verification": "Source contains responsive layouts, visible focus indicators, reduced-motion and forced-colors handling, grouped task selection, task focus metadata and local Mentor history.",
       "status": "source-reviewed"
     },
     {
       "claim": "Offline mode does not request an AI-generated band.",
-      "source": ["web/assessment.mjs", "web/app.mjs", "server/index.mjs", "tests/assessment.test.mjs", "tests/local-server.integration.test.mjs"],
+      "source": [
+        "web/assessment.mjs",
+        "web/app.mjs",
+        "server/index.mjs",
+        "tests/assessment.test.mjs",
+        "tests/local-server.integration.test.mjs"
+      ],
       "verification": "Unit and HTTP integration tests verify no band in local preflight and opt-out provider behavior.",
       "status": "automated-test"
     },
     {
       "claim": "Provider adapter supports three native API shapes with response bounds.",
-      "source": ["web/providers.mjs", "tests/providers.test.mjs", "tests/provider-adapters.test.mjs"],
+      "source": [
+        "web/providers.mjs",
+        "tests/providers.test.mjs",
+        "tests/provider-adapters.test.mjs"
+      ],
       "verification": "Mock tests cover OpenAI-compatible, Anthropic Messages, Gemini generateContent, request deadlines through body reading and oversized responses.",
       "status": "automated-test"
     },
     {
       "claim": "Desktop settings never persist API key plaintext and local writes reject cross-origin requests.",
-      "source": ["server/index.mjs", "tests/local-server.integration.test.mjs"],
+      "source": [
+        "server/index.mjs",
+        "tests/local-server.integration.test.mjs"
+      ],
       "verification": "HTTP integration tests check settings responses/files, Host/Origin policy and local-only opt-out.",
       "status": "automated-test"
     },
     {
       "claim": "Desktop utility process receives a constrained environment and navigation only remains on the explicit local origin.",
-      "source": ["desktop/main.cjs", "desktop/runtime-policy.cjs", "tests/desktop-runtime-policy.test.mjs"],
+      "source": [
+        "desktop/main.cjs",
+        "desktop/runtime-policy.cjs",
+        "tests/desktop-runtime-policy.test.mjs"
+      ],
       "verification": "Tests verify sensitive environment variables are not inherited and navigation rejects untrusted origins.",
       "status": "automated-test"
     },
     {
       "claim": "Backup import rejects malformed or out-of-scope data and rechecks source evidence.",
-      "source": ["web/local-data.mjs", "web/app.mjs", "tests/local-data.test.mjs"],
+      "source": [
+        "web/local-data.mjs",
+        "web/app.mjs",
+        "tests/local-data.test.mjs"
+      ],
       "verification": "Tests check schema and size bounds, known task IDs, bounded conversation roles and case-sensitive quote validation; credentials/settings are not imported.",
       "status": "automated-test"
     },
     {
       "claim": "Task bank has broad practice coverage and stable learning metadata.",
-      "source": ["web/tasks.mjs", "tests/tasks.test.mjs"],
+      "source": [
+        "web/tasks.mjs",
+        "tests/tasks.test.mjs"
+      ],
       "verification": "Tests assert task ID uniqueness, valid task types, prompt/goal/tips, difficulty, time and skill focus.",
       "status": "automated-test"
     },
     {
       "claim": "Production-built UI has no remote script or stylesheet URL.",
-      "source": [".github/workflows/ci.yml"],
+      "source": [
+        ".github/workflows/ci.yml"
+      ],
       "verification": "CI inspects dist/index.html after build.",
       "status": "CI-gated"
     },
     {
       "claim": "Dependency installs are lockfile-based and high-severity advisory checks run in CI.",
-      "source": ["package.json", "package-lock.json", ".github/workflows/ci.yml"],
+      "source": [
+        "package.json",
+        "package-lock.json",
+        ".github/workflows/ci.yml"
+      ],
       "verification": "CI uses npm ci and npm audit --audit-level=high.",
       "status": "CI-gated"
+    },
+    {
+      "claim": "Assessment history is bound to the actual submitted snapshot even while the UI might otherwise be edited.",
+      "source": [
+        "web/app.mjs",
+        "web/learning-records.mjs",
+        "tests/learning-records.test.mjs"
+      ],
+      "verification": "The submission flow locks the editor/task selector during the request and record factory tests preserve the submitted task/prompt/essay rather than later UI state.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Local HTTP endpoints reject unsupported body types, oversized request bodies and encoded traversal paths.",
+      "source": [
+        "server/index.mjs",
+        "tests/local-server.integration.test.mjs"
+      ],
+      "verification": "Integration tests assert 415 for unsupported media types, 413 for a request over the configured cap and 403 for an encoded traversal path.",
+      "status": "automated-test"
     }
   ],
   "not_yet_verified": [
