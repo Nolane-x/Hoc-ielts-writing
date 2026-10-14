@@ -5,6 +5,7 @@ import { buildStudyPlan } from './study-plan.mjs';
 import { getRubricGuide } from './rubric-guide.mjs';
 import { buildRevisionComparison } from './revision-analysis.mjs';
 import { buildEssayAnnotations, renderAnnotatedEssayText } from './essay-annotations.mjs';
+import { buildRecurringErrorPatterns, learnerCriterionSummary, eligibleAIRecords } from './error-patterns.mjs';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
@@ -326,7 +327,7 @@ function renderReport(report, loading = false) {
     '<p>' + escapeHtml(item.explanation || '') + '</p>' +
     (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
     (item.teachingHint ? '<p><strong>Điều cần hiểu:</strong> ' + escapeHtml(item.teachingHint) + '</p>' : '') +
-    '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '">✓ Đã xử lý</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || item.explanation || '') + '">Sao chép gợi ý</button></div></article>').join('') : '<p class="history-empty">' + (report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
+    '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || item.explanation || '') + '">Sao chép gợi ý</button></div></article>').join('') : '<p class="history-empty">' + (report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
   const strengthsHtml = strengths.length ? strengths.map(item => '<div class="strength-item">' + (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') + '<p>' + escapeHtml(item.why || '') + '</p></div>').join('') : '<p class="history-empty">Điểm mạnh sẽ xuất hiện khi AI đưa ra nhận xét cụ thể có trích dẫn khớp bài gốc.</p>';
   const prioritiesHtml = priorities.length ? priorities.map((item, index) => '<div class="priority-item"><span class="priority-number">' + (index + 1) + '</span><div><strong>' + escapeHtml(item.title || 'Bước tiếp theo') + '</strong><p>' + escapeHtml(item.action || '') + '</p></div></div>').join('') : '<p class="history-empty">Chưa đủ dữ liệu để chọn ưu tiên.</p>';
   container.innerHTML = (loading ? '<div class="report-loading" role="status"><span></span>Đang kiểm tra bài viết và tạo báo cáo. Kết quả cục bộ hiển thị trước; chưa có band AI cho tới khi đánh giá hoàn tất.</div>' : '') +
@@ -364,31 +365,57 @@ function renderRubricGuide() {
 }
 function renderLearning() {
   const skills = [
-    { title: 'Task Response', tag: 'Đáp ứng đề', description: 'Trả lời đủ yêu cầu, làm rõ quan điểm và phát triển luận điểm.', test: ['taskResponse','task-response'] },
-    { title: 'Coherence & Cohesion', tag: 'Mạch lạc', description: 'Sắp xếp ý, liên kết logic và giữ cho đoạn văn có mục tiêu rõ ràng.', test: ['coherence'] },
-    { title: 'Lexical Resource', tag: 'Từ vựng', description: 'Chọn từ chính xác, sử dụng collocation tự nhiên và tránh lặp ý.', test: ['lexical'] },
-    { title: 'Grammar', tag: 'Ngữ pháp', description: 'Nâng cao sự kiểm soát cấu trúc câu, sự chính xác và tính dễ hiểu.', test: ['grammar'] },
-    { title: 'Independent revision', tag: 'Tự sửa lỗi', description: 'Học từ phản hồi và sửa được lỗi trong một ngữ cảnh mới.', test: [] },
-    { title: 'Transfer practice', tag: 'Chuyển giao', description: 'Vận dụng kỹ năng vào một đề chưa từng luyện trước đây.', test: [] }
+    { id: 'taskAchievement', title: 'Task Achievement', tag: 'Đáp ứng đề · Task 1', description: 'Chọn đúng thông tin chính cho Academic Task 1 hoặc bao phủ mục đích và các bullet của thư.', test: ['taskAchievement'] },
+    { id: 'taskResponse', title: 'Task Response', tag: 'Trả lời đề · Task 2', description: 'Trả lời mọi phần câu hỏi, giữ lập trường rõ và phát triển ý bằng giải thích, ví dụ.', test: ['taskResponse'] },
+    { id: 'coherence', title: 'Coherence & Cohesion', tag: 'Mạch lạc', description: 'Sắp xếp ý theo logic, giữ chức năng đoạn rõ ràng và liên kết tự nhiên.', test: ['coherence'] },
+    { id: 'lexical', title: 'Lexical Resource', tag: 'Từ vựng', description: 'Chọn từ chính xác, dùng collocation tự nhiên và tránh đổi từ chỉ để né lặp.', test: ['lexical'] },
+    { id: 'grammar', title: 'Grammatical Range & Accuracy', tag: 'Ngữ pháp', description: 'Cải thiện độ chính xác và kiểm soát cấu trúc trước khi tăng độ phức tạp.', test: ['grammar'] },
+    { id: 'revision', title: 'Independent revision', tag: 'Tự sửa lỗi', description: 'Học từ phản hồi, sửa lỗi rồi kiểm tra lại bằng một lượt viết mới.', test: [] },
+    { id: 'transfer', title: 'Transfer practice', tag: 'Chuyển giao', description: 'Vận dụng kỹ năng vào một đề khác thay vì chỉ ghi nhớ bản sửa.', test: [] }
   ];
   const allIssues = history.flatMap(record => Array.isArray(record.report?.issues) ? record.report.issues : []);
-  const criteriaScores = CRITERIA.map(criterion => {
-    const seen = history.flatMap(record => record.report?.criteria || []).filter(x => x.id === criterion.id && Number.isFinite(x.score));
-    return { id: criterion.id, count: seen.length, mean: seen.length ? seen.reduce((sum, x) => sum + x.score, 0) / seen.length : null };
-  });
+  const criterionScores = learnerCriterionSummary(history);
+  const scoreById = new Map(criterionScores.map(item => [item.id, item]));
+  const recurring = buildRecurringErrorPatterns(history);
+  const aiRecords = eligibleAIRecords(history);
+
   $('#learn-metrics').innerHTML = [
-    ['Bài đã đánh giá', history.length, 'Dữ liệu trên thiết bị'],
-    ['Vấn đề được ghi nhận', allIssues.length, 'Tính cả mục chưa xác minh sâu'],
-    ['Tiêu chí có dữ liệu AI', criteriaScores.filter(x => x.count > 0).length + '/4', 'Không phải xác nhận thành thạo']
+    ['Bài đã đánh giá', history.length, 'Lịch sử cục bộ trên thiết bị'],
+    ['Nhóm lỗi tái diễn', recurring.patterns.length, 'Chỉ tính nhóm xuất hiện trong nhiều bài AI khác nhau'],
+    ['Tiêu chí có điểm AI', criterionScores.filter(item => item.count > 0).length + '/5', 'Tách Task Achievement và Task Response']
   ].map(x => '<div class="metric-card"><span>' + x[0] + '</span><strong>' + x[1] + '</strong><small>' + x[2] + '</small></div>').join('');
+
   const plan = buildStudyPlan(history, TASKS);
   $('#study-plan').innerHTML = '<section class="panel study-plan-panel"><div class="panel-heading"><div><span class="section-kicker">NEXT BEST SESSION</span><h2>' + (plan.adaptive ? 'Luyện theo điểm cần cải thiện' : 'Lộ trình khởi động') + '</h2></div><span class="plan-badge">' + (plan.adaptive ? 'Dựa trên lịch sử AI' : 'Bước đầu tiên') + '</span></div><p class="study-plan-basis">' + escapeHtml(plan.basis) + '</p><div class="study-plan-steps">' + plan.steps.map((step, index) => '<article class="study-step"><div class="study-step-index">' + (index + 1) + '</div><div class="study-step-body"><div class="study-step-meta"><span>' + escapeHtml(step.criterion) + '</span><span>~' + step.minutes + ' phút</span><span>' + escapeHtml(step.difficulty) + '</span></div><h3>' + escapeHtml(step.title) + '</h3><p class="study-step-focus">' + escapeHtml(step.focus) + '</p><p class="study-step-success"><strong>Đích đến:</strong> ' + escapeHtml(step.success) + '</p><p class="study-step-basis">' + escapeHtml(step.basis) + '</p><button class="button button-secondary" type="button" data-start-task="' + escapeHtml(step.taskId) + '">Mở đề luyện này →</button></div></article>').join('') + '</div></section>';
+
+  const recurrenceHost = $('#recurring-errors');
+  if (recurrenceHost) {
+    const patternCards = recurring.patterns.slice(0, 6).map(pattern =>
+      '<article class="recurring-error-card"><div class="recurring-error-head"><span class="severity ' + escapeHtml(pattern.severity) + '">' + escapeHtml(pattern.severity) + '</span><span class="count-badge">' + escapeHtml(pattern.categoryLabel) + '</span></div>' +
+      '<div class="recurrence-count"><strong>' + pattern.assessmentCount + '</strong><span>bài khác nhau</span></div>' +
+      '<h3>' + escapeHtml(pattern.latestTitle || pattern.criterionLabel) + '</h3>' +
+      '<p class="recurrence-meta">Tiêu chí: ' + escapeHtml(pattern.criterionLabel) + ' · Gần nhất: ' + escapeHtml(pattern.latestTaskTitle || 'Bài viết') + '</p>' +
+      (pattern.latestExplanation ? '<p>' + escapeHtml(pattern.latestExplanation) + '</p>' : '') +
+      '<div class="recurrence-action"><strong>Bài tập đề xuất</strong><p>' + escapeHtml(pattern.suggestedAction) + '</p></div>' +
+      '<button class="button button-secondary" type="button" data-start-task="' + escapeHtml(pattern.practiceTaskId) + '">Luyện đúng kỹ năng này →</button></article>'
+    ).join('');
+    recurrenceHost.innerHTML = '<div class="panel-heading"><div><span class="section-kicker">RECURRING ERROR INTELLIGENCE</span><h2>Nhóm lỗi xuất hiện qua nhiều bài</h2><p>Chỉ tổng hợp báo cáo AI đủ độ dài, mỗi bản essay chỉ tính một lần cho mỗi nhóm lỗi.</p></div><span class="count-badge">' + recurring.patterns.length + ' nhóm</span></div>' +
+      '<p class="recurrence-basis">' + escapeHtml(recurring.basis) + ' Có ' + aiRecords.length + ' lượt chấm AI đủ điều kiện trong lịch sử gần đây.</p>' +
+      (patternCards ? '<div class="recurring-error-grid">' + patternCards + '</div>' : '<div class="recurrence-empty"><strong>Chưa đủ bằng chứng về lỗi lặp lại</strong><p>WMR sẽ chỉ nêu nhóm lỗi sau khi AI ghi nhận cùng nhóm trong ít nhất hai bài khác nhau. Đây không phải kết luận từ kiểm tra cục bộ hay một bài duy nhất.</p></div>');
+  }
+
   $('#learn-grid').innerHTML = skills.map(skill => {
-    const records = history.flatMap(record => record.report?.criteria || []).filter(item => skill.test.includes(item.id) && Number.isFinite(item.score));
-    const mean = records.length ? records.reduce((sum, item) => sum + item.score, 0) / records.length : null;
+    const summary = skill.test.length ? scoreById.get(skill.id) : null;
+    const mean = summary?.mean ?? null;
+    const count = summary?.count ?? 0;
     const percent = mean === null ? 0 : Math.max(0, Math.min(100, mean / 9 * 100));
-    return '<article class="skill-card"><div class="skill-top"><h3>' + escapeHtml(skill.title) + '</h3><span class="skill-tag">' + escapeHtml(skill.tag) + '</span></div><p>' + escapeHtml(skill.description) + '</p><div class="skill-progress"><span style="width:' + percent + '%"></span></div><div class="skill-bottom"><span>' + (mean === null ? 'Chưa đủ bằng chứng' : 'Trung bình các lần ước lượng: ' + mean.toFixed(1)) + '</span><span>' + records.length + ' kết quả</span></div></article>';
+    const valueLabel = mean === null
+      ? (skill.test.length ? 'Chưa đủ bằng chứng AI' : 'Theo dõi qua bài sửa và đề mới')
+      : 'Trung bình các lần ước lượng: ' + mean.toFixed(1) + '/9';
+    const resultLabel = skill.test.length ? count + ' kết quả AI' : 'Chưa có chỉ số thành thạo';
+    return '<article class="skill-card"><div class="skill-top"><h3>' + escapeHtml(skill.title) + '</h3><span class="skill-tag">' + escapeHtml(skill.tag) + '</span></div><p>' + escapeHtml(skill.description) + '</p><div class="skill-progress"><span style="width:' + percent + '%"></span></div><div class="skill-bottom"><span>' + escapeHtml(valueLabel) + '</span><span>' + escapeHtml(resultLabel) + '</span></div></article>';
   }).join('');
+
   $('#history-list').innerHTML = history.length ? history.slice(0, 12).map(record => '<div class="history-row"><div class="history-icon">▥</div><div><strong>' + escapeHtml(record.taskTitle || 'Bài viết') + '</strong><small>' + escapeHtml(new Date(record.at).toLocaleString()) + ' · ' + (record.source === 'ai' ? 'AI formative' : 'Local check') + '</small></div><span class="history-score">' + (Number.isFinite(record.report?.estimatedTaskBand) ? record.report.estimatedTaskBand.toFixed(1) : '—') + '</span><button class="small-link" type="button" data-open-history="' + escapeHtml(record.id) + '">Mở ↗</button></div>').join('') : '<div class="history-empty">Chưa có bài nào được đánh giá. Hãy nộp bài đầu tiên để bắt đầu hồ sơ kỹ năng.</div>';
 }
 function renderProviders() {
@@ -789,7 +816,7 @@ function attachEvents() {
     }
   });
   $('#rubric-guide').addEventListener('change', () => renderRubricGuide());
-  $('#study-plan').addEventListener('click', event => {
+  const startRecommendedTask = event => {
     const button = event.target.closest('[data-start-task]');
     if (!button) return;
     const task = TASKS.find(item => item.id === button.dataset.startTask);
@@ -798,8 +825,10 @@ function attachEvents() {
     loadCurrentTask();
     showPage('workspace');
     $('#essay-editor').focus();
-    setToast('Đã mở đề luyện theo lộ trình: ' + task.title);
-  });
+    setToast('Đã mở đề luyện: ' + task.title);
+  };
+  $('#study-plan').addEventListener('click', startRecommendedTask);
+  $('#recurring-errors').addEventListener('click', startRecommendedTask);
   $('#history-list').addEventListener('click', event => {
     const button = event.target.closest('[data-open-history]');
     if (!button) return;
