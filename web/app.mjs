@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { parseLocalBackup } from './local-data.mjs';
+import { createAgentPracticeAttempt, normaliseAgentPracticeAttempts, buildAgentPracticeSummary } from './agent-practice.mjs';
 import { createLearningRecord } from './learning-records.mjs';
 import { buildStudyPlan } from './study-plan.mjs';
 import { getRubricGuide } from './rubric-guide.mjs';
@@ -22,6 +23,7 @@ const SETTINGS_KEY = 'wmr-settings-v1';
 const THEME_KEY = 'wmr-theme-v1';
 const USAGE_KEY = 'wmr-usage-v1';
 const AGENT_ARTIFACTS_KEY = 'wmr-agent-artifacts-v1';
+const AGENT_PRACTICE_ATTEMPTS_KEY = 'wmr-agent-practice-attempts-v1';
 const AGENT_REVISION_PREFIX = 'wmr-agent-revisions-v1:';
 const KEY_NAME = 'provider-api-key';
 const DEFAULT_SETTINGS = {
@@ -135,6 +137,7 @@ function loadCurrentTask() {
   renderRubricGuide();
   renderAgentRevisions();
   renderSavedAgentArtifacts();
+  renderAgentPracticeJournal();
 }
 function renderHistoryCount() { $('#draft-count').textContent = String(history.length); }
 function loadHistory() {
@@ -448,6 +451,7 @@ function renderLearning() {
   }).join('');
 
   $('#history-list').innerHTML = history.length ? history.slice(0, 12).map(record => '<div class="history-row"><div class="history-icon">▥</div><div><strong>' + escapeHtml(record.taskTitle || 'Bài viết') + '</strong><small>' + escapeHtml(new Date(record.at).toLocaleString()) + ' · ' + (record.source === 'ai' ? 'AI formative' : 'Local check') + '</small></div><span class="history-score">' + (Number.isFinite(record.report?.estimatedTaskBand) ? record.report.estimatedTaskBand.toFixed(1) : '—') + '</span><button class="small-link" type="button" data-open-history="' + escapeHtml(record.id) + '">Mở ↗</button></div>').join('') : '<div class="history-empty">Chưa có bài nào được đánh giá. Hãy nộp bài đầu tiên để bắt đầu hồ sơ kỹ năng.</div>';
+  renderAgentPracticeOverview();
 }
 function renderProviders() {
   $('#provider-select').innerHTML = Object.entries(PROVIDER_PRESETS).map(([id, p]) => '<option value="' + escapeHtml(id) + '">' + escapeHtml(p.label) + '</option>').join('');
@@ -625,6 +629,79 @@ function agentArtifactBody(item) {
   if (item.kind === 'focus') return ['Trích dẫn: ' + (p.quote || ''), 'Lý do: ' + (p.reason || '')].join('\n');
   return '';
 }
+
+function agentPracticeAttempts() {
+  return normaliseAgentPracticeAttempts(safeParse(localStorage.getItem(AGENT_PRACTICE_ATTEMPTS_KEY), []), TASKS.map(task => task.id));
+}
+function persistAgentPracticeAttempts(records) {
+  const clean = normaliseAgentPracticeAttempts(records, TASKS.map(task => task.id));
+  localStorage.setItem(AGENT_PRACTICE_ATTEMPTS_KEY, JSON.stringify(clean.slice(0, 100)));
+  return clean.slice(0, 100);
+}
+function renderAgentPracticeJournal() {
+  const host = $('#agent-practice-journal');
+  if (!host || !currentTask) return;
+  const records = agentPracticeAttempts().filter(item => item.taskId === currentTask.id).slice(0, 10);
+  const summary = buildAgentPracticeSummary(agentPracticeAttempts(), currentTask.id);
+  const skillSummary = summary.skills.length
+    ? '<div class="agent-practice-skill-summary">' + summary.skills.slice(0, 4).map(item =>
+        '<span>' + escapeHtml(item.skill) + ' · ' + item.attemptCount + ' lần</span>'
+      ).join('') + '</div>'
+    : '';
+  if (!records.length) {
+    host.innerHTML = '<div class="agent-empty-state">Chưa có bài luyện nào được ghi lại cho đề này. Khi bạn trả lời một bài luyện do Agent tạo, WMR sẽ lưu câu trả lời và phản hồi trên thiết bị.</div>';
+    return;
+  }
+  host.innerHTML = '<div class="agent-journal-summary"><strong>' + summary.attemptCount + ' lượt luyện</strong><span>' + summary.feedbackCount + ' lượt đã có phản hồi</span><p>Đây là nhật ký luyện tập, không phải band hay bằng chứng đã thành thạo.</p></div>' +
+    skillSummary +
+    records.map(item => {
+      const statusLabel = item.status === 'feedback-received' ? 'Đã nhận phản hồi' : item.status === 'feedback-unavailable' ? 'Chưa nhận được phản hồi' : 'Đang chờ phản hồi';
+      const sourceLabel = item.feedbackSource === 'ai-provider' ? 'AI provider' : item.feedbackSource === 'local-guide' ? 'Hướng dẫn cục bộ' : item.feedbackSource === 'configuration-message' ? 'Thông báo cấu hình provider' : '';
+      return '<article class="agent-practice-attempt"><div class="agent-practice-attempt-heading"><div><span class="agent-kind-label">' + escapeHtml(item.skill) + '</span><strong>' + escapeHtml(statusLabel) + '</strong><small>' +
+        escapeHtml(Number.isFinite(Date.parse(item.submittedAt)) ? new Date(item.submittedAt).toLocaleString() : 'Thời gian chưa rõ') + (sourceLabel ? ' · ' + escapeHtml(sourceLabel) : '') +
+        '</small></div><button class="quiet-button" type="button" data-agent-attempt-delete="' + escapeHtml(item.id) + '">Xóa</button></div><details><summary>Xem câu trả lời và phản hồi</summary><div class="agent-attempt-content"><strong>Bài luyện</strong><p>' + escapeHtml(item.prompt) +
+        '</p><strong>Câu trả lời của bạn</strong><pre>' + escapeHtml(item.answer) + '</pre>' + (item.feedback ? '<strong>Phản hồi</strong><p>' + escapeHtml(item.feedback) + '</p>' : '<p>Phản hồi chưa có. Bạn có thể làm lại bài luyện ở phiên Agent tiếp theo.</p>') +
+        '</div></details></article>';
+    }).join('');
+}
+function deleteAgentPracticeAttempt(id) {
+  const records = agentPracticeAttempts();
+  const item = records.find(record => record.id === id && record.taskId === currentTask?.id);
+  if (!item || !confirm('Xóa câu trả lời và phản hồi luyện tập này khỏi thiết bị?')) return;
+  try {
+    persistAgentPracticeAttempts(records.filter(record => record.id !== id));
+    renderAgentPracticeJournal();
+    setToast('Đã xóa lượt luyện khỏi nhật ký cục bộ.');
+  } catch {
+    setToast('Không thể cập nhật nhật ký do bộ nhớ cục bộ không khả dụng.');
+  }
+}
+
+function renderAgentPracticeOverview() {
+  const host = $('#agent-practice-overview');
+  if (!host) return;
+  const attempts = agentPracticeAttempts().sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt));
+  const summary = buildAgentPracticeSummary(attempts);
+  if (!attempts.length) {
+    host.innerHTML = '<div class="panel-heading"><div><span class="section-kicker">MICRO-PRACTICE JOURNAL</span><h2>Luyện tập có thể xem lại</h2></div><span class="count-badge">Cục bộ</span></div><div class="recurrence-empty"><strong>Chưa có lượt luyện vi mô</strong><p>Khi Writing Agent tạo bài luyện, hãy tự viết câu trả lời và yêu cầu phản hồi. WMR sẽ giữ câu trả lời và trạng thái phản hồi trên thiết bị để bạn quay lại sau.</p></div>';
+    return;
+  }
+  const skillChips = summary.skills.slice(0, 6).map(item =>
+    '<span class="agent-practice-overview-chip">' + escapeHtml(item.skill) + ' · ' + item.attemptCount + ' lượt</span>'
+  ).join('');
+  const recentRows = attempts.slice(0, 5).map(item => {
+    const status = item.status === 'feedback-received' ? 'Đã có phản hồi' : item.status === 'feedback-unavailable' ? 'Phản hồi chưa khả dụng' : 'Đang chờ phản hồi';
+    return '<article class="agent-practice-overview-row"><div><strong>' + escapeHtml(item.skill) + '</strong><small>' +
+      escapeHtml(item.taskTitle || item.taskId) + ' · ' + escapeHtml(Number.isFinite(Date.parse(item.submittedAt)) ? new Date(item.submittedAt).toLocaleDateString() : '') +
+      '</small><span>' + escapeHtml(status) + '</span></div><button class="quiet-button" type="button" data-start-task="' + escapeHtml(item.taskId) + '">Mở đề →</button></article>';
+  }).join('');
+  host.innerHTML = '<div class="panel-heading"><div><span class="section-kicker">MICRO-PRACTICE JOURNAL</span><h2>Lượt luyện và phản hồi gần đây</h2><p>Câu trả lời được lưu cục bộ. Chỉ tính phản hồi thực nhận, không suy diễn mức thành thạo.</p></div><span class="count-badge">' + summary.attemptCount + ' lượt</span></div>' +
+    '<div class="agent-practice-overview-metrics"><div><strong>' + summary.attemptCount + '</strong><span>Lượt đã gửi</span></div><div><strong>' + summary.feedbackCount + '</strong><span>Lượt có phản hồi</span></div><div><strong>' + summary.awaitingFeedbackCount + '</strong><span>Đang chờ</span></div></div>' +
+    (skillChips ? '<div class="agent-practice-overview-skills">' + skillChips + '</div>' : '') +
+    '<div class="agent-practice-overview-list">' + recentRows + '</div>' +
+    '<p class="agent-practice-overview-caveat">Các con số này mô tả hoạt động luyện tập, không phải band IELTS, đánh giá chất lượng câu trả lời hay bằng chứng người học đã thành thạo.</p>';
+}
+
 function renderSavedAgentArtifacts() {
   const host = $('#agent-saved-artifacts');
   if (!host) return;
@@ -1099,20 +1176,84 @@ function deleteSavedAgentArtifact(index) {
   renderSavedAgentArtifacts();
   setToast('Đã xóa tài liệu cục bộ.');
 }
-function evaluateAgentPractice(index) {
+async function evaluateAgentPractice(index) {
   const exercise = agentResult?.exercises?.[index];
   const answer = $('[data-agent-answer="' + index + '"]')?.value.trim();
   if (!exercise || !answer) { setToast('Hãy tự viết câu trả lời trước khi yêu cầu phản hồi.'); return; }
-  $('#coach-input').value = 'Hãy phản hồi câu trả lời của tôi cho bài luyện vi mô, không viết lại toàn bộ thay tôi. Kỹ năng: ' +
-    exercise.skill + '\nCâu hỏi: ' + exercise.prompt + '\nTiêu chí thành công: ' + exercise.successCriteria + '\nCâu trả lời của tôi: ' + answer +
-    '\nNêu 1 điều đã làm tốt, 1 điểm cần cải thiện và hỏi tôi một câu tự sửa.';
-  coachRequest($('#coach-input').value);
+  if (agentBusy || coachBusy || submitting) { setToast('Hãy đợi lượt AI hiện tại hoàn tất rồi gửi bài luyện.'); return; }
+  if (currentTask?.id !== agentResultTaskId) {
+    saveDraft();
+    $('#task-select').value = agentResultTaskId;
+    loadCurrentTask();
+  }
+  const now = new Date().toISOString();
+  const attemptId = 'practice-' + Date.now().toString(36) + '-' + Math.random().toString(16).slice(2, 8);
+  let attempt;
+  try {
+    attempt = createAgentPracticeAttempt({
+      id: attemptId,
+      taskId: agentResultTaskId,
+      taskTitle: agentResultTaskTitle || currentTask.title,
+      exerciseId: exercise.id,
+      skill: exercise.skill,
+      prompt: exercise.prompt,
+      instructions: exercise.instructions,
+      successCriteria: exercise.successCriteria,
+      answer,
+      submittedAt: now,
+      status: 'awaiting-feedback',
+      feedback: '',
+      feedbackSource: 'unavailable',
+      reviewedAt: ''
+    }, TASKS.map(task => task.id));
+    persistAgentPracticeAttempts([attempt, ...agentPracticeAttempts()]);
+    renderAgentPracticeJournal();
+  } catch {
+    setToast('Chưa lưu được lượt luyện cục bộ. Hãy xuất bản sao lưu hoặc giải phóng bộ nhớ rồi thử lại.');
+    return;
+  }
+
+  const question = 'Hãy phản hồi câu trả lời của tôi cho bài luyện vi mô, không viết lại toàn bộ thay tôi. Hãy kiểm tra rõ tiêu chí thành công và phân biệt lỗi bắt buộc sửa với lựa chọn phong cách. Kỹ năng: ' +
+    exercise.skill + '\nCâu hỏi: ' + exercise.prompt + '\nCách làm: ' + exercise.instructions + '\nTiêu chí thành công: ' + exercise.successCriteria +
+    '\nCâu trả lời của tôi: ' + answer + '\nNêu 1 điều đã làm tốt, 1 điểm quan trọng cần cải thiện, đưa gợi ý chứ không viết lại toàn bộ, rồi hỏi tôi một câu tự sửa.';
+  $('#coach-input').value = question;
+  setToast('Đã lưu lượt luyện cục bộ. Đang yêu cầu phản hồi…');
+  const response = await coachRequest(question);
+  const current = agentPracticeAttempts();
+  const updated = current.map(item => {
+    if (item.id !== attemptId) return item;
+    if (response?.answer && ['ai-provider', 'local-guide'].includes(response.source)) {
+      return {
+        ...item,
+        status: 'feedback-received',
+        feedback: String(response.answer).slice(0, 3000),
+        feedbackSource: response.source,
+        reviewedAt: new Date().toISOString()
+      };
+    }
+    return {
+      ...item,
+      status: 'feedback-unavailable',
+      feedback: '',
+      feedbackSource: response?.source === 'configuration-message' ? 'configuration-message' : 'unavailable',
+      reviewedAt: ''
+    };
+  });
+  try {
+    persistAgentPracticeAttempts(updated);
+    renderAgentPracticeJournal();
+  } catch {
+    setToast('Phản hồi có thể xem trong Mentor, nhưng chưa lưu được nhật ký. Xuất bản sao lưu trước khi thử lại.');
+    return;
+  }
+  setToast(response?.answer ? 'Đã lưu câu trả lời và phản hồi vào nhật ký luyện cục bộ.' : 'Đã giữ câu trả lời; phản hồi chưa khả dụng. Bạn có thể thử lại sau.');
 }
 async function coachRequest(message) {
-  if (coachBusy || submitting || agentBusy) return;
+  if (coachBusy || submitting || agentBusy) return null;
   const question = String(message || '').trim().slice(0, 4000);
   const essay = $('#essay-editor').value;
-  if (!question) { setStatus('#coach-status', 'Nhập một câu hỏi trước.', true); return; }
+  if (!question) { setStatus('#coach-status', 'Nhập một câu hỏi trước.', true); return null; }
+  let answerSource = 'local-guide';
   coachBusy = true;
   $('#ask-coach').disabled = true;
   $('#coach-answer').hidden = false;
@@ -1128,12 +1269,14 @@ async function coachRequest(message) {
           { role: 'user', content: 'Current task: ' + currentTask.prompt + '\\nLearner asks: ' + question + '\\nCurrent draft: ' + essay.slice(0, 12000) }
         ], question.length + essay.length);
         answer = result.text;
+        answerSource = 'ai-provider';
       } else {
         const result = await postJson('/api/coach', {
           taskType: currentTask.type, taskPrompt: currentTask.prompt, essay,
           message: question, history: priorTurns
         });
         answer = result.answer || result.message || 'Chưa có phản hồi.';
+        answerSource = result.aiStatus === 'ai-complete' ? 'ai-provider' : 'configuration-message';
       }
       setStatus('#coach-status', 'Mentor đã trả lời qua provider đã cấu hình.');
     } else {
@@ -1143,10 +1286,12 @@ async function coachRequest(message) {
     coachTurns = normaliseLocalCoachTurns([...priorTurns, { role: 'user', content: question }, { role: 'assistant', content: String(answer).slice(0, 3000) }].slice(-8));
     localStorage.setItem(COACH_PREFIX + currentTask.id, JSON.stringify(coachTurns));
     renderCoachTurns();
+    return { answer: String(answer).slice(0, 3000), source: answerSource };
   } catch (error) {
     $('#coach-answer').textContent = 'Không thể hoàn tất câu hỏi AI: ' + error.message + '\\n\\nBạn vẫn có thể dùng hướng dẫn cục bộ bằng cách tắt quyền gửi provider.';
     $('#coach-answer').hidden = false;
     setStatus('#coach-status', 'Provider chưa hoàn tất request.', true);
+    return null;
   } finally {
     coachBusy = false;
     $('#ask-coach').disabled = false;
@@ -1227,7 +1372,8 @@ function exportData() {
     history,
     coachHistories,
     agentArtifacts: agentSavedArtifacts(),
-    agentRevisions
+    agentRevisions,
+    agentPracticeAttempts: agentPracticeAttempts()
   };
   downloadFile('wmr-local-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(payload, null, 2));
   setToast('Đã xuất bản sao lưu cục bộ. File không chứa API key.');
@@ -1243,7 +1389,8 @@ async function importBackupFile(file) {
     const draftCount = Object.keys(backup.drafts).length;
     const artifactCount = Array.isArray(backup.agentArtifacts) ? backup.agentArtifacts.length : 0;
     const revisionCount = Object.values(backup.agentRevisions || {}).reduce((sum, items) => sum + items.length, 0);
-    if (!confirm('Khôi phục ' + draftCount + ' bản nháp, ' + backup.history.length + ' báo cáo, ' + artifactCount + ' tài liệu Agent và ' + revisionCount + ' phiên bản? Dữ liệu cục bộ hiện có sẽ được thay thế. Provider, quyền gửi dữ liệu và API key hiện tại sẽ không thay đổi.')) return;
+    const practiceCount = Array.isArray(backup.agentPracticeAttempts) ? backup.agentPracticeAttempts.length : 0;
+    if (!confirm('Khôi phục ' + draftCount + ' bản nháp, ' + backup.history.length + ' báo cáo, ' + artifactCount + ' tài liệu Agent, ' + revisionCount + ' phiên bản và ' + practiceCount + ' lượt luyện? Dữ liệu cục bộ hiện có sẽ được thay thế. Provider, quyền gửi dữ liệu và API key hiện tại sẽ không thay đổi.')) return;
     for (const task of TASKS) {
       localStorage.setItem(DRAFT_PREFIX + task.id, backup.drafts[task.id] || '');
       const turns = backup.coachHistories[task.id] || [];
@@ -1254,6 +1401,7 @@ async function importBackupFile(file) {
       else localStorage.removeItem(agentRevisionKey(task.id));
     }
     localStorage.setItem(AGENT_ARTIFACTS_KEY, JSON.stringify(backup.agentArtifacts || []));
+    localStorage.setItem(AGENT_PRACTICE_ATTEMPTS_KEY, JSON.stringify(backup.agentPracticeAttempts || []));
     history = backup.history;
     persistHistory();
     setTheme(backup.theme);
@@ -1287,6 +1435,7 @@ async function clearLocalData() {
     localStorage.removeItem(agentRevisionKey(task.id));
   }
   localStorage.removeItem(AGENT_ARTIFACTS_KEY);
+  localStorage.removeItem(AGENT_PRACTICE_ATTEMPTS_KEY);
   localStorage.removeItem(HISTORY_KEY);
   if (NATIVE) localStorage.removeItem(USAGE_KEY);
   history = [];
@@ -1304,7 +1453,8 @@ async function clearLocalData() {
   renderReport(null);
   renderLearning();
   renderSavedAgentArtifacts();
-  setToast('Đã xóa bản nháp, hội thoại Mentor, tài liệu Agent và lịch sử cục bộ.');
+  renderAgentPracticeJournal();
+  setToast('Đã xóa bản nháp, hội thoại Mentor, tài liệu Agent, nhật ký luyện và lịch sử cục bộ.');
 }
 function attachEvents() {
   $$('[data-page]').forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
@@ -1357,6 +1507,10 @@ function attachEvents() {
   $('#agent-revision-list').addEventListener('click', event => {
     const button = event.target.closest('[data-agent-restore]');
     if (button) restoreAgentRevision(Number(button.dataset.agentRestore));
+  });
+  $('#agent-practice-journal').addEventListener('click', event => {
+    const remove = event.target.closest('[data-agent-attempt-delete]');
+    if (remove) deleteAgentPracticeAttempt(remove.dataset.agentAttemptDelete);
   });
   $('#agent-saved-artifacts').addEventListener('click', async event => {
     const copy = event.target.closest('[data-agent-artifact-copy]');
@@ -1437,6 +1591,7 @@ function attachEvents() {
   };
   $('#study-plan').addEventListener('click', startRecommendedTask);
   $('#recurring-errors').addEventListener('click', startRecommendedTask);
+  $('#agent-practice-overview').addEventListener('click', startRecommendedTask);
   $('#history-list').addEventListener('click', event => {
     const button = event.target.closest('[data-open-history]');
     if (!button) return;

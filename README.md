@@ -105,3 +105,13 @@ The local benchmark evaluator reports criterion-specific and one-task composite-
 The Writing Agent can inspect draft structure, locate exact phrases, propose anchored sentence edits, create a learner-completable outline, generate a micro-exercise, define a measurable practice goal, search the bundled practice bank for a transferable next task and focus an exact quote. Its multi-step sessions stream progress and tool actions into the workspace. You can apply individual changes or a set of non-overlapping changes, ask the agent to find an offline transfer-practice task, save agent-created learning materials locally, and restore prior draft revisions.
 
 The model has no shell, arbitrary file access, environment-variable or API-key access, browser automation, or general-purpose network tool. Agency is broad inside the writing task but remains bounded to named workspace actions; the AI cannot silently overwrite the editor. Remote execution still requires the existing provider opt-in and a budget estimate for multi-turn use. See docs/WRITING-AGENT.md for the tool protocol, data flow, cancellation behaviour and production limitations.
+
+
+## Micro-practice journal
+
+Answers to Writing Agent micro-exercises can be submitted for a tutor response and saved to a device-local practice journal. The journal stores the learner's answer, exercise criteria, and only verified tutoring feedback from a provider or the local guide; provider setup messages are not presented as pedagogical feedback. Users can inspect or delete individual attempts. The journal is included in validated local backups, and its attempt counts are not presented as band scores or proof of mastery.
+
+
+## WMR 1.6.0 — Adaptive micro-practice
+
+The Writing Agent's micro-exercises now form a persistent learning loop. Answers, exercise criteria and verified tutor feedback can be reviewed or deleted from the on-device practice journal, included in validated local backups, and summarized across tasks on the adaptive Learning page. Provider configuration notices are never treated as teaching feedback; activity counts are not represented as band scores or proof of mastery.

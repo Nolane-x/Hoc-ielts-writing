@@ -143,3 +143,20 @@ test('backup restores bounded Writing Agent artifacts and revision snapshots wit
   assert.equal(Object.hasOwn(backup, 'apiKey'), false);
   assert.equal(Object.hasOwn(backup, 'settings'), false);
 });
+
+
+test('backup normalises Writing Agent practice journal records without trusting unsupported task IDs', () => {
+  const backup = normaliseLocalBackup({
+    schemaVersion: 1,
+    drafts: {},
+    history: [],
+    agentPracticeAttempts: [
+      { id:'attempt-good', taskId:'task2-opinion', taskTitle:'Task 2 Opinion', skill:'Cohesion', prompt:'Link a reason to an example.', instructions:'Write one linking sentence.', successCriteria:'The logic is clear.', answer:'This matters because it explains the mechanism.', submittedAt:'2026-10-14T12:00:00Z', status:'feedback-received', feedback:'Explain the mechanism more specifically.', feedbackSource:'ai-provider', reviewedAt:'2026-10-14T12:05:00Z' },
+      { id:'attempt-bad-task', taskId:'not-a-task', skill:'x', prompt:'Invalid prompt', instructions:'Invalid instruction', successCriteria:'Invalid criteria', answer:'Answer.' },
+      { id:'attempt-invalid', taskId:'task2-opinion', skill:'x', prompt:'Short', instructions:'Short', successCriteria:'Short', answer:'Answer.' }
+    ]
+  }, taskIds);
+  assert.equal(backup.agentPracticeAttempts.length, 1);
+  assert.equal(backup.agentPracticeAttempts[0].feedbackSource, 'ai-provider');
+  assert.equal(backup.agentPracticeAttempts[0].status, 'feedback-received');
+});
