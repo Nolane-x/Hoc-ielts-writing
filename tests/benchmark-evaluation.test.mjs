@@ -246,3 +246,53 @@ test('bootstrap intervals are deterministic and bounded when enough scored examp
   assert.ok(metricA.confidenceIntervals.mae95CI[1] >= metricA.mae);
   assert.deepEqual(metricA.confidenceIntervals, metricB.confidenceIntervals);
 });
+
+
+test('task-band estimate is evaluated separately from four criteria and uses the app composite', () => {
+  const data = datasetFactory();
+  const report = evaluateBenchmarkDataset(data);
+  const taskBand = report.runs[0].metrics.find(item =>
+    item.taskType === 'task2' && item.split === 'held-out' && item.criterion === 'taskBand'
+  );
+  assert.equal(taskBand.n, 2);
+  assert.equal(taskBand.expected, 2);
+  assert.equal(taskBand.mae, 0);
+  assert.equal(taskBand.exactMatchRate, 1);
+  assert.equal(taskBand.excludedShortEssays, 0);
+});
+
+test('explicit WMR estimatedTaskBand takes precedence over criterion-derived fallback', () => {
+  const data = datasetFactory();
+  data.runs[0].results[0].assessment.estimatedTaskBand = 6;
+  const report = evaluateBenchmarkDataset(data);
+  const taskBand = report.runs[0].metrics.find(item => item.taskType === 'task2' && item.criterion === 'taskBand');
+  assert.equal(taskBand.n, 2);
+  assert.equal(taskBand.mae, 0.25);
+  assert.equal(taskBand.exactMatchRate, 0.5);
+});
+
+test('essays under 80 words are excluded only from the composite band metric', () => {
+  const data = datasetFactory();
+  const short = example('task2-short', 'task2', 'held-out', 'A brief draft with little evidence.', 6);
+  data.examples.push(short);
+  data.runs[0].results.push({
+    exampleId: short.id,
+    assessment: {
+      estimatedTaskBand: null,
+      criteria: [
+        { id: 'taskResponse', score: 6, evidence: [] },
+        { id: 'coherence', score: 6, evidence: [] },
+        { id: 'lexical', score: 6, evidence: [] },
+        { id: 'grammar', score: 6, evidence: [] }
+      ]
+    }
+  });
+  const report = evaluateBenchmarkDataset(data);
+  const band = report.runs[0].metrics.find(item => item.taskType === 'task2' && item.criterion === 'taskBand');
+  const taskResponse = report.runs[0].metrics.find(item => item.taskType === 'task2' && item.criterion === 'taskResponse');
+  assert.equal(band.expected, 2);
+  assert.equal(band.n, 2);
+  assert.equal(band.excludedShortEssays, 1);
+  assert.equal(taskResponse.expected, 3);
+  assert.equal(taskResponse.n, 3);
+});

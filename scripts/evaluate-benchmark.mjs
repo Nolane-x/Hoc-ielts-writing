@@ -13,6 +13,14 @@ function criteriaFor(taskType) {
     : ['taskAchievement', ...COMMON_CRITERIA];
 }
 
+function tracksFor(taskType) {
+  return [...criteriaFor(taskType), 'taskBand'];
+}
+
+function essayWordCount(essay) {
+  return String(essay || '').trim().match(/\\b[\\p{L}\\p{N}]+(?:['’-][\\p{L}\\p{N}]+)*/gu)?.length || 0;
+}
+
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -127,7 +135,20 @@ function validScoreOrMissing(value) {
   return { kind: 'valid', score: value };
 }
 
-function predictedScore(result, taskType, criterion) {
+function predictedScore(result, taskType, criterion, example) {
+  if (criterion === 'taskBand') {
+    if (!example || essayWordCount(example.essay) < 80 || !result) return { kind: 'missing' };
+    const assessment = isObject(result.assessment) ? result.assessment : result;
+    if (Object.hasOwn(assessment, 'estimatedTaskBand')) {
+      return validScoreOrMissing(assessment.estimatedTaskBand);
+    }
+    const criterionScores = criteriaFor(taskType).map(key => predictedScore(result, taskType, key, example));
+    if (criterionScores.some(item => item.kind === 'invalid')) return { kind: 'invalid' };
+    if (criterionScores.some(item => item.kind !== 'valid')) return { kind: 'missing' };
+    const composite = Math.round(mean(criterionScores.map(item => item.score)) * 2) / 2;
+    return validScoreOrMissing(composite);
+  }
+
   if (!result) return { kind: 'missing' };
   if (isObject(result.scores)) {
     const key = Object.hasOwn(result.scores, criterion)
@@ -143,6 +164,12 @@ function predictedScore(result, taskType, criterion) {
     assessment.criteria.find(entry => entry && entry.id === publicCriterionId);
   if (!item) return { kind: 'missing' };
   return validScoreOrMissing(item.score);
+}
+
+function referenceScore(example, track) {
+  if (track !== 'taskBand') return example.reference.adjudicatedScores[track];
+  const criterionScores = criteriaFor(example.taskType).map(key => example.reference.adjudicatedScores[key]);
+  return Math.round(mean(criterionScores) * 2) / 2;
 }
 
 function scoreIndex(value) {
@@ -372,22 +399,27 @@ function evaluateRun(dataset, run, exampleById, examplesByGroup) {
     const split = parts[0];
     const taskType = parts[1];
     const criterion = parts[2];
+    const eligibleExamples = criterion === 'taskBand'
+      ? examples.filter(example => essayWordCount(example.essay) >= 80)
+      : examples;
+    const excludedShortEssays = examples.length - eligibleExamples.length;
     const pairs = [];
-    for (const example of examples) {
+    for (const example of eligibleExamples) {
       const result = results.get(example.id);
-      const scored = predictedScore(result, taskType, criterion);
+      const scored = predictedScore(result, taskType, criterion, example);
       if (scored.kind === 'invalid') {
         invalidPredictions.push({ exampleId: example.id, criterion, reason: 'not_a_valid_half_band_score' });
       }
       if (scored.kind === 'valid') {
-        pairs.push({ reference: example.reference.adjudicatedScores[criterion], predicted: scored.score });
+        pairs.push({ reference: referenceScore(example, criterion), predicted: scored.score });
       }
     }
     metrics.push({
       split,
       taskType,
       criterion,
-      ...summarisePairs(pairs, examples.length, true)
+      excludedShortEssays,
+      ...summarisePairs(pairs, eligibleExamples.length, true)
     });
   }
   metrics.sort((a, b) => a.split.localeCompare(b.split) || a.taskType.localeCompare(b.taskType) || a.criterion.localeCompare(b.criterion));
@@ -415,8 +447,8 @@ function buildRepeatability(dataset, exampleById) {
   for (const run of dataset.runs) {
     for (const result of run.results) {
       const example = exampleById.get(result.exampleId);
-      for (const criterion of criteriaFor(example.taskType)) {
-        const score = predictedScore(result, example.taskType, criterion);
+      for (const criterion of tracksFor(example.taskType)) {
+        const score = predictedScore(result, example.taskType, criterion, example);
         if (score.kind !== 'valid') continue;
         const key = [run.provider, run.model, example.split, example.taskType, criterion].join('|');
         if (!cells.has(key)) cells.set(key, { provider: run.provider, model: run.model, split: example.split, taskType: example.taskType, criterion, examples: new Map() });
@@ -495,7 +527,7 @@ export function evaluateBenchmarkDataset(dataset) {
 
   const metricGroups = new Map();
   for (const example of dataset.examples) {
-    for (const criterion of criteriaFor(example.taskType)) {
+    for (const criterion of tracksFor(example.taskType)) {
       const key = [example.split, example.taskType, criterion].join('|');
       if (!metricGroups.has(key)) metricGroups.set(key, []);
       metricGroups.get(key).push(example);
