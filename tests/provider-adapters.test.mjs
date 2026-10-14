@@ -107,3 +107,22 @@ test('provider timeout covers a response body that never finishes after headers'
     assert.equal(cancelled, true);
   });
 });
+
+
+test('provider response bodies are capped even when Content-Length is missing', async () => {
+  let wasCancelled = false;
+  await withMockFetch(async () => {
+    const body = new ReadableStream({
+      start(controller) { controller.enqueue(new Uint8Array(1_000_001)); },
+      cancel() { wasCancelled = true; }
+    });
+    return new Response(body, { status: 200, headers: { 'content-type': 'application/json' } });
+  }, async () => {
+    const config = normaliseProviderConfig({ provider: 'openai', model: 'test-model', apiKey: 'test-key' });
+    await assert.rejects(
+      requestCompletion({ config, messages: [{ role: 'user', content: 'hello' }] }),
+      /provider_response_too_large/
+    );
+    assert.equal(wasCancelled, true);
+  });
+});
