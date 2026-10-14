@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "WMR Writing Mentor",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "status": "source-and-ci-verified; release build and real-device validation are separate gates",
   "contract": "docs/NUI-UI-CONTRACT.md",
   "evidence": [
@@ -196,6 +196,25 @@
         "tests/ui-contract.test.mjs"
       ],
       "verification": "Pure-function tests cover correct offsets, repeated phrases, missing and short quotes, overlapping candidates, HTML escaping, malformed inputs and UI navigation wiring.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Recurring error patterns count a category/criterion group once per normalized distinct essay and only from eligible AI-formative reports containing at least 80 words.",
+      "source": [
+        "web/error-patterns.mjs",
+        "tests/error-patterns.test.mjs"
+      ],
+      "verification": "Tests cover duplicate issues within an essay, duplicate essay submissions, Task 1 category normalization, excluded local/fallback/failed/short reports and strict half-band criterion summaries.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "The learner profile separates Task Achievement from Task Response and only uses eligible AI results, while resolved issue buttons restore persisted state.",
+      "source": [
+        "web/app.mjs",
+        "web/error-patterns.mjs",
+        "tests/ui-contract.test.mjs"
+      ],
+      "verification": "UI contract assertions verify the error-pattern module, AI-only learner profile and restored aria-pressed/resolved copy.",
       "status": "automated-test"
     }
   ],
