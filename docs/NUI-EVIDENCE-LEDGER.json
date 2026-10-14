@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "project": "WMR Writing Mentor",
+  "version": "1.0.0",
+  "status": "source-and-ci-verified; real-device validation outstanding",
+  "contract": "docs/NUI-UI-CONTRACT.md",
+  "evidence": [
+    {
+      "claim": "Application has a responsive semantic shell and task-priority hierarchy.",
+      "source": ["web/index.html", "web/styles.css"],
+      "verification": "Responsive breakpoints, focus indicators, reduced-motion and forced-colors rules exist in source.",
+      "status": "source-reviewed"
+    },
+    {
+      "claim": "Offline mode does not request an AI-generated band.",
+      "source": ["web/assessment.mjs", "web/app.mjs", "server/index.mjs"],
+      "verification": "Unit and HTTP integration tests verify no band in preflight and opt-out provider behavior.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Provider adapter supports three native API shapes.",
+      "source": ["web/providers.mjs", "tests/providers.test.mjs", "tests/provider-adapters.test.mjs"],
+      "verification": "Mocked tests cover OpenAI-compatible, Anthropic Messages and Gemini generateContent response formats.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Desktop settings never persist API key plaintext.",
+      "source": ["server/index.mjs", "tests/local-server.integration.test.mjs"],
+      "verification": "HTTP integration test checks settings response and settings file.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Production-built UI has no remote script or stylesheet URL.",
+      "source": [".github/workflows/ci.yml"],
+      "verification": "CI inspects dist/index.html after build.",
+      "status": "CI-gated"
+    }
+  ],
+  "not_yet_verified": [
+    "Visual browser screenshot review",
+    "Manual screen-reader and keyboard-only testing",
+    "Installation and launch on real Windows, Linux and Android devices",
+    "Live requests against user-configured providers",
+    "Band agreement against an independent expert-rated essay corpus",
+    "Android release signing"
+  ]
+}
