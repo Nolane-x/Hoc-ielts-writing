@@ -1,11 +1,14 @@
-# WMR Writing Mentor 1.1.0
+# WMR Writing Mentor 1.2.0
 
 WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking learners. It combines an essay editor, a guided 21-task practice bank, an optional multi-provider AI mentor, formative four-criterion feedback, private learning history and validated backup/restore.
 
-## Highlights in 1.1
+## Highlights in 1.2
 
 - **21 guided tasks** across Academic Task 1, General Training Task 1 and Task 2, with difficulty, estimated time and a focus skill. Numbers and maps created for practice are explicitly labelled synthetic data.
 - **Context-aware Mentor** with up to eight recent user/assistant turns per task. The learner can clear the local conversation. Stored conversation is treated as untrusted context, not system authority.
+- **Task-correct rubric.** Task 1 uses Task Achievement; Task 2 uses Task Response. Scores such as 7.3 are rejected rather than rounded, and essays under 80 words cannot receive an aggregate band estimate.
+- **Revision comparison.** Reports compare two different drafts for the same prompt, showing criterion movement, word count and reported issue counts while warning that model variance makes this a learning signal rather than proof.
+- **Rubric field guide.** Vietnamese, independently written summaries explain common signals, risks and practice moves for bands 5–9, with Academic Task 1, General Training Task 1 and Task 2 distinctions.
 - **Evidence-aware reports.** Provider quotes must exactly match the submitted essay; mismatched quotes are discarded. Offline preflight does not fabricate a band. All AI scores remain formative estimates, not official IELTS scores.
 - **Multi-provider AI** for OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, Groq, Together, Mistral, Ollama, LM Studio and custom OpenAI-compatible endpoints.
 - **Adaptive study plan.** After AI assessments, WMR prioritises the weakest criterion with a follow-up exercise in a different task type; if there is no valid AI criterion score, it explicitly provides a starter plan rather than inventing weaknesses.
