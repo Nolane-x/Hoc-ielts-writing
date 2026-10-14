@@ -15,7 +15,8 @@ function parseDate(value) {
 }
 
 export function normaliseAgentPracticeAttempts(input, validTaskIds) {
-  const taskIds = new Set(Array.isArray(validTaskIds) ? validTaskIds.filter(item => typeof item === 'string') : []);
+  const allowedIds = Array.isArray(validTaskIds) ? validTaskIds : validTaskIds instanceof Set ? [...validTaskIds] : [];
+  const taskIds = new Set(allowedIds.filter(item => typeof item === 'string'));
   if (!Array.isArray(input)) return [];
   return input.slice(0, MAX_ATTEMPTS).map((item, index) => {
     if (!item || typeof item !== 'object' || Array.isArray(item) || !taskIds.has(item.taskId)) return null;
