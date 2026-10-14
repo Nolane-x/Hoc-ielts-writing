@@ -94,15 +94,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - id: appmeta
+        name: Read application version
+        shell: bash
+        run: echo "version=$(node -p 'require("./package.json").version')" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
           path: release-assets
           merge-multiple: true
+      - name: Verify all platform deliverables are present
+        shell: bash
+        run: |
+          test -n "$(find release-assets -maxdepth 1 -type f -name '*.exe' -print -quit)"
+          test -n "$(find release-assets -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
+          test -n "$(find release-assets -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -s release-assets/WMR-Android-debug.apk
+          test -s release-assets/WMR-Android-unsigned.aab
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: wmr-v1.0.${{ github.run_number }}
-          name: WMR Writing Mentor v1.0.${{ github.run_number }}
+          tag_name: wmr-v${{ steps.appmeta.outputs.version }}-build.${{ github.run_number }}
+          name: WMR Writing Mentor v${{ steps.appmeta.outputs.version }} · build ${{ github.run_number }}
           prerelease: true
           generate_release_notes: true
           files: release-assets/*
