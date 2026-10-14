@@ -65,3 +65,15 @@ test('malformed inputs do not throw or manufacture ranges', () => {
   assert.equal(result.issueCount, 3);
   assert.equal(result.unavailable.length, 3);
 });
+
+
+test('duplicate issues for one unique quote do not make its source location falsely ambiguous', () => {
+  const essay = 'The evidence is clearly relevant to the main argument.';
+  const result = buildEssayAnnotations(essay, [
+    { quote: 'clearly relevant', severity: 'high' },
+    { quote: 'clearly relevant', severity: 'medium' }
+  ]);
+  assert.equal(result.spans.length, 1);
+  assert.equal(result.spans[0].quote, 'clearly relevant');
+  assert.deepEqual(result.unavailable.map(item => item.reason), ['overlap']);
+});
