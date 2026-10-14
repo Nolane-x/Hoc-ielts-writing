@@ -573,7 +573,7 @@ function agentRevisionSnapshots(taskId) {
   return Array.isArray(raw) ? raw.filter(item => item && typeof item.essay === 'string' && typeof item.id === 'string').slice(0, 5) : [];
 }
 function persistAgentRevision(taskId, essay, label) {
-  if (!taskId || typeof essay !== 'string' || !essay.trim()) return false;
+  if (!taskId || typeof essay !== 'string') return false;
   const records = agentRevisionSnapshots(taskId);
   if (records[0]?.essay === essay) return false;
   records.unshift({ id: 'revision-' + Date.now().toString(36) + '-' + Math.random().toString(16).slice(2, 8), at: new Date().toISOString(), label: String(label || 'Bản trước khi sửa').slice(0, 180), essay: essay.slice(0, 20000) });
@@ -677,14 +677,15 @@ function renderAgentResult(result) {
       practiceMatches.map(item => '<article class="agent-practice-card"><div><span class="agent-kind-label">' + escapeHtml(item.type || '') + ' · ' + escapeHtml(item.difficulty || '') + '</span><h4>' + escapeHtml(item.title || 'Đề luyện') + '</h4><p>' + escapeHtml(item.skillFocus || '') + '</p></div><p>' + escapeHtml(item.goal || '') + '</p><details><summary>Xem đề và gợi ý</summary><blockquote>' + escapeHtml(item.prompt || '') + '</blockquote>' +
       '<ul>' + (Array.isArray(item.tips) ? item.tips : []).map(tip => '<li>' + escapeHtml(tip) + '</li>').join('') + '</ul></details><button class="button button-secondary" type="button" data-agent-start-task="' + escapeHtml(item.id) + '">Mở đề này để luyện →</button></article>').join('') + '</section>'
     : '';
-  const hasArtifacts = Boolean(result.outline || exercises.length || goals.length || result.focus || practiceMatches.length);
+  const hasArtifacts = Boolean(result.outline || exercises.length || goals.length || result.focus);
+  const hasStructuredOutput = Boolean(hasArtifacts || patches.length || practiceMatches.length);
   host.innerHTML = '<section class="agent-final-message"><span class="section-kicker">AGENT SUMMARY</span><p>' + escapeHtml(result.message || 'Agent đã hoàn tất.') + '</p><small>Phiên này thuộc đề: ' + escapeHtml(agentResultTaskTitle || 'Đề hiện tại') + '</small><small>' +
     'Model calls: ' + escapeHtml(result.usage?.modelCalls ?? '—') + ' · Workspace tools: ' + escapeHtml(result.usage?.toolCalls ?? '—') + ' · ' +
     (result.safety?.liveDraftModified ? 'Có thao tác trực tiếp' : 'Bản nháp gốc không bị tự động ghi đè') + '</small></section>' +
     (focusHtml + patchesHtml + outlineHtml + exercisesHtml + goalsHtml + practiceHtml) +
     (hasArtifacts ? '<button class="button button-secondary agent-save-artifacts" type="button" data-agent-save-artifacts' + (result.savedArtifacts ? ' disabled' : '') + '>' +
       (result.savedArtifacts ? '✓ Đã lưu tài liệu vào thiết bị' : 'Lưu dàn ý, bài luyện và mục tiêu cục bộ') + '</button>' : '') +
-    (!hasArtifacts && !patches.length ? '<div class="agent-empty-state">Agent chưa tạo thao tác có cấu trúc ở phiên này. Bạn vẫn có thể hỏi tiếp với mục tiêu cụ thể hơn.</div>' : '');
+    (!hasStructuredOutput ? '<div class="agent-empty-state">Agent chưa tạo thao tác có cấu trúc ở phiên này. Bạn vẫn có thể hỏi tiếp với mục tiêu cụ thể hơn.</div>' : '');
 }
 function handleWritingAgentEvent(type, payload) {
   if (type === 'progress') {
@@ -862,7 +863,12 @@ function applyAgentPatches(indices) {
     }
   }
   if (!patches.length) return;
-  persistAgentRevision(agentResultTaskId, essay, 'Trước khi Agent áp dụng sửa đổi');
+  const revisionAlreadySaved = agentRevisionSnapshots(agentResultTaskId).some(item => item.essay === essay);
+  const snapshotSaved = persistAgentRevision(agentResultTaskId, essay, 'Trước khi Agent áp dụng sửa đổi');
+  if (!revisionAlreadySaved && !snapshotSaved) {
+    setToast('Không áp dụng sửa đổi vì WMR chưa thể lưu bản trước để hoàn tác. Hãy giải phóng bộ nhớ cục bộ hoặc xuất bản sao lưu rồi thử lại.');
+    return;
+  }
   let nextEssay = essay;
   for (const patch of [...patches].sort((a,b)=>b.start-a.start)) nextEssay = nextEssay.slice(0,patch.start) + patch.replacement + nextEssay.slice(patch.end);
   if (nextEssay.length > 20000) {
@@ -882,7 +888,14 @@ function restoreAgentRevision(index) {
   if (!target) return;
   const current = $('#essay-editor').value;
   if (current !== target.essay && !confirm('Khôi phục phiên bản này sẽ thay nội dung editor hiện tại. WMR sẽ lưu bản hiện tại để bạn có thể quay lại. Tiếp tục?')) return;
-  persistAgentRevision(currentTask.id, current, 'Trước khi khôi phục phiên bản');
+  if (current !== target.essay) {
+    const currentAlreadySaved = agentRevisionSnapshots(currentTask.id).some(item => item.essay === current);
+    const currentSaved = persistAgentRevision(currentTask.id, current, 'Trước khi khôi phục phiên bản');
+    if (!currentAlreadySaved && !currentSaved) {
+      setToast('Không thể khôi phục vì chưa lưu được nội dung editor hiện tại. Hãy xuất bản sao lưu hoặc giải phóng bộ nhớ rồi thử lại.');
+      return;
+    }
+  }
   $('#essay-editor').value = target.essay;
   saveDraft();
   renderAgentRevisions();
