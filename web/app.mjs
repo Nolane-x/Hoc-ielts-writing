@@ -70,7 +70,7 @@ function setStatus(selector, message, bad = false) {
   const el = $(selector);
   if (!el) return;
   el.textContent = message;
-  el.style.color = bad ? 'var(--red)' : '';
+  el.classList.toggle('status-error', bad);
 }
 function readDraft(taskId) { return localStorage.getItem(DRAFT_PREFIX + taskId) || ''; }
 function saveDraft(announce = false) {
@@ -447,7 +447,7 @@ function renderLearning() {
       ? (skill.test.length ? 'Chưa đủ bằng chứng AI' : 'Theo dõi qua bài sửa và đề mới')
       : 'Trung bình các lần ước lượng: ' + mean.toFixed(1) + '/9';
     const resultLabel = skill.test.length ? count + ' kết quả AI' : 'Chưa có chỉ số thành thạo';
-    return '<article class="skill-card"><div class="skill-top"><h3>' + escapeHtml(skill.title) + '</h3><span class="skill-tag">' + escapeHtml(skill.tag) + '</span></div><p>' + escapeHtml(skill.description) + '</p><div class="skill-progress"><span style="width:' + percent + '%"></span></div><div class="skill-bottom"><span>' + escapeHtml(valueLabel) + '</span><span>' + escapeHtml(resultLabel) + '</span></div></article>';
+    return '<article class="skill-card"><div class="skill-top"><h3>' + escapeHtml(skill.title) + '</h3><span class="skill-tag">' + escapeHtml(skill.tag) + '</span></div><p>' + escapeHtml(skill.description) + '</p><div class="skill-progress"><progress max="100" value="' + percent + '" aria-label="Tiến độ kỹ năng"></progress></div><div class="skill-bottom"><span>' + escapeHtml(valueLabel) + '</span><span>' + escapeHtml(resultLabel) + '</span></div></article>';
   }).join('');
 
   $('#history-list').innerHTML = history.length ? history.slice(0, 12).map(record => '<div class="history-row"><div class="history-icon">▥</div><div><strong>' + escapeHtml(record.taskTitle || 'Bài viết') + '</strong><small>' + escapeHtml(new Date(record.at).toLocaleString()) + ' · ' + (record.source === 'ai' ? 'AI formative' : 'Local check') + '</small></div><span class="history-score">' + (Number.isFinite(record.report?.estimatedTaskBand) ? record.report.estimatedTaskBand.toFixed(1) : '—') + '</span><button class="small-link" type="button" data-open-history="' + escapeHtml(record.id) + '">Mở ↗</button></div>').join('') : '<div class="history-empty">Chưa có bài nào được đánh giá. Hãy nộp bài đầu tiên để bắt đầu hồ sơ kỹ năng.</div>';
@@ -492,8 +492,7 @@ async function loadSettings() {
 function updateProviderStatus() {
   const enabled = Boolean(settings.externalAllowed);
   $('#mode-pill').innerHTML = '<span class="status-dot"></span><span>' + (enabled ? 'Provider opt-in' : 'Offline ready') + '</span>';
-  $('#mode-pill').style.background = enabled ? 'var(--amber-soft)' : '';
-  $('#mode-pill').style.color = enabled ? 'var(--amber)' : '';
+  $('#mode-pill').classList.toggle('mode-pill-warning', enabled);
   if (NATIVE && settings.provider === 'ollama' || NATIVE && settings.provider === 'lmstudio') {
     setStatus('#settings-status', 'Lưu ý: Android loopback trỏ tới chính thiết bị Android, không phải máy tính chạy Ollama/LM Studio.', true);
   }
@@ -1539,7 +1538,6 @@ function attachEvents() {
     finally { $('#import-file').value = ''; }
   });
   $('#export-report').addEventListener('click', exportReport);
-  $('#export-current-report').addEventListener('click', exportReport);
   $('#clear-local-data').addEventListener('click', clearLocalData);
   $('#theme-toggle').addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
   $$('[data-theme-choice]').forEach(el => el.addEventListener('click', () => setTheme(el.dataset.themeChoice)));
