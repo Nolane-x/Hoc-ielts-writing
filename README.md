@@ -8,6 +8,7 @@ WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking le
 - **Context-aware Mentor** with up to eight recent user/assistant turns per task. The learner can clear the local conversation. Stored conversation is treated as untrusted context, not system authority.
 - **Evidence-aware reports.** Provider quotes must exactly match the submitted essay; mismatched quotes are discarded. Offline preflight does not fabricate a band. All AI scores remain formative estimates, not official IELTS scores.
 - **Multi-provider AI** for OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, Groq, Together, Mistral, Ollama, LM Studio and custom OpenAI-compatible endpoints.
+- **Adaptive study plan.** After AI assessments, WMR prioritises the weakest criterion with a follow-up exercise in a different task type; if there is no valid AI criterion score, it explicitly provides a starter plan rather than inventing weaknesses.
 - **Backup and restore.** Import validates schema, supported task IDs, field lengths, report evidence and conversation roles. Import never replaces API keys, provider permission or provider settings.
 - **More bounded runtime.** Provider requests have deadlines through response-body reading, responses are capped, API writes are loopback/origin checked, Electron child processes receive an environment allowlist, and navigation is constrained to the expected local origin.
 - **Reproducible builds.** package-lock.json is committed; CI uses npm ci, checks high/critical dependency advisories, runs tests and builds the web bundle on Node 22 and 24.
