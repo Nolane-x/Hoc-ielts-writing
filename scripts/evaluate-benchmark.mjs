@@ -143,7 +143,7 @@ function predictedScore(result, taskType, criterion, example) {
       return validScoreOrMissing(assessment.estimatedTaskBand);
     }
     const criterionScores = criteriaFor(taskType).map(key => predictedScore(result, taskType, key, example));
-    if (criterionScores.some(item => item.kind === 'invalid')) return { kind: 'invalid' };
+    if (criterionScores.some(item => item.kind === 'invalid')) return { kind: 'missing' };
     if (criterionScores.some(item => item.kind !== 'valid')) return { kind: 'missing' };
     const composite = Math.round(mean(criterionScores.map(item => item.score)) * 2) / 2;
     return validScoreOrMissing(composite);
