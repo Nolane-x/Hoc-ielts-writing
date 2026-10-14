@@ -1,4 +1,4 @@
-# WMR Writing Mentor 1.4.0
+# WMR Writing Mentor 1.6.0
 
 WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking learners. It combines an essay editor, a guided 21-task practice bank, an optional multi-provider AI mentor, formative four-criterion feedback, private learning history and validated backup/restore.
 
