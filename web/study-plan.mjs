@@ -1,11 +1,19 @@
 const CRITERIA = [
   {
+    id: 'taskAchievement',
+    label: 'Task Achievement',
+    focus: 'Select the most important features, compare accurately, or fulfil the letter purpose and all required points.',
+    primaryTask: 'task1-line',
+    transferTask: 'task1-table',
+    success: 'Every required feature or letter point is covered, with the key information clearly selected and explained.'
+  },
+  {
     id: 'taskResponse',
-    label: 'Task Achievement / Response',
-    focus: 'Answer every part of the task and develop a clear position.',
+    label: 'Task Response',
+    focus: 'Answer every part of the Task 2 prompt and develop a clear, supported position.',
     primaryTask: 'task2-opinion',
-    transferTask: 'task1-formal-letter',
-    success: 'Each requirement in the prompt is answered directly, and each main claim is explained.'
+    transferTask: 'task2-discussion',
+    success: 'Each part of the prompt is answered directly, and each main claim is explained and supported.'
   },
   {
     id: 'coherence',
@@ -65,14 +73,21 @@ export function buildStudyPlan(history, tasks, limit = 3) {
   const records = Array.isArray(history) ? history.slice(0, 30).filter(record => record?.report && typeof record.essay === 'string') : [];
   const maxSteps = Math.max(1, Math.min(3, Number.isFinite(limit) ? Math.floor(limit) : 3));
   const aggregate = new Map(CRITERIA.map(criterion => [criterion.id, { ...criterion, scores: [] }]));
+  const eligibleRecords = records.filter(record =>
+    record.source === 'ai' &&
+    record.report.status === 'ai-formative' &&
+    Number(record.report.wordCount) >= 80
+  );
 
-  for (const record of records) {
+  for (const record of eligibleRecords) {
+    const reportType = record.report.taskType || record.taskType;
     const criteria = Array.isArray(record.report.criteria) ? record.report.criteria : [];
     for (const item of criteria) {
-      const target = aggregate.get(item?.id);
       if (item?.score === null || item?.score === undefined || item?.score === '') continue;
+      const key = item?.id === 'taskResponse' && reportType !== 'task2' ? 'taskAchievement' : item?.id;
+      const target = aggregate.get(key);
       const score = Number(item.score);
-      if (target && Number.isFinite(score) && score >= 0 && score <= 9) target.scores.push(score);
+      if (target && Number.isFinite(score) && score >= 0 && score <= 9 && Math.abs(score * 2 - Math.round(score * 2)) < 1e-9) target.scores.push(score);
     }
   }
   const scored = [...aggregate.values()]
