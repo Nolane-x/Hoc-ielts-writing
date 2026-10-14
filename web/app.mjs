@@ -124,15 +124,17 @@ function persistHistory() {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
   renderHistoryCount();
 }
-function reportStamp(report, source = 'local') {
+function reportStamp(report, source = 'local', snapshot = null) {
+  const task = snapshot?.task || currentTask;
+  const essay = typeof snapshot?.essay === 'string' ? snapshot.essay : $('#essay-editor').value;
   return {
     id: (globalThis.crypto?.randomUUID?.() || (Date.now() + '-' + Math.random().toString(16).slice(2))),
     at: new Date().toISOString(),
-    taskId: currentTask.id,
-    taskTitle: currentTask.title,
-    taskType: currentTask.type,
-    taskPrompt: currentTask.prompt,
-    essay: $('#essay-editor').value,
+    taskId: task.id,
+    taskTitle: task.title,
+    taskType: task.type,
+    taskPrompt: task.prompt,
+    essay,
     report,
     source
   };
@@ -215,18 +217,24 @@ async function runReview(useProvider) {
   const essay = $('#essay-editor').value.trim();
   if (!essay) { setToast('Hãy viết bản nháp trước khi nộp bài.'); $('#essay-editor').focus(); return; }
   saveDraft();
+  const snapshot = { task: { ...currentTask }, essay };
+  const input = { taskType: snapshot.task.type, taskPrompt: snapshot.task.prompt, essay: snapshot.essay };
   submitting = true;
   const button = $('#submit-review');
+  const taskSelect = $('#task-select');
+  const editor = $('#essay-editor');
   button.disabled = true;
+  taskSelect.disabled = true;
+  editor.readOnly = true;
   $('#report-title').textContent = 'Đang đánh giá bài viết';
-  const localReport = createLocalReport({ taskType: currentTask.type, taskPrompt: currentTask.prompt, essay });
+  const localReport = createLocalReport(input);
   latestReport = localReport;
   renderReport(localReport, true);
   showPage('report');
   try {
     if (!useProvider || !settings.externalAllowed) {
       localReport.summary = 'Kiểm tra cục bộ hoàn tất. Không gửi bài viết tới nhà cung cấp AI và chưa có band ước lượng.';
-      const record = reportStamp(localReport, 'local');
+      const record = reportStamp(localReport, 'local', snapshot);
       latestReport = localReport;
       history.unshift(record); persistHistory();
       renderReport(localReport);
@@ -236,13 +244,13 @@ async function runReview(useProvider) {
     setToast('Đang đánh giá theo bốn tiêu chí IELTS…');
     let result;
     if (NATIVE) {
-      result = await assessWithNativeProvider({ taskType: currentTask.type, taskPrompt: currentTask.prompt, essay });
+      result = await assessWithNativeProvider(input);
     } else {
-      result = await postJson('/api/assessment', { taskType: currentTask.type, taskPrompt: currentTask.prompt, essay, sendToProvider: true });
+      result = await postJson('/api/assessment', { ...input, sendToProvider: true });
     }
     const report = result.report || localReport;
     latestReport = report;
-    const record = reportStamp(report, 'ai');
+    const record = reportStamp(report, 'ai', snapshot);
     history.unshift(record); persistHistory();
     renderReport(report);
     setToast('Đánh giá hoàn tất. Xem bằng chứng và các ưu tiên sửa bài.');
@@ -251,15 +259,18 @@ async function runReview(useProvider) {
     localReport.summary = 'Không thể hoàn tất lượt chấm AI: ' + error.message + ' Báo cáo cục bộ vẫn khả dụng; không nên xem đây là kết quả chấm sâu.';
     localReport.metadata.failure = String(error.message).slice(0, 180);
     latestReport = localReport;
-    const record = reportStamp(localReport, 'local-fallback');
+    const record = reportStamp(localReport, 'local-fallback', snapshot);
     history.unshift(record); persistHistory();
     renderReport(localReport);
     setToast('AI chưa hoàn tất; vẫn giữ kết quả kiểm tra cục bộ.');
   } finally {
     submitting = false;
     button.disabled = false;
+    taskSelect.disabled = false;
+    editor.readOnly = false;
   }
 }
+
 function renderReport(report, loading = false) {
   const container = $('#report-content');
   if (!report) {
