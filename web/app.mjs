@@ -1125,6 +1125,31 @@ function attachEvents() {
     setStatus('#coach-status', 'Đã xóa hội thoại cục bộ cho đề này.');
   });
   $('#coach-input').addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') coachRequest($('#coach-input').value); });
+  $('#run-writing-agent').addEventListener('click', runWritingAgent);
+  $('#cancel-writing-agent').addEventListener('click', cancelWritingAgent);
+  $('#agent-result').addEventListener('click', event => {
+    const patchButton = event.target.closest('[data-agent-patch]');
+    if (patchButton) { applyAgentPatches([Number(patchButton.dataset.agentPatch)]); return; }
+    if (event.target.closest('[data-agent-apply-all]')) {
+      applyAgentPatches((agentResult?.patches || []).map((item,index)=>index));
+      return;
+    }
+    if (event.target.closest('[data-agent-focus]')) { focusAgentQuote(); return; }
+    const saveArtifacts = event.target.closest('[data-agent-save-artifacts]');
+    if (saveArtifacts) { saveAgentArtifacts(); return; }
+    const evaluate = event.target.closest('[data-agent-evaluate]');
+    if (evaluate) evaluateAgentPractice(Number(evaluate.dataset.agentEvaluate));
+  });
+  $('#agent-revision-list').addEventListener('click', event => {
+    const button = event.target.closest('[data-agent-restore]');
+    if (button) restoreAgentRevision(Number(button.dataset.agentRestore));
+  });
+  $('#agent-saved-artifacts').addEventListener('click', async event => {
+    const copy = event.target.closest('[data-agent-artifact-copy]');
+    if (copy) { await copySavedAgentArtifact(Number(copy.dataset.agentArtifactCopy)); return; }
+    const remove = event.target.closest('[data-agent-artifact-delete]');
+    if (remove) deleteSavedAgentArtifact(Number(remove.dataset.agentArtifactDelete));
+  });
   $('#settings-form').addEventListener('submit', saveSettings);
   $('#provider-select').addEventListener('change', () => {
     const preset = PROVIDER_PRESETS[$('#provider-select').value];
