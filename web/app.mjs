@@ -825,7 +825,7 @@ function attachEvents() {
     loadCurrentTask();
     showPage('workspace');
     $('#essay-editor').focus();
-    setToast('Đã mở đề luyện: ' + task.title);
+    setToast('Đã mở đề luyện theo lộ trình: ' + task.title);
   };
   $('#study-plan').addEventListener('click', startRecommendedTask);
   $('#recurring-errors').addEventListener('click', startRecommendedTask);
