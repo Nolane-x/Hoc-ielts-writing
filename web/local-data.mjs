@@ -1,3 +1,5 @@
+import { normaliseAgentPracticeAttempts } from './agent-practice.mjs';
+
 const TASK_TYPES = new Set(['task1-academic', 'task1-general', 'task2']);
 const CRITERION_IDS = new Set(['taskResponse', 'coherence', 'lexical', 'grammar']);
 const CATEGORIES = new Set(['grammar', 'lexical', 'coherence', 'task-achievement', 'task-response', 'data-accuracy', 'register', 'other']);
@@ -41,6 +43,7 @@ export function normaliseLocalBackup(input, validTaskIds) {
   const agentArtifacts = Array.isArray(input.agentArtifacts)
     ? input.agentArtifacts.slice(0, 100).map((item, index) => normaliseAgentArtifact(item, index, taskIds)).filter(Boolean)
     : [];
+  const agentPracticeAttempts = normaliseAgentPracticeAttempts(input.agentPracticeAttempts, taskIds);
   const agentRevisions = {};
   if (input.agentRevisions && typeof input.agentRevisions === 'object' && !Array.isArray(input.agentRevisions)) {
     for (const [taskId, revisions] of Object.entries(input.agentRevisions)) {
@@ -56,7 +59,8 @@ export function normaliseLocalBackup(input, validTaskIds) {
     history,
     coachHistories,
     agentArtifacts,
-    agentRevisions
+    agentRevisions,
+    agentPracticeAttempts
   };
 }
 
