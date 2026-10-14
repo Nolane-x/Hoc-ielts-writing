@@ -16,10 +16,15 @@ test('new learners get a starter plan with real supported tasks and measurable g
 
 test('study plan prioritises the lowest observed AI criterion and includes practice transfer', () => {
   const history = [{
+    id: 'assessment-task2-1',
+    source: 'ai',
     taskId: 'task2-opinion',
-    essay: 'Example answer',
+    taskType: 'task2',
+    essay: ('Example answer with a reason and supporting detail. ').repeat(12),
     report: {
       status: 'ai-formative',
+      taskType: 'task2',
+      wordCount: 120,
       criteria: [
         { id: 'taskResponse', score: 7, rationale: 'ok', evidence: [] },
         { id: 'coherence', score: 5.5, rationale: 'needs work', evidence: [] },
@@ -55,9 +60,15 @@ test('invalid scores and missing tasks cannot leak into recommended plan output'
 
 test('null or absent criterion scores are treated as missing rather than zero', () => {
   const history = [{
-    essay: 'A draft',
+    id: 'assessment-task2-null',
+    source: 'ai',
+    taskId: 'task2-opinion',
+    taskType: 'task2',
+    essay: ('A sufficiently developed example sentence. ').repeat(15),
     report: {
       status: 'ai-formative',
+      taskType: 'task2',
+      wordCount: 90,
       criteria: [
         { id: 'taskResponse', score: null },
         { id: 'coherence', score: undefined },
@@ -71,4 +82,40 @@ test('null or absent criterion scores are treated as missing rather than zero', 
   assert.equal(plan.weakestCriteria.length, 1);
   assert.equal(plan.weakestCriteria[0].id, 'grammar');
   assert.equal(plan.weakestCriteria[0].mean, 6);
+});
+
+
+test('Task 1 Task Achievement and Task 2 Task Response are aggregated separately', () => {
+  const history = [
+    {
+      id: 'academic-task1', source: 'ai', taskId: 'task1-line', taskType: 'task1-academic',
+      essay: ('The chart shows an upward trend. ').repeat(40),
+      report: { status: 'ai-formative', taskType: 'task1-academic', wordCount: 160, criteria: [
+        { id: 'taskResponse', score: 5.5 }, { id: 'coherence', score: 6 }, { id: 'lexical', score: 6 }, { id: 'grammar', score: 6 }
+      ] }
+    },
+    {
+      id: 'task2-opinion-stronger', source: 'ai', taskId: 'task2-opinion', taskType: 'task2',
+      essay: ('The policy has benefits because it solves a specific problem. ').repeat(45),
+      report: { status: 'ai-formative', taskType: 'task2', wordCount: 270, criteria: [
+        { id: 'taskResponse', score: 7 }, { id: 'coherence', score: 7 }, { id: 'lexical', score: 7 }, { id: 'grammar', score: 7 }
+      ] }
+    }
+  ];
+  const plan = buildStudyPlan(history, TASKS);
+  assert.equal(plan.adaptive, true);
+  assert.equal(plan.weakestCriteria[0].id, 'taskAchievement');
+  assert.equal(plan.steps[0].taskId, 'task1-line');
+});
+
+test('local reports with artificial criterion scores cannot influence adaptive ranking', () => {
+  const history = [{
+    source: 'local', taskId: 'task2-opinion', taskType: 'task2', essay: 'A draft',
+    report: { status: 'local-fallback', taskType: 'task2', wordCount: 300, criteria: [
+      { id: 'taskResponse', score: 1 }, { id: 'coherence', score: 1 }, { id: 'lexical', score: 1 }, { id: 'grammar', score: 1 }
+    ] }
+  }];
+  const plan = buildStudyPlan(history, TASKS);
+  assert.equal(plan.adaptive, false);
+  assert.match(plan.basis, /chưa có điểm tiêu chí AI hợp lệ/i);
 });
