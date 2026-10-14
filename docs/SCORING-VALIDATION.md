@@ -4,7 +4,7 @@
 
 WMR criterion scores are formative estimates. A green unit-test suite establishes software behaviour, not IELTS scoring accuracy. Accuracy claims require independently rated essays, an explicit reference protocol, and a held-out set that was not used to change prompts or scoring logic.
 
-The evaluator in scripts/evaluate-benchmark.mjs is dependency-free, uses local files only, performs no network requests, and deliberately omits essay text and prompts from its report. No real learner essay or credential belongs in this repository.
+The evaluator in scripts/evaluate-benchmark.mjs is dependency-free, uses local files only, performs no network requests, and deliberately omits essay text, prompts, dataset IDs, run IDs and example IDs from its report. Diagnostic records use 1-based row ordinals only. No real learner essay or credential belongs in this repository.
 
 ## Dataset contract: schema version 1
 
@@ -29,7 +29,7 @@ A run result identifies exampleId and contains either canonical scores or an ass
 4. Split by writer where possible, not just by essay. Keep all drafts of one essay, repeated prompts from a private writer set, and near-duplicate texts in the same split. Freeze the held-out set before changing prompts, examples, providers, rubric instructions or calibration logic. Exact duplicate detection is included; near-duplicate leakage still needs review.
 5. Keep benchmark JSON and generated reports in a local ignored directory. The evaluator has no upload behaviour. Do not commit a private benchmark, even if it has been de-identified.
 
-The evaluator requires an explicit permission and de-identification declaration, but those declarations are supplied by the dataset owner: the code cannot independently verify consent, legal rights or whether identifying details remain.
+The evaluator requires an explicit permission and de-identification declaration, but those declarations are supplied by the dataset owner: the code cannot independently verify consent, legal rights or whether identifying details remain. The published dataset template deliberately sets both permission and de-identification to false and leaves every gold score null. It is designed to fail validation until the owner has replaced the placeholders with authorised data and real independent ratings; never flip these flags merely to get the command to run.
 
 ## Running it
 
@@ -39,7 +39,7 @@ Run: npm run evaluate:benchmark -- benchmarks/private/your-dataset.json
 
 To save a new report file: npm run evaluate:benchmark -- benchmarks/private/your-dataset.json --out benchmark-results/evaluation.json
 
-The evaluator refuses to overwrite the input or an existing output file. Create the ignored output directory first. It prints or saves aggregate counts and metrics only, never essay text or prompts. The command itself does not send files to any network service. The application can still send text to a configured AI provider if a user explicitly initiates an assessment; that is a separate product action.
+The evaluator refuses to overwrite the input or an existing output file. Create the ignored output directory first. It prints or saves aggregate counts and metrics only, never essay text, prompts, dataset IDs, run IDs or example IDs. Invalid predictions and duplicate-text warnings refer to 1-based row ordinals in the input file instead of copying identifiers into the report. The command itself does not send files to any network service. The application can still send text to a configured AI provider if a user explicitly initiates an assessment; that is a separate product action.
 
 ## Metrics and how to read them
 

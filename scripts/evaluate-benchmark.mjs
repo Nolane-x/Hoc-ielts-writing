@@ -380,7 +380,7 @@ function buildReferenceAgreement(examples) {
   }).sort((a, b) => a.taskType.localeCompare(b.taskType) || a.criterion.localeCompare(b.criterion));
 }
 
-function evaluateRun(dataset, run, exampleById, examplesByGroup) {
+function evaluateRun(dataset, run, exampleById, exampleOrdinalById, examplesByGroup, runOrdinal) {
   const results = new Map(run.results.map(result => [result.exampleId, result]));
   const invalidPredictions = [];
   let evidenceQuoteCount = 0;
@@ -408,7 +408,7 @@ function evaluateRun(dataset, run, exampleById, examplesByGroup) {
       const result = results.get(example.id);
       const scored = predictedScore(result, taskType, criterion, example);
       if (scored.kind === 'invalid') {
-        invalidPredictions.push({ exampleId: example.id, criterion, reason: 'not_a_valid_half_band_score' });
+        invalidPredictions.push({ exampleOrdinal: exampleOrdinalById.get(example.id), criterion, reason: 'not_a_valid_half_band_score' });
       }
       if (scored.kind === 'valid') {
         pairs.push({ reference: referenceScore(example, criterion), predicted: scored.score });
@@ -424,7 +424,7 @@ function evaluateRun(dataset, run, exampleById, examplesByGroup) {
   }
   metrics.sort((a, b) => a.split.localeCompare(b.split) || a.taskType.localeCompare(b.taskType) || a.criterion.localeCompare(b.criterion));
   return {
-    runId: run.id,
+    runOrdinal,
     provider: run.provider,
     model: run.model,
     resultsSubmitted: run.results.length,
@@ -494,6 +494,7 @@ function buildRepeatability(dataset, exampleById) {
 
 export function evaluateBenchmarkDataset(dataset) {
   const { exampleById } = validateBenchmarkDataset(dataset);
+  const exampleOrdinalById = new Map(dataset.examples.map((example, index) => [example.id, index + 1]));
   const examplesByGroup = new Map();
   const splitCounts = {};
   const taskCounts = {};
@@ -514,7 +515,7 @@ export function evaluateBenchmarkDataset(dataset) {
   for (const matches of fingerprints.values()) {
     const splits = new Set(matches.map(item => item.split));
     if (matches.length > 1 && splits.size > 1) {
-      warnings.push('Potential exact-text leakage across splits; review de-identified example IDs: ' + matches.map(item => item.id).join(', '));
+      warnings.push('Potential exact-text leakage across splits; review dataset example row numbers: ' + matches.map(item => exampleOrdinalById.get(item.id)).join(', '));
     }
   }
   if (!splitCounts['held-out']) warnings.push('No held-out split is present; do not describe these results as independent final validation.');
@@ -533,13 +534,12 @@ export function evaluateBenchmarkDataset(dataset) {
       metricGroups.get(key).push(example);
     }
   }
-  const runReports = dataset.runs.map(run => evaluateRun(dataset, run, exampleById, metricGroups));
+  const runReports = dataset.runs.map((run, index) => evaluateRun(dataset, run, exampleById, exampleOrdinalById, metricGroups, index + 1));
   return {
     reportSchemaVersion: 1,
     evaluatorVersion: EVALUATOR_VERSION,
     generatedAt: new Date().toISOString(),
     dataset: {
-      id: dataset.datasetId,
       rubricVersion: dataset.rubricVersion,
       exampleCount: dataset.examples.length,
       splitCounts,
