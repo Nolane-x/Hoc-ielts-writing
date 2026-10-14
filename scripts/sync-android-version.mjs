@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 export function calculateAndroidVersion(version) {
   const value = String(version || '');
-  const match = value.match(/^(\\d+)\\.(\\d+)\\.(\\d+)$/);
+  const match = value.match(/^(\d+)\.(\d+)\.(\d+)$/);
   if (!match) throw new Error('package.json version must be a stable semantic version');
 
   const [, majorText, minorText, patchText] = match;
