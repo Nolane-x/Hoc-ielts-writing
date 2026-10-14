@@ -56,7 +56,7 @@
         <label for="agent-task-input">MỤC TIÊU PHIÊN LÀM VIỆC</label>
         <textarea id="agent-task-input" rows="3" maxlength="4000" placeholder="Ví dụ: Kiểm tra bài theo đúng đề, tìm 3 vấn đề quan trọng nhất, đề xuất sửa chính xác và tạo một bài luyện giúp tôi tự sửa được lỗi đó."></textarea>
         <div class="agent-action-row"><button class="button button-primary" id="run-writing-agent" type="button"><span class="button-icon">✦</span>Chạy Writing Agent<span class="button-arrow">→</span></button><button class="button button-secondary" id="cancel-writing-agent" type="button" hidden>Hủy phiên</button></div>
-        <p class="agent-permission-note">Agent AI cần provider đã cấu hình và quyền gửi nội dung đã bật trong Settings. Không có shell, quyền đọc file tùy ý hay quyền truy cập API key; công cụ chỉ thao tác trên bài viết và tài liệu học được cung cấp.</p>
+        <p class="agent-permission-note">Khi quyền gửi provider được bật, Agent gửi đề hiện tại, bản nháp hiện tại và bản tóm tắt tiến trình (điểm tiêu chí/lỗi lặp lại; không gửi nguyên văn bài cũ). Agent không có shell, quyền đọc file tùy ý hay quyền truy cập API key; công cụ chỉ thao tác trên bài viết và tài liệu học được cung cấp.</p>
         <div id="agent-live-status" class="agent-live-status" role="status" aria-live="polite">Sẵn sàng. Bạn có thể tiếp tục sửa bài trong lúc Agent phân tích.</div>
         <ol id="agent-activity" class="agent-activity" aria-label="Nhật ký thao tác theo thời gian thực" aria-live="polite" aria-relevant="additions"></ol>
         <section id="agent-result" class="agent-result" aria-label="Kết quả và thao tác đang chờ duyệt"></section>
