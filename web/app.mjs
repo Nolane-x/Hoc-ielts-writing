@@ -4,6 +4,7 @@ import { createLearningRecord } from './learning-records.mjs';
 import { buildStudyPlan } from './study-plan.mjs';
 import { getRubricGuide } from './rubric-guide.mjs';
 import { buildRevisionComparison } from './revision-analysis.mjs';
+import { buildEssayAnnotations, renderAnnotatedEssayText } from './essay-annotations.mjs';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
@@ -302,13 +303,25 @@ function renderReport(report, loading = false) {
   const currentRecord = history.find(item => item.report === report) || null;
   const revision = buildRevisionComparison(currentRecord, history);
   const criterionDefinitions = getCriterionDefinitions(report.taskType);
+  const annotationResult = currentRecord?.source === 'ai'
+    ? buildEssayAnnotations(currentRecord.essay, issues)
+    : { spans: [], unavailable: [], issueCount: 0 };
+  const annotatedEssayHtml = currentRecord?.source === 'ai' && typeof currentRecord.essay === 'string' && issues.some(item => item?.quote)
+    ? '<section class="panel annotated-essay-panel"><div class="report-panel-heading"><div><span class="section-kicker">EVIDENCE MAP</span><h2>Bài gốc có chú thích</h2><p>Chọn vùng đánh dấu để nhảy tới lỗi tương ứng. Chỉ trích dẫn khớp duy nhất và không chồng lấn mới được tô sáng.</p></div><span class="count-badge">' + annotationResult.spans.length + '/' + annotationResult.issueCount + ' vị trí</span></div>' +
+      '<div class="annotated-essay" aria-label="Bài đã nộp với trích dẫn được định vị">' + renderAnnotatedEssayText(currentRecord.essay, annotationResult, escapeHtml) + '</div>' +
+      (annotationResult.unavailable.length ? '<div class="annotation-caveats"><strong>Chưa định vị được ' + annotationResult.unavailable.length + ' trích dẫn</strong><ul>' + annotationResult.unavailable.map(item => '<li>' +
+        (item.quote ? '<q>' + escapeHtml(item.quote) + '</q> — ' : '') +
+        (item.reason === 'ambiguous' ? 'Cụm này xuất hiện nhiều lần nên WMR không đoán vị trí.' : item.reason === 'overlap' ? 'Cụm này chồng lấn với một chú thích ưu tiên cao hơn.' : item.reason === 'not-found' ? 'Trích dẫn không còn khớp chính xác với bài đã lưu.' : 'Không có trích dẫn đủ dài để xác định vị trí.') +
+        '</li>').join('') + '</ul></div>' : '') +
+      '<p class="annotation-footnote">Bản gốc không bị sửa. Tô sáng chỉ xác định vị trí của trích dẫn, không tự chứng minh rằng nhận xét AI là đúng.</p></section>'
+    : '';
   const criteriaHtml = criterionDefinitions.map(def => {
     const item = criteria.find(x => x.id === def.id);
     return '<article class="criterion-card"><div class="criterion-head"><span>' + escapeHtml(def.short) + '</span><strong>' + (item && Number.isFinite(item.score) ? escapeHtml(item.score.toFixed(1)) : '—') + '</strong></div><h3>' + escapeHtml(def.title) + '</h3><p>' + escapeHtml(item?.rationale || (report.status === 'ai-formative' ? 'Chưa có giải thích cho tiêu chí này.' : 'Chưa được chấm bằng AI.')) + '</p>' +
       (item?.evidence?.length ? '<div class="criterion-evidence"><strong>BẰNG CHỨNG TRONG BÀI</strong>' + item.evidence.map(x => '<div class="quote-box">' + escapeHtml(x) + '</div>').join('') + '</div>' : '') +
       '</article>';
   }).join('');
-  const issuesHtml = issues.length ? issues.map((item, index) => '<article class="issue-item"><div class="issue-top"><span class="severity ' + escapeHtml(item.severity || 'medium') + '">' + escapeHtml(item.severity || 'medium') + '</span><span class="count-badge">' + escapeHtml(issueCategoryLabel(item.category, report.taskType)) + '</span></div><h3>' + escapeHtml(item.title || 'Điểm cần xem xét') + '</h3>' +
+  const issuesHtml = issues.length ? issues.map((item, index) => '<article class="issue-item" id="report-issue-' + index + '" tabindex="-1"><div class="issue-top"><span class="severity ' + escapeHtml(item.severity || 'medium') + '">' + escapeHtml(item.severity || 'medium') + '</span><span class="count-badge">' + escapeHtml(issueCategoryLabel(item.category, report.taskType)) + '</span></div><h3>' + escapeHtml(item.title || 'Điểm cần xem xét') + '</h3>' +
     (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') +
     '<p>' + escapeHtml(item.explanation || '') + '</p>' +
     (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
@@ -322,6 +335,7 @@ function renderReport(report, loading = false) {
     (lengthWarnings.length ? '<div class="report-length-warnings">' + lengthWarnings.map(x => '<p>' + escapeHtml(x) + '</p>').join('') + '</div>' : '') +
     '</div><div class="report-band"><strong>' + score + '</strong><span>' + (Number.isFinite(report.estimatedTaskBand) ? 'Band ước lượng cho bài này' : 'Chưa đủ căn cứ cho band') + '</span></div></section>' +
     '<div class="report-criteria">' + criteriaHtml + '</div>' +
+    annotatedEssayHtml +
     (revision ? '<section class="panel revision-panel"><div class="report-panel-heading"><div><span class="section-kicker">REVISION TRACKING</span><h2>So sánh với bản trước của cùng đề</h2></div><span class="count-badge">Lần sửa</span></div>' +
       '<div class="revision-metrics"><div><span>Band ước lượng</span><strong>' + (revision.previousBand === null ? '—' : revision.previousBand.toFixed(1)) + ' → ' + (revision.currentBand === null ? '—' : revision.currentBand.toFixed(1)) + '</strong><small>' + (revision.bandDelta === null ? 'Chưa đủ căn cứ so sánh band' : 'Thay đổi ' + (revision.bandDelta > 0 ? '+' : '') + revision.bandDelta.toFixed(1)) + '</small></div>' +
       '<div><span>Số từ</span><strong>' + revision.previousWords + ' → ' + revision.currentWords + '</strong><small>' + (revision.wordDelta > 0 ? '+' : '') + revision.wordDelta + ' từ</small></div>' +
@@ -741,6 +755,17 @@ function attachEvents() {
   $('#theme-toggle').addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
   $$('[data-theme-choice]').forEach(el => el.addEventListener('click', () => setTheme(el.dataset.themeChoice)));
   $('#report-content').addEventListener('click', async event => {
+    const annotation = event.target.closest('[data-annotation-issue]');
+    if (annotation) {
+      const index = Number(annotation.dataset.annotationIssue);
+      const target = Number.isInteger(index) ? document.getElementById('report-issue-' + index) : null;
+      if (target) {
+        target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+        target.classList.add('issue-item-focused');
+        target.focus({ preventScroll: true });
+      }
+      return;
+    }
     const openPage = event.target.closest('[data-page]');
     if (openPage) { showPage(openPage.dataset.page); return; }
     if (event.target.closest('#revise-current')) { showPage('workspace'); $('#essay-editor').focus(); return; }

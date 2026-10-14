@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "WMR Writing Mentor",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "status": "source-and-ci-verified; release build and real-device validation are separate gates",
   "contract": "docs/NUI-UI-CONTRACT.md",
   "evidence": [
@@ -185,6 +185,17 @@
         "tests/ui-contract.test.mjs"
       ],
       "verification": "Automated tests assert task-aware AI issue normalization, legacy backup migration, and localized issue-category badge mapping.",
+      "status": "automated-test"
+    },
+    {
+      "claim": "Report highlights only unique, exact, non-overlapping essay quotes and links them to issue cards while preserving the submitted text.",
+      "source": [
+        "web/essay-annotations.mjs",
+        "web/app.mjs",
+        "tests/essay-annotations.test.mjs",
+        "tests/ui-contract.test.mjs"
+      ],
+      "verification": "Pure-function tests cover correct offsets, repeated phrases, missing and short quotes, overlapping candidates, HTML escaping, malformed inputs and UI navigation wiring.",
       "status": "automated-test"
     }
   ],
