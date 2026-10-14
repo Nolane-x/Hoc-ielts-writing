@@ -23,7 +23,7 @@ test('writer, submission status, settings and import controls are present in the
   for (const id of [
     'task-select', 'task-prompt', 'task-goal', 'task-meta', 'essay-editor',
     'word-count', 'submit-review', 'local-check', 'coach-input', 'coach-answer',
-    'clear-coach-history', 'settings-form', 'external-allowed', 'provider-key',
+    'clear-coach-history', 'study-plan', 'settings-form', 'external-allowed', 'provider-key',
     'import-backup', 'import-file', 'clear-local-data', 'toast'
   ]) {
     assert.match(html, new RegExp('id="' + id + '"'), 'missing HTML element #' + id);
@@ -49,4 +49,12 @@ test('assessment uses a locked submitted snapshot and backup restore passes thro
   assert.match(app, /reportStamp\(report, 'ai', snapshot\)/);
   assert.match(app, /parseLocalBackup\(await file\.text\(\), TASKS\.map\(task => task\.id\)\)/);
   assert.match(app, /localStorage\.removeItem\(COACH_PREFIX \+ task\.id\)/);
+});
+
+
+test('adaptive recommendations remain connected to concrete task selection and learning data', () => {
+  assert.match(app, /buildStudyPlan\(history, TASKS\)/);
+  assert.match(app, /data-start-task=/);
+  assert.match(app, /\$\('#study-plan'\)\.addEventListener\('click'/);
+  assert.match(app, /setToast\('Đã mở đề luyện theo lộ trình:/);
 });
