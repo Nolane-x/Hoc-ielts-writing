@@ -106,7 +106,7 @@ export function validateBenchmarkDataset(dataset) {
       fail('run_metadata');
     }
     runIds.add(run.id);
-    if (!Array.isArray(run.results) || run.results.length > dataset.examples.length) fail('run_results');
+    if (!Array.isArray(run.results) || run.results.length > 50000) fail('run_results');
     const seenExampleIds = new Set();
     for (const result of run.results) {
       if (!isObject(result) || typeof result.exampleId !== 'string' || !exampleById.has(result.exampleId)) {
