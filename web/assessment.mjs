@@ -66,10 +66,12 @@ export function normaliseAssessment(raw, input = {}) {
   });
   const issues = (Array.isArray(parsed.issues) ? parsed.issues : []).slice(0, 18).map((item, index) => {
     const quote = safeQuote(item?.quote, essay);
+    const category = safeCategory(item?.category);
+    const categoryTitles = { grammar: 'Ngữ pháp', lexical: 'Từ vựng', coherence: 'Mạch lạc', 'task-response': 'Đáp ứng đề', 'data-accuracy': 'Độ chính xác dữ liệu', register: 'Văn phong', other: 'Điểm cần xem xét' };
     return {
-      id: 'issue-' + (index + 1), category: safeCategory(item?.category), severity: safeSeverity(item?.severity),
+      id: 'issue-' + (index + 1), category, severity: safeSeverity(item?.severity),
       criterion: CRITERIA.some(x => x.id === item?.criterion) ? item.criterion : 'other',
-      title: safeText(item?.category, 80) || 'Điểm cần xem xét', quote,
+      title: safeText(item?.title, 120) || categoryTitles[category], quote,
       explanation: safeText(item?.explanation, 1200), suggestedFix: safeText(item?.suggestedFix, 600),
       teachingHint: safeText(item?.teachingHint, 600), evidenceValidated: Boolean(quote)
     };
@@ -90,7 +92,7 @@ export function normaliseAssessment(raw, input = {}) {
 }
 function issue(category, severity, title, suggestedFix) { return { id: category, category, severity, criterion: 'other', title, quote: '', explanation: title, suggestedFix, teachingHint: '', evidenceValidated: true }; }
 function validTaskType(value) { return ['task1-academic', 'task1-general', 'task2'].includes(value) ? value : 'task2'; }
-function normaliseBand(value) { const n = Number(value); return Number.isFinite(n) && n >= 0 && n <= 9 ? Math.round(n * 2) / 2 : null; }
+function normaliseBand(value) { if (value === null || value === undefined || value === '') return null; const n = Number(value); return Number.isFinite(n) && n >= 0 && n <= 9 ? Math.round(n * 2) / 2 : null; }
 function safeText(value, max) { return typeof value === 'string' ? value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, max) : ''; }
 function safeQuote(value, essay) { const quote = safeText(value, 300); return quote.length >= 5 && essay.toLocaleLowerCase().includes(quote.toLocaleLowerCase()) ? quote : ''; }
 function safeEvidence(value, essay, max) { return Array.isArray(value) ? value.slice(0, max).map(x => safeQuote(x, essay)).filter(Boolean) : []; }
