@@ -99,3 +99,62 @@ test('resolved issue buttons restore their persisted state when a report is reop
   assert.match(app, /aria-pressed="' \+ String\(item\.userMarkedResolved === true\)/);
   assert.match(app, /item\.userMarkedResolved === true \? '✓ Đã xử lý · Hoàn tác'/);
 });
+
+
+test('Writing Agent workspace exposes real-time status, staged edits, cancellation and revision recovery', () => {
+  for (const id of [
+    'agent-workspace', 'agent-task-input', 'run-writing-agent', 'cancel-writing-agent',
+    'agent-live-status', 'agent-activity', 'agent-result', 'agent-saved-artifacts',
+    'agent-revisions', 'agent-revision-list'
+  ]) assert.match(html, new RegExp('id="' + id + '"'), 'missing Writing Agent control #' + id);
+  assert.match(app, /fetch\('\/api\/agent'/);
+  assert.match(app, /consumeWritingAgentStream\(response\)/);
+  assert.match(app, /AbortController\(\)/);
+  assert.match(app, /applyAgentPatches\(\[Number\(patchButton\.dataset\.agentPatch\)\]\)/);
+  assert.match(app, /persistAgentRevision\(agentResultTaskId, essay/);
+  assert.match(app, /data-agent-restore/);
+  assert.match(css, /\.agent-activity-item/);
+  assert.match(css, /\.agent-patch-card/);
+  assert.match(app, /agentArtifacts: agentSavedArtifacts\(\)/);
+  assert.match(app, /agentRevisions\[task\.id\] = agentRevisionSnapshots\(task\.id\)/);
+});
+
+
+test('Writing Agent task-bank suggestions are rendered from local results and revisions fail safely', () => {
+  assert.match(app, /const practiceMatches = Array\.isArray\(result\.practiceMatches\)/);
+  assert.match(app, /data-agent-start-task=/);
+  assert.match(app, /function openAgentPracticeTask\(taskId\)/);
+  assert.match(app, /TASKS\.find\(item => item\.id === taskId\)/);
+  assert.match(app, /hasStructuredOutput/);
+  assert.match(app, /Không áp dụng sửa đổi vì WMR chưa thể lưu bản trước để hoàn tác/);
+  assert.match(app, /Không thể khôi phục vì chưa lưu được nội dung editor hiện tại/);
+});
+
+
+test('native Writing Agent reserves one conservative session estimate and passes cancellation into provider calls', () => {
+  assert.match(app, /async function reserveNativeAgentSession\(config, input\)/);
+  assert.match(app, /estimateWritingAgentSessionCost\(config, input, settings\.maxOutputTokens\)/);
+  assert.match(app, /complete: async \(\{ messages, maxOutputTokens, signal \}\) => await requestCompletion\(/);
+  assert.match(app, /estimatedSessionCostUsd/);
+  assert.match(app, /metadataLine/);
+});
+
+
+test('Writing Agent passes an aggregate local learner profile and discloses what can be sent', () => {
+  assert.match(app, /function buildAgentLearningContext\(\)/);
+  assert.match(app, /learningContext: buildAgentLearningContext\(\)/);
+  assert.match(app, /eligibleAIRecords\(history\)/);
+  assert.match(app, /recurringPatterns:/);
+  assert.match(html, /không gửi nguyên văn bài cũ/);
+  assert.match(app, /issueCategories,/);
+  assert.match(app, /resolvedIssues:/);
+});
+
+
+test('Settings exposes a separate budget for a multi-turn Writing Agent session', () => {
+  assert.match(html, /id="max-agent-session-budget"[^>]*name="maxAgentSessionUsd"/);
+  assert.match(app, /maxAgentSessionUsd: Number\(\$\('#max-agent-session-budget'\)\.value\)/);
+  assert.match(app, /\$\('#max-agent-session-budget'\)\.value = settings\.maxAgentSessionUsd/);
+  assert.match(app, /cost > settings\.maxAgentSessionUsd/);
+  assert.match(html, /TỐI ĐA CẢ PHIÊN AGENT/);
+});

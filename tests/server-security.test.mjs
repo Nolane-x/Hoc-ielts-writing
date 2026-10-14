@@ -55,3 +55,15 @@ test('startup handshake compares the exact token and fails closed for missing or
   assert.equal(isStartupTokenValid('c'.repeat(63), expected), false);
   assert.equal(isStartupTokenValid('anything', ''), true);
 });
+
+
+test('agent session budget is independent from the single-request cap and remains bounded', () => {
+  const defaults = sanitiseSettings({});
+  assert.equal(defaults.maxCallUsd, 0.1);
+  assert.equal(defaults.maxAgentSessionUsd, 0.5);
+  const custom = sanitiseSettings({ maxCallUsd: 0.02, maxAgentSessionUsd: 1.25 });
+  assert.equal(custom.maxCallUsd, 0.02);
+  assert.equal(custom.maxAgentSessionUsd, 1.25);
+  assert.equal(sanitiseSettings({ maxAgentSessionUsd: 999 }).maxAgentSessionUsd, 3);
+  assert.equal(sanitiseSettings({ maxAgentSessionUsd: -5 }).maxAgentSessionUsd, 0.01);
+});

@@ -18,3 +18,96 @@
 
 .recurring-errors-panel{margin:18px 0;padding:22px}.recurring-errors-panel>.panel-heading{align-items:flex-start}.recurring-errors-panel .panel-heading h2{font-size:17px;margin:6px 0}.recurring-errors-panel .panel-heading p,.recurrence-basis{font-size:11px;line-height:1.7;color:var(--muted);margin:5px 0}.recurring-error-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}.recurring-error-card{border:1px solid var(--line);border-radius:13px;padding:16px;min-width:0;background:var(--surface)}.recurring-error-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.recurring-error-card h3{font-size:13px;line-height:1.5;margin:12px 0 7px}.recurring-error-card p{font-size:11px;line-height:1.75;color:var(--muted);margin:7px 0}.recurrence-count{display:flex;align-items:baseline;gap:7px;margin-top:13px}.recurrence-count strong{font-size:27px;letter-spacing:-.03em}.recurrence-count span{font-size:10px;color:var(--muted)}.recurrence-meta{font-size:10px!important}.recurrence-action{padding:10px 12px;border-radius:10px;background:var(--surface-soft);margin:12px 0}.recurrence-action strong{font-size:10px}.recurrence-action p{margin:4px 0 0;color:var(--text)}.recurring-error-card .button{margin-top:5px;white-space:normal}.recurrence-empty{margin-top:14px;padding:18px;border:1px dashed var(--line);border-radius:12px}.recurrence-empty strong{font-size:12px}.recurrence-empty p{font-size:11px;line-height:1.75;color:var(--muted);margin:5px 0 0}.recurring-errors-panel .severity{font-size:9px}.recurring-errors-panel .count-badge{font-size:9px}
 @media(max-width:760px){.recurring-errors-panel{padding:15px}.recurring-error-grid{grid-template-columns:1fr}.recurring-error-card{padding:13px}.recurrence-count strong{font-size:23px}}
+
+
+/* Writing Agent workspace: live traces, reviewable patches and reversible edits. */
+.agent-workspace-panel{display:grid;gap:14px;padding:22px;min-width:0}
+.agent-heading{align-items:flex-start;gap:12px}
+.agent-heading h2{font-size:17px;margin:5px 0}
+.agent-live-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid var(--line);border-radius:999px;font-size:9px;font-weight:800;color:var(--muted);white-space:nowrap}
+.agent-live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+.agent-intro{font-size:11px;line-height:1.8;color:var(--muted);margin:0}
+.agent-workspace-panel>label,.agent-artifact-card>label{font-size:9px;font-weight:850;letter-spacing:.12em;color:var(--muted)}
+.agent-workspace-panel>textarea,.agent-artifact-card>textarea{width:100%;min-height:88px;border:1px solid var(--line-strong);border-radius:11px;background:var(--surface-soft);padding:11px 12px;color:var(--ink);resize:vertical;line-height:1.7;font-size:12px}
+.agent-action-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.agent-action-row .button{min-height:42px}
+.agent-permission-note{font-size:10px;line-height:1.75;color:var(--muted);margin:0}
+.agent-live-status{border:1px solid var(--line);background:var(--surface-soft);border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.7;color:var(--ink)}
+.agent-live-status::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:8px;vertical-align:1px}
+.agent-live-status.is-error{color:var(--red);border-color:color-mix(in srgb,var(--red) 35%,var(--line));background:color-mix(in srgb,var(--red) 5%,var(--surface))}
+.agent-live-status.is-error::before{background:var(--red)}
+.agent-activity{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.agent-activity-item{display:grid;grid-template-columns:25px minmax(0,1fr);gap:9px;align-items:start;padding:8px 9px;border-radius:9px;background:var(--surface-soft);border:1px solid transparent;min-width:0}
+.agent-activity-item p{font-size:10px;line-height:1.6;margin:0;overflow-wrap:anywhere}
+.agent-activity-item small{display:block;margin-top:3px;color:var(--muted);font-size:9px;line-height:1.5}
+.agent-activity-index{width:22px;height:22px;display:grid;place-items:center;border-radius:7px;background:var(--surface);border:1px solid var(--line);font-size:9px;font-weight:850;color:var(--muted)}
+.agent-activity-complete .agent-activity-index{color:var(--green);border-color:color-mix(in srgb,var(--green) 35%,var(--line));background:var(--green-soft)}
+.agent-activity-rejected{border-color:color-mix(in srgb,var(--red) 25%,var(--line))}
+.agent-activity-rejected .agent-activity-index{color:var(--red)}
+.agent-activity-notice .agent-activity-index{color:var(--amber)}
+.agent-result{display:grid;gap:12px;min-width:0}
+.agent-final-message{border:1px solid color-mix(in srgb,var(--accent) 20%,var(--line));border-radius:13px;padding:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent-soft) 75%,var(--surface)),var(--surface))}
+.agent-final-message p{font-size:12px;line-height:1.8;margin:7px 0;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+.agent-final-message small{font-size:9px;line-height:1.7;color:var(--muted)}
+.agent-result-section{display:grid;gap:10px;min-width:0}
+.agent-result-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.agent-result-heading h3{font-size:13px;margin:4px 0}
+.agent-result-note{font-size:10px;line-height:1.7;color:var(--muted);margin:0}
+.agent-patch-card,.agent-artifact-card,.agent-goal-card,.agent-focus-card{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:13px;min-width:0}
+.agent-patch-card.is-applied{border-color:color-mix(in srgb,var(--green) 35%,var(--line));background:color-mix(in srgb,var(--green-soft) 30%,var(--surface))}
+.agent-patch-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.agent-patch-header strong,.agent-goal-card>strong{font-size:11px}
+.agent-patch-header span{font-size:9px;color:var(--muted);border-radius:999px;padding:4px 7px;background:var(--surface-soft)}
+.agent-diff-block{display:grid;gap:6px;margin-top:11px}
+.agent-diff-block small,.agent-goal-card small{font-size:8px;letter-spacing:.1em;color:var(--muted);font-weight:850}
+.agent-diff-block pre,.agent-artifact-card pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;border-radius:8px;padding:9px 10px;font:11px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;max-width:100%}
+.agent-diff-block pre:first-of-type{background:color-mix(in srgb,var(--red) 6%,var(--surface-soft));border-left:3px solid color-mix(in srgb,var(--red) 55%,var(--line))}
+.agent-diff-block pre:last-of-type{background:color-mix(in srgb,var(--green) 7%,var(--surface-soft));border-left:3px solid color-mix(in srgb,var(--green) 60%,var(--line))}
+.agent-patch-card>p,.agent-artifact-card>p,.agent-goal-card>p,.agent-focus-card>p{font-size:10px;line-height:1.75;color:var(--muted);margin:10px 0}
+.agent-patch-card .button,.agent-artifact-card .button{min-height:36px;font-size:10px}
+.agent-apply-all{width:100%;white-space:normal;line-height:1.5}
+.agent-artifact-card h4{font-size:12px;line-height:1.6;margin:7px 0}
+.agent-success-criteria{margin:10px 0;background:var(--surface-soft);border-radius:9px;padding:9px}
+.agent-success-criteria strong{font-size:9px}
+.agent-success-criteria p{font-size:10px;line-height:1.7;margin:3px 0 0;color:var(--muted)}
+.agent-artifact-card>textarea{display:block;margin:6px 0 9px;min-height:70px}
+.agent-kind-label{display:inline-flex;padding:4px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent-dark);font-weight:850;letter-spacing:.06em;font-size:8px}
+.agent-goal-card>div{margin-top:10px;padding:9px;border-radius:8px;background:var(--surface-soft)}
+.agent-goal-card>div p{font-size:10px;line-height:1.7;margin:4px 0 0}
+.agent-focus-card blockquote{margin:0;border-left:3px solid var(--accent);background:var(--surface-soft);padding:11px;border-radius:0 8px 8px 0;font-size:11px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
+.agent-save-artifacts{width:100%;white-space:normal;line-height:1.5}
+.agent-empty-state{padding:13px;border:1px dashed var(--line-strong);border-radius:10px;color:var(--muted);font-size:10px;line-height:1.75}
+.agent-saved-panel{margin-top:6px;border-top:1px solid var(--line);padding-top:14px;min-width:0}
+.agent-saved-panel .panel-heading h3,.agent-revisions .panel-heading h3{font-size:12px;margin:4px 0}
+.agent-saved-item,.agent-revision-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);min-width:0}
+.agent-saved-item:last-child,.agent-revision-row:last-child{border-bottom:0}
+.agent-saved-item>div:first-child,.agent-revision-row>div{display:grid;gap:3px;min-width:0}
+.agent-saved-item strong,.agent-revision-row strong{font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.agent-saved-item small,.agent-revision-row small{font-size:9px;color:var(--muted);line-height:1.5}
+.agent-saved-actions{display:flex;gap:5px;flex-shrink:0}
+.agent-saved-actions button,.agent-revision-row button{font-size:9px;padding:6px 8px;min-height:30px}
+.agent-revisions{padding:13px;margin-top:16px}
+.agent-revision-row button{white-space:nowrap}
+@media(max-width:760px){
+ .agent-workspace-panel{padding:15px;gap:12px}
+ .agent-heading{flex-wrap:wrap}
+ .agent-result-heading{align-items:center}
+ .agent-saved-item,.agent-revision-row{align-items:flex-start}
+ .agent-saved-actions{flex-direction:column}
+ .agent-patch-card,.agent-artifact-card,.agent-goal-card,.agent-focus-card{padding:11px}
+ .agent-activity-item{grid-template-columns:23px minmax(0,1fr);padding:7px}
+}
+@media(prefers-reduced-motion:reduce){
+ .agent-live-dot{box-shadow:none}
+ .agent-workspace-panel *{scroll-behavior:auto;transition:none!important;animation:none!important}
+}
+
+
+.agent-practice-card{display:grid;gap:8px;border:1px solid var(--line);border-radius:12px;padding:13px;background:var(--surface);min-width:0}
+.agent-practice-card h4{font-size:12px;line-height:1.6;margin:7px 0 2px}
+.agent-practice-card p{font-size:10px;line-height:1.7;color:var(--muted);margin:0}
+.agent-practice-card details{border-top:1px solid var(--line);padding-top:8px}
+.agent-practice-card summary{font-size:10px;font-weight:750;cursor:pointer}
+.agent-practice-card blockquote{margin:8px 0;padding:10px;border-left:3px solid var(--accent);background:var(--surface-soft);border-radius:0 8px 8px 0;font-size:10px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.agent-practice-card ul{padding-left:18px;margin:6px 0;color:var(--muted);font-size:10px;line-height:1.75}
+.agent-practice-card .button{width:100%;white-space:normal;line-height:1.5}
