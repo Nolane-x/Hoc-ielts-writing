@@ -70,7 +70,8 @@ export function buildStudyPlan(history, tasks, limit = 3) {
     const criteria = Array.isArray(record.report.criteria) ? record.report.criteria : [];
     for (const item of criteria) {
       const target = aggregate.get(item?.id);
-      const score = Number(item?.score);
+      if (item?.score === null || item?.score === undefined || item?.score === '') continue;
+      const score = Number(item.score);
       if (target && Number.isFinite(score) && score >= 0 && score <= 9) target.scores.push(score);
     }
   }
