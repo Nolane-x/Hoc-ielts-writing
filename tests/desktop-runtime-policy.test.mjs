@@ -20,11 +20,11 @@ test('desktop utility process receives only an environment allowlist', () => {
 
 test('desktop navigation accepts only the explicit loopback origin', () => {
   const base = 'http://127.0.0.1:4179';
-  assert.equal(policy.isInternalNavigation(base + '/'), true);
-  assert.equal(policy.isInternalNavigation(base + '/report?x=1'), true);
-  assert.equal(policy.isInternalNavigation('https://127.0.0.1:4179/'), false);
-  assert.equal(policy.isInternalNavigation('http://localhost:4179/'), false);
-  assert.equal(policy.isInternalNavigation('http://127.0.0.1.evil.example:4179/'), false);
-  assert.equal(policy.isInternalNavigation('http://127.0.0.1:4179@evil.example/'), false);
+  assert.equal(policy.isInternalNavigation(base + '/', base), true);
+  assert.equal(policy.isInternalNavigation(base + '/report?x=1', base), true);
+  assert.equal(policy.isInternalNavigation('https://127.0.0.1:4179/', base), false);
+  assert.equal(policy.isInternalNavigation('http://localhost:4179/', base), false);
+  assert.equal(policy.isInternalNavigation('http://127.0.0.1.evil.example:4179/', base), false);
+  assert.equal(policy.isInternalNavigation('http://127.0.0.1:4179@evil.example/', base), false);
   assert.equal(policy.isInternalNavigation('javascript:alert(1)', base), false);
 });
