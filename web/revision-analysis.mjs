@@ -5,8 +5,10 @@ export function buildRevisionComparison(currentRecord, history) {
  const previous=(Array.isArray(history)?history:[]).filter(r=>r&&r.id!==currentRecord.id&&r.source==='ai'&&r.taskId===currentRecord.taskId&&r.taskType===currentRecord.taskType&&r.taskPrompt===currentRecord.taskPrompt&&r.report?.status==='ai-formative'&&typeof r.essay==='string'&&r.essay!==currentRecord.essay&&Number.isFinite(Date.parse(r.at||''))&&Date.parse(r.at)<when).sort((a,b)=>Date.parse(b.at)-Date.parse(a.at))[0];
  if(!previous)return null;
  const labels=new Map(getCriterionDefinitions(currentRecord.taskType).map(x=>[x.id,x.title]));
- const before=new Map((previous.report.criteria||[]).map(x=>[x?.id,x]));
- const after=new Map((currentRecord.report.criteria||[]).map(x=>[x?.id,x]));
+ const previousCriteria=Array.isArray(previous.report.criteria)?previous.report.criteria:[];
+ const currentCriteria=Array.isArray(currentRecord.report.criteria)?currentRecord.report.criteria:[];
+ const before=new Map(previousCriteria.filter(x=>x&&typeof x==='object').map(x=>[x.id,x]));
+ const after=new Map(currentCriteria.filter(x=>x&&typeof x==='object').map(x=>[x.id,x]));
  const criteria=[...labels].map(([id,label])=>{const a=before.get(id)?.score,b=after.get(id)?.score;return Number.isFinite(a)&&Number.isFinite(b)?{id,label,before:a,after:b,delta:Math.round((b-a)*10)/10}:null;}).filter(Boolean);
  const oldBand=Number.isFinite(previous.report.estimatedTaskBand)?previous.report.estimatedTaskBand:null;
  const newBand=Number.isFinite(currentRecord.report.estimatedTaskBand)?currentRecord.report.estimatedTaskBand:null;
