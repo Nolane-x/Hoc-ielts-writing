@@ -1021,9 +1021,11 @@ function downloadFile(filename, content, type = 'application/json') {
 function exportData() {
   const drafts = {};
   const coachHistories = {};
+  const agentRevisions = {};
   for (const task of TASKS) {
     drafts[task.id] = readDraft(task.id);
     coachHistories[task.id] = normaliseLocalCoachTurns(safeParse(localStorage.getItem(COACH_PREFIX + task.id), []));
+    agentRevisions[task.id] = agentRevisionSnapshots(task.id);
   }
   const payload = {
     schemaVersion: 1,
@@ -1032,7 +1034,9 @@ function exportData() {
     settings: { ...settings, apiKey: undefined },
     drafts,
     history,
-    coachHistories
+    coachHistories,
+    agentArtifacts: agentSavedArtifacts(),
+    agentRevisions
   };
   downloadFile('wmr-local-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(payload, null, 2));
   setToast('Đã xuất bản sao lưu cục bộ. File không chứa API key.');
@@ -1046,18 +1050,26 @@ async function importBackupFile(file) {
   try {
     const backup = parseLocalBackup(await file.text(), TASKS.map(task => task.id));
     const draftCount = Object.keys(backup.drafts).length;
-    if (!confirm('Khôi phục ' + draftCount + ' bản nháp và ' + backup.history.length + ' báo cáo? Lịch sử Mentor sẽ được thay thế. Provider, quyền gửi dữ liệu và API key hiện tại sẽ không thay đổi.')) return;
+    const artifactCount = Array.isArray(backup.agentArtifacts) ? backup.agentArtifacts.length : 0;
+    const revisionCount = Object.values(backup.agentRevisions || {}).reduce((sum, items) => sum + items.length, 0);
+    if (!confirm('Khôi phục ' + draftCount + ' bản nháp, ' + backup.history.length + ' báo cáo, ' + artifactCount + ' tài liệu Agent và ' + revisionCount + ' phiên bản? Dữ liệu cục bộ hiện có sẽ được thay thế. Provider, quyền gửi dữ liệu và API key hiện tại sẽ không thay đổi.')) return;
     for (const task of TASKS) {
       localStorage.setItem(DRAFT_PREFIX + task.id, backup.drafts[task.id] || '');
       const turns = backup.coachHistories[task.id] || [];
       if (turns.length) localStorage.setItem(COACH_PREFIX + task.id, JSON.stringify(turns));
       else localStorage.removeItem(COACH_PREFIX + task.id);
+      const revisions = backup.agentRevisions?.[task.id] || [];
+      if (revisions.length) localStorage.setItem(agentRevisionKey(task.id), JSON.stringify(revisions));
+      else localStorage.removeItem(agentRevisionKey(task.id));
     }
+    localStorage.setItem(AGENT_ARTIFACTS_KEY, JSON.stringify(backup.agentArtifacts || []));
     history = backup.history;
     persistHistory();
     setTheme(backup.theme);
     latestReport = history[0]?.report || null;
     loadCurrentTask();
+    renderAgentRevisions();
+    renderSavedAgentArtifacts();
     renderLearning();
     renderReport(latestReport);
     setToast('Đã khôi phục bản sao lưu. Cài đặt AI và khóa hiện tại được giữ nguyên.');
@@ -1077,22 +1089,31 @@ function exportReport() {
   downloadFile('wmr-report-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(record, null, 2));
 }
 async function clearLocalData() {
-  if (!confirm('Xóa toàn bộ bản nháp, báo cáo, hội thoại Mentor và tiến độ trên thiết bị này? Không thể hoàn tác.')) return;
+  if (!confirm('Xóa toàn bộ bản nháp, báo cáo, hội thoại Mentor, tài liệu Agent, phiên bản sửa bài và tiến độ trên thiết bị này? Không thể hoàn tác.')) return;
   for (const task of TASKS) {
     localStorage.removeItem(DRAFT_PREFIX + task.id);
     localStorage.removeItem(COACH_PREFIX + task.id);
+    localStorage.removeItem(agentRevisionKey(task.id));
   }
+  localStorage.removeItem(AGENT_ARTIFACTS_KEY);
   localStorage.removeItem(HISTORY_KEY);
   if (NATIVE) localStorage.removeItem(USAGE_KEY);
   history = [];
   coachTurns = [];
   latestReport = null;
+  agentResult = null;
+  agentResultTaskId = null;
+  agentAppliedPatches = new Set();
+  agentActivity = [];
+  $('#agent-result').innerHTML = '';
+  $('#agent-activity').innerHTML = '';
   $('#essay-editor').value = '';
   loadHistory();
   loadCurrentTask();
   renderReport(null);
   renderLearning();
-  setToast('Đã xóa bản nháp, hội thoại Mentor và lịch sử cục bộ.');
+  renderSavedAgentArtifacts();
+  setToast('Đã xóa bản nháp, hội thoại Mentor, tài liệu Agent và lịch sử cục bộ.');
 }
 function attachEvents() {
   $$('[data-page]').forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
