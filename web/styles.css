@@ -101,3 +101,13 @@
  .agent-live-dot{box-shadow:none}
  .agent-workspace-panel *{scroll-behavior:auto;transition:none!important;animation:none!important}
 }
+
+
+.agent-practice-card{display:grid;gap:8px;border:1px solid var(--line);border-radius:12px;padding:13px;background:var(--surface);min-width:0}
+.agent-practice-card h4{font-size:12px;line-height:1.6;margin:7px 0 2px}
+.agent-practice-card p{font-size:10px;line-height:1.7;color:var(--muted);margin:0}
+.agent-practice-card details{border-top:1px solid var(--line);padding-top:8px}
+.agent-practice-card summary{font-size:10px;font-weight:750;cursor:pointer}
+.agent-practice-card blockquote{margin:8px 0;padding:10px;border-left:3px solid var(--accent);background:var(--surface-soft);border-radius:0 8px 8px 0;font-size:10px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.agent-practice-card ul{padding-left:18px;margin:6px 0;color:var(--muted);font-size:10px;line-height:1.75}
+.agent-practice-card .button{width:100%;white-space:normal;line-height:1.5}
