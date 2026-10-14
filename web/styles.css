@@ -133,3 +133,30 @@
 .agent-attempt-content p{font-size:10px;line-height:1.75;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .agent-attempt-content pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;padding:9px;border-radius:8px;background:var(--surface-soft);font:10px/1.75 inherit}
 @media(max-width:760px){.agent-practice-attempt{padding:9px}.agent-practice-attempt-heading{gap:6px}}
+
+
+/* Transfer micro-practice is visible in both the workspace and adaptive learning hub. */
+.agent-practice-overview{padding:20px;margin:18px 0;min-width:0}
+.agent-practice-overview .panel-heading h2{font-size:15px;margin:4px 0}
+.agent-practice-overview .panel-heading p{font-size:10px;color:var(--muted);line-height:1.7;margin:5px 0 0}
+.agent-practice-overview-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+.agent-practice-overview-metrics>div{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-soft);display:grid;gap:4px}
+.agent-practice-overview-metrics strong{font-size:18px;line-height:1.2;color:var(--ink);font-variant-numeric:tabular-nums}
+.agent-practice-overview-metrics span{font-size:9px;line-height:1.5;color:var(--muted)}
+.agent-practice-overview-skills{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.agent-practice-overview-chip{font-size:9px;line-height:1.5;padding:5px 8px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+.agent-practice-overview-list{display:grid;gap:0}
+.agent-practice-overview-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);min-width:0}
+.agent-practice-overview-row:last-child{border-bottom:0}
+.agent-practice-overview-row>div{display:grid;gap:3px;min-width:0}
+.agent-practice-overview-row strong{font-size:10px}
+.agent-practice-overview-row small,.agent-practice-overview-row span{font-size:9px;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
+.agent-practice-overview-row button{white-space:nowrap;flex-shrink:0;font-size:9px}
+.agent-practice-overview-caveat{font-size:9px;line-height:1.7;color:var(--muted);margin:9px 0 0}
+@media(max-width:520px){
+ .agent-practice-overview{padding:13px}
+ .agent-practice-overview-metrics{gap:5px}
+ .agent-practice-overview-metrics>div{padding:8px}
+ .agent-practice-overview-metrics strong{font-size:16px}
+ .agent-practice-overview-row{gap:7px}
+}
