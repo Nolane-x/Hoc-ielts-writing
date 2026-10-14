@@ -110,3 +110,23 @@ test('Task 1 issue categories are normalised to Task Achievement while Task 2 re
   assert.equal(task2.issues[0].category, 'task-response');
   assert.equal(task2.issues[0].title, 'Task Response');
 });
+
+
+test('assessment prompt injects task-specific band anchors and explains their non-official limits', () => {
+  const academic = buildAssessmentMessages({ taskType: 'task1-academic', essay: 'The chart shows changes over time.' })[0].content;
+  const general = buildAssessmentMessages({ taskType: 'task1-general', essay: 'Dear Sam, I am writing about the event.' })[0].content;
+  const task2 = buildAssessmentMessages({ taskType: 'task2', essay: 'I believe the proposal has advantages.' })[0].content;
+
+  assert.match(academic, /taskResponse — Task Achievement/);
+  assert.match(academic, /Band 5: Mới đáp ứng một phần yêu cầu/);
+  assert.match(academic, /Overview còn mờ/);
+  assert.match(general, /taskResponse — Task Achievement/);
+  assert.match(general, /mục đích\/thành phần thư/i);
+  assert.match(task2, /taskResponse — Task Response/);
+  assert.match(task2, /Band 5: Trả lời đề một phần/);
+  assert.match(task2, /Band 9: Lập trường được phát triển sâu/);
+  assert.match(task2, /not verbatim official IELTS descriptors/i);
+  assert.match(task2, /not empirical score calibration/i);
+  assert.match(task2, /clear, natural Vietnamese/i);
+  assert.ok(task2.length < 14000, 'rubric anchor block should remain bounded');
+});
