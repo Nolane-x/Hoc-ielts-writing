@@ -51,3 +51,24 @@ test('invalid scores and missing tasks cannot leak into recommended plan output'
   assert.equal(plan.steps.length, 3);
   assert.ok(plan.steps.every(step => TASKS.some(task => task.id === step.taskId)));
 });
+
+
+test('null or absent criterion scores are treated as missing rather than zero', () => {
+  const history = [{
+    essay: 'A draft',
+    report: {
+      status: 'ai-formative',
+      criteria: [
+        { id: 'taskResponse', score: null },
+        { id: 'coherence', score: undefined },
+        { id: 'lexical', score: '' },
+        { id: 'grammar', score: 6 }
+      ]
+    }
+  }];
+  const plan = buildStudyPlan(history, TASKS);
+  assert.equal(plan.adaptive, true);
+  assert.equal(plan.weakestCriteria.length, 1);
+  assert.equal(plan.weakestCriteria[0].id, 'grammar');
+  assert.equal(plan.weakestCriteria[0].mean, 6);
+});
