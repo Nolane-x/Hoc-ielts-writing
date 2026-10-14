@@ -5,6 +5,7 @@ import {
   WRITING_AGENT_MAX_TOOL_CALLS,
   WRITING_AGENT_SYSTEM_PROMPT,
   WRITING_AGENT_TOOLS,
+  normaliseAgentLearningContext,
   estimateWritingAgentSessionCost,
   createWritingAgentState,
   executeWritingAgentTool,
@@ -239,4 +240,52 @@ test('cancelling after a tool action retains staged changes in the final native 
   assert.equal(result.status,'partial');
   assert.equal(result.failureCode,'cancelled');
   assert.equal(result.patches.length,1);
+});
+
+
+test('learner profile context is bounded and contains only aggregate learning signals', async () => {
+  const profile = normaliseAgentLearningContext({
+    eligibleEssayCount: 3,
+    criterionAverages: [
+      { id: 'grammar', mean: 6.25, count: 3 },
+      { id: 'not-a-criterion', mean: 9, count: 30 }
+    ],
+    recurringPatterns: [
+      { category: 'grammar', criterion: 'grammar', assessmentCount: 2, severity: 'high', note: 'extra text' }
+    ],
+    recentAssessments: [{
+      taskType: 'task2',
+      wordCount: 260,
+      criteria: [
+        { id: 'taskResponse', score: 6.5 },
+        { id: 'grammar', score: 6.3 },
+        { id: 'grammar', score: 7 }
+      ],
+      issueCategories: ['grammar', 'not-a-category'],
+      resolvedIssues: 1,
+      unresolvedIssues: 2,
+      essayText: 'Historical essay content should not be forwarded.'
+    }],
+    extraPrompt: 'unexpected field'
+  });
+  assert.equal(profile.eligibleEssayCount, 3);
+  assert.deepEqual(profile.criterionAverages, [{ id: 'grammar', mean: 6.3, count: 3 }]);
+  assert.deepEqual(profile.recurringPatterns, [{ category: 'grammar', criterion: 'grammar', assessmentCount: 2, severity: 'high' }]);
+  assert.deepEqual(profile.recentAssessments[0].criteria, [{ id: 'taskResponse', score: 6.5 }]);
+  assert.deepEqual(profile.recentAssessments[0].issueCategories, ['grammar']);
+  assert.equal(JSON.stringify(profile).includes('Historical essay content'), false);
+  assert.equal(JSON.stringify(profile).includes('unexpected field'), false);
+
+  const received = [];
+  await runWritingAgentSession({
+    input: { essay, message: 'Use my progress summary to choose a useful exercise.', learningContext: profile },
+    complete: async ({ messages }) => {
+      const snapshotText = messages.at(-1).content;
+      const snapshot = JSON.parse(snapshotText.slice(snapshotText.indexOf('\n') + 1));
+      received.push(snapshot.learningProgress);
+      return { text: JSON.stringify({ kind: 'final', message: 'Đã tham khảo hồ sơ học tập tổng hợp.' }) };
+    },
+    onEvent: () => {}
+  });
+  assert.deepEqual(received[0], profile);
 });
