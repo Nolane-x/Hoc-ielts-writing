@@ -34,6 +34,10 @@
             <div class="editor-footer"><span id="editor-hint">Ctrl/Cmd + Enter để nộp bài · Bản nháp tự lưu trên thiết bị</span><span id="word-target">Mục tiêu tham khảo: 250 từ</span></div>
             <div class="editor-actions"><button class="button button-primary" id="submit-review" type="button"><span class="button-icon">✦</span>Nộp bài &amp; chấm sâu<span class="button-arrow">→</span></button><button class="button button-secondary" id="local-check" type="button">Kiểm tra cục bộ</button></div>
             <div class="privacy-inline"><span class="privacy-lock">⌑</span><span>Bản nháp ở trên thiết bị. Chỉ gửi ra ngoài nếu bạn bật quyền dùng provider trong Settings.</span></div>
+            <section class="agent-revisions panel" id="agent-revisions" hidden aria-label="Các phiên bản bài viết trước khi Agent sửa">
+              <div class="panel-heading"><div><span class="section-kicker">REVISION SAFETY NET</span><h3>Khôi phục phiên bản</h3></div><span class="count-badge">Tối đa 5 bản</span></div>
+              <div id="agent-revision-list"></div>
+            </section>
           </section>
           <aside class="coach-column"><section class="panel coach-panel"><div class="panel-heading coach-heading"><div><span class="section-kicker">02 / MENTOR</span><h2>Writing Mentor</h2></div><span class="ai-orbit" aria-hidden="true">✦</span></div><p class="coach-intro">Bắt đầu từ một mục tiêu nhỏ. Mentor sẽ giúp bạn suy nghĩ, không viết hộ toàn bộ bài.</p>
             <div class="tool-list" aria-label="Công cụ hướng dẫn">
@@ -43,7 +47,20 @@
               <button class="tool-card" data-coach="Tạo một bài luyện vi mô dựa trên lỗi có khả năng xuất hiện trong bản nháp. Đưa một câu hỏi, chờ tôi trả lời rồi mới giải thích." type="button"><span class="tool-icon green">◎</span><span><strong>Luyện một lỗi</strong><small>Một bước, một kỹ năng</small></span><span class="tool-chevron">↗</span></button>
             </div>
             <div class="coach-input-area"><label for="coach-input">HỎI MENTOR</label><textarea id="coach-input" rows="3" placeholder="Ví dụ: Tôi chưa biết cách viết overview…"></textarea><button class="button button-dark" id="ask-coach" type="button">Hỏi Mentor <span>↑</span></button><div id="coach-status" class="inline-status" role="status" aria-live="polite">Chế độ cục bộ vẫn dùng được các khung học. Câu trả lời AI cần bật provider.</div><div id="coach-answer" class="coach-answer" hidden></div><button class="text-button clear-coach-button" id="clear-coach-history" type="button" hidden>Xóa hội thoại</button></div>
-          </section><section class="tip-card"><div class="tip-spark">✦</div><div><strong>Nguyên tắc WMR</strong><p>Đừng chỉ sửa câu cho đẹp. Hãy hiểu vì sao câu đó chưa truyền tải đúng ý, rồi thử áp dụng lại ở một đề khác.</p></div></section></aside>
+          </section>
+          <section class="panel agent-workspace-panel" id="agent-workspace">
+            <div class="panel-heading agent-heading"><div><span class="section-kicker">03 / AGENT WORKSPACE</span><h2>Writing Agent</h2></div><span class="agent-live-pill"><span class="agent-live-dot"></span>Workspace tools</span></div>
+            <p class="agent-intro">Agent có thể đọc cấu trúc bài, tìm bằng chứng nguyên văn, đề xuất sửa câu, tạo dàn ý, bài luyện và mục tiêu học. Những sửa đổi luôn ở chế độ chờ bạn duyệt; bản nháp gốc không bị âm thầm ghi đè.</p>
+            <label for="agent-task-input">MỤC TIÊU PHIÊN LÀM VIỆC</label>
+            <textarea id="agent-task-input" rows="3" maxlength="4000" placeholder="Ví dụ: Kiểm tra bài theo đúng đề, tìm 3 vấn đề quan trọng nhất, đề xuất sửa chính xác và tạo một bài luyện giúp tôi tự sửa được lỗi đó."></textarea>
+            <div class="agent-action-row"><button class="button button-primary" id="run-writing-agent" type="button"><span class="button-icon">✦</span>Chạy Writing Agent<span class="button-arrow">→</span></button><button class="button button-secondary" id="cancel-writing-agent" type="button" hidden>Hủy phiên</button></div>
+            <p class="agent-permission-note">Agent AI cần provider đã cấu hình và quyền gửi nội dung đã bật trong Settings. Không có shell, quyền đọc file tùy ý hay quyền truy cập API key; công cụ chỉ thao tác trên bài viết và tài liệu học được cung cấp.</p>
+            <div id="agent-live-status" class="agent-live-status" role="status" aria-live="polite">Sẵn sàng. Bạn có thể tiếp tục sửa bài trong lúc Agent phân tích.</div>
+            <ol id="agent-activity" class="agent-activity" aria-label="Nhật ký thao tác theo thời gian thực" aria-live="polite" aria-relevant="additions"></ol>
+            <section id="agent-result" class="agent-result" aria-label="Kết quả và thao tác đang chờ duyệt"></section>
+            <section class="agent-saved-panel" aria-label="Tài liệu học do Agent tạo"><div class="panel-heading"><div><span class="section-kicker">LOCAL ARTIFACT LIBRARY</span><h3>Tài liệu đã lưu</h3></div><span class="count-badge">Cục bộ</span></div><div id="agent-saved-artifacts"></div></section>
+          </section>
+          <section class="tip-card"><div class="tip-spark">✦</div><div><strong>Nguyên tắc WMR</strong><p>Đừng chỉ sửa câu cho đẹp. Hãy hiểu vì sao câu đó chưa truyền tải đúng ý, rồi thử áp dụng lại ở một đề khác.</p></div></section></aside>
         </div>
       </section>
       <section class="page-view" id="page-learn" aria-labelledby="learn-title"><div class="page-heading"><div class="eyebrow"><span class="eyebrow-line"></span> LEARNING INTELLIGENCE</div><h1 id="learn-title">Lộ trình học của bạn</h1><p>Học theo kỹ năng và lỗi thực tế. Thông tin tiến bộ lưu cục bộ; WMR không tự kết luận bạn đã thành thạo chỉ từ một lần đúng.</p></div><div class="learn-metrics" id="learn-metrics"></div><section id="study-plan" class="study-plan-region" aria-label="Lộ trình học thích ứng"></section><section id="recurring-errors" class="panel recurring-errors-panel" aria-label="Nhóm lỗi xuất hiện qua nhiều bài"></section><div class="learn-grid" id="learn-grid"></div><section id="rubric-guide" class="panel rubric-guide-shell" aria-label="Hướng dẫn tiêu chí IELTS Writing"></section><section class="panel history-panel"><div class="panel-heading"><div><span class="section-kicker">LOCAL HISTORY</span><h2>Các lần đánh giá gần đây</h2></div><button class="quiet-button" id="export-history" type="button">Xuất dữ liệu ↗</button></div><div id="history-list"></div></section></section>
