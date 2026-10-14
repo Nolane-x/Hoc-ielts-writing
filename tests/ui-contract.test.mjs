@@ -129,3 +129,12 @@ test('Writing Agent task-bank suggestions are rendered from local results and re
   assert.match(app, /Không áp dụng sửa đổi vì WMR chưa thể lưu bản trước để hoàn tác/);
   assert.match(app, /Không thể khôi phục vì chưa lưu được nội dung editor hiện tại/);
 });
+
+
+test('native Writing Agent reserves one conservative session estimate and passes cancellation into provider calls', () => {
+  assert.match(app, /async function reserveNativeAgentSession\(config, input\)/);
+  assert.match(app, /estimateWritingAgentSessionCost\(config, input, settings\.maxOutputTokens\)/);
+  assert.match(app, /complete: async \(\{ messages, maxOutputTokens, signal \}\) => await requestCompletion\(/);
+  assert.match(app, /estimatedSessionCostUsd/);
+  assert.match(app, /metadataLine/);
+});
