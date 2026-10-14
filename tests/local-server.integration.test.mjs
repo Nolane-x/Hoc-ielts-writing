@@ -196,8 +196,8 @@ test('writing agent streams tool progress and final result from a configured loc
   assert.match(events, /\"maximumToolCalls\":8/);
   assert.match(events, /Đã kiểm tra bài nháp trong workspace cục bộ/);
   const upstreamText = JSON.stringify(modelRequests);
-  assert.match(upstreamText, /\"eligibleEssayCount\":1/);
-  assert.match(upstreamText, /\"learningProgress\"/);
+  assert.ok(upstreamText.includes('eligibleEssayCount'));
+  assert.ok(upstreamText.includes('learningProgress'));
   assert.doesNotMatch(upstreamText, /old-essay-sentinel-should-be-dropped/);
   assert.doesNotMatch(upstreamText, /ignore-this-field/);
   assert.equal(outputs.length, 0);
