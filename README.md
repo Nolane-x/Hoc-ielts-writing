@@ -1,6 +1,12 @@
-# WMR Writing Mentor 1.3.0
+# WMR Writing Mentor 1.4.0
 
 WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking learners. It combines an essay editor, a guided 21-task practice bank, an optional multi-provider AI mentor, formative four-criterion feedback, private learning history and validated backup/restore.
+
+## Highlights in 1.4.0
+
+- **Recurring error intelligence.** Detects issue categories that reappear across distinct essays, shows frequency and a targeted next exercise, and deliberately excludes local preflight, fallback reports, short essays and duplicate submissions. Task Achievement and Task Response remain separate.
+- **Persisted issue resolution.** Reopening a saved report restores the learner's 'Đã xử lý' button state.
+- **Evidence-gated skill profile.** Criterion averages now come from eligible AI assessments only and separate the five IELTS task criteria, not a mixed Task 1/Task 2 aggregate.
 
 ## Highlights in 1.3.0
 
