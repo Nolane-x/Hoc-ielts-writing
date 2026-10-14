@@ -306,12 +306,13 @@ function renderLearning() {
 function renderProviders() {
   $('#provider-select').innerHTML = Object.entries(PROVIDER_PRESETS).map(([id, p]) => '<option value="' + escapeHtml(id) + '">' + escapeHtml(p.label) + '</option>').join('');
 }
+function keyIsAvailable() { return Boolean(activeKey || (!NATIVE && settings.hasApiKey === true)); }
 function fillSettingsForm() {
   $('#provider-select').value = settings.provider;
   $('#provider-model').value = settings.model || PROVIDER_PRESETS[settings.provider]?.model || '';
   $('#provider-url').value = settings.baseUrl || PROVIDER_PRESETS[settings.provider]?.baseUrl || '';
   $('#provider-key').value = '';
-  $('#key-status').textContent = activeKey ? 'Đang có khóa' : 'Chưa lưu';
+  $('#key-status').textContent = keyIsAvailable() ? 'Đang có khóa' : 'Chưa lưu';
   $('#price-input').value = settings.inputUsdPerMillion || 0;
   $('#price-output').value = settings.outputUsdPerMillion || 0;
   $('#external-allowed').checked = Boolean(settings.externalAllowed);
@@ -364,11 +365,14 @@ function formSettings() {
 async function saveSettings(event) {
   event?.preventDefault();
   const proposed = formSettings();
-  const normal = normaliseProviderConfig({ ...proposed, apiKey: proposed.apiKey || activeKey || (['ollama','lmstudio'].includes(proposed.provider) ? 'local' : '') });
+  const providerChanged = proposed.provider !== settings.provider;
+  const isLocalProvider = ['ollama','lmstudio'].includes(proposed.provider);
+  const effectiveKey = proposed.apiKey.trim() || (!providerChanged ? activeKey : '') || (isLocalProvider ? 'local' : '');
+  const normal = normaliseProviderConfig({ ...proposed, apiKey: effectiveKey });
   if (!normal.ok && (proposed.externalAllowed || proposed.model || proposed.baseUrl)) {
     setStatus('#settings-status', normal.reason, true); return;
   }
-  if (proposed.externalAllowed && !proposed.apiKey && !activeKey && !['ollama','lmstudio'].includes(proposed.provider)) {
+  if (proposed.externalAllowed && !proposed.apiKey.trim() && !(keyIsAvailable() && !providerChanged) && !isLocalProvider) {
     setStatus('#settings-status', 'Bạn đã bật gửi ra ngoài nhưng chưa cung cấp API key. Hãy nhập key hoặc tắt quyền gửi dữ liệu.', true); return;
   }
   if (proposed.externalAllowed && !normal.localEndpoint && !(proposed.inputUsdPerMillion > 0 && proposed.outputUsdPerMillion > 0)) {
@@ -377,19 +381,22 @@ async function saveSettings(event) {
   settings = { ...DEFAULT_SETTINGS, ...proposed };
   delete settings.apiKey;
   if (proposed.apiKey.trim()) activeKey = proposed.apiKey.trim();
+  else if (providerChanged) activeKey = '';
   try {
     if (NATIVE) {
+      if (providerChanged && !proposed.apiKey.trim()) await SecureStorage.remove(KEY_NAME).catch(() => {});
       if (proposed.apiKey.trim()) await SecureStorage.set(KEY_NAME, proposed.apiKey.trim());
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } else {
       const payload = { ...settings };
       if (proposed.apiKey.trim()) payload.apiKey = proposed.apiKey.trim();
+      else if (providerChanged) payload.clearApiKey = true;
       const saved = await postJson('/api/settings', payload);
       settings = { ...DEFAULT_SETTINGS, ...saved };
       activeKey = proposed.apiKey.trim() ? proposed.apiKey.trim() : (saved.hasApiKey ? activeKey : '');
     }
     $('#provider-key').value = '';
-    $('#key-status').textContent = activeKey ? 'Đang có khóa' : 'Chưa lưu';
+    $('#key-status').textContent = keyIsAvailable() ? 'Đang có khóa' : 'Chưa lưu';
     setStatus('#settings-status', 'Đã lưu cài đặt. ' + (settings.externalAllowed ? 'Provider chỉ được gọi khi bạn chủ động nộp bài hoặc gửi câu hỏi.' : 'Chế độ offline đang bật; không gửi nội dung ra ngoài.'));
     fillSettingsForm(); updateProviderStatus();
     setToast('Cài đặt đã được lưu.');
@@ -400,6 +407,7 @@ async function clearKey() {
     if (NATIVE) await SecureStorage.remove(KEY_NAME);
     else await postJson('/api/key/clear', {});
     activeKey = '';
+    settings.hasApiKey = false;
     $('#provider-key').value = '';
     $('#key-status').textContent = 'Chưa lưu';
     setStatus('#settings-status', 'Đã xóa khóa API đang lưu.');
