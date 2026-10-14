@@ -4,3 +4,14 @@ import { buildRevisionComparison } from '../web/revision-analysis.mjs';
 function record({id,at,essay,band,scores,taskId='task2-opinion',taskPrompt='Same task',source='ai',status='ai-formative',issues=2}){return {id,at,essay,source,taskId,taskType:'task2',taskPrompt,taskTitle:'Task 2',report:{status,estimatedTaskBand:band,criteria:['taskResponse','coherence','lexical','grammar'].map((id,i)=>({id,score:scores?.[i]??null})),issues:Array.from({length:issues},(_,i)=>({id:String(i)}))}};}
 test('compares the latest earlier AI report for a different draft of the same prompt',()=>{const prior=record({id:'old',at:'2026-10-01T08:00:00.000Z',essay:'First draft has one idea and little detail.',band:6,scores:[6,6,6,6],issues:5});const older=record({id:'older',at:'2026-09-01T08:00:00.000Z',essay:'Older draft from the task.',band:5.5,scores:[5.5,5.5,5.5,5.5],issues:7});const current=record({id:'new',at:'2026-10-10T08:00:00.000Z',essay:'Revised draft now explains its main reason and includes a specific supporting example.',band:6.5,scores:[6.5,6,7,6.5],issues:3});const result=buildRevisionComparison(current,[current,prior,older]);assert.equal(result.previousAt,prior.at);assert.equal(result.bandDelta,0.5);assert.equal(result.issueDelta,-2);assert.equal(result.criteria.find(x=>x.id==='lexical').delta,1);assert.ok(result.wordDelta>0);});
 test('ignores identical drafts, different prompts and local-only reports',()=>{const current=record({id:'new',at:'2026-10-10T08:00:00.000Z',essay:'Unchanged exact text.',band:6.5,scores:[6.5,6.5,6.5,6.5]});const same=record({id:'same',at:'2026-10-09T08:00:00.000Z',essay:'Unchanged exact text.',band:6,scores:[6,6,6,6]});const other=record({id:'other',at:'2026-10-08T08:00:00.000Z',essay:'Different draft.',band:6,scores:[6,6,6,6],taskPrompt:'Different task'});const local=record({id:'local',at:'2026-10-09T08:00:00.000Z',essay:'Local draft.',band:null,scores:[null,null,null,null],source:'local'});assert.equal(buildRevisionComparison(current,[current,same,other,local]),null);assert.equal(buildRevisionComparison({...current,source:'local'},[current,local]),null);});
+
+
+test('malformed legacy criteria never crash revision rendering', () => {
+  const current = record({ id: 'current', at: '2026-10-10T08:00:00.000Z', essay: 'Current revised answer.', band: 6.5, scores: [6.5,6.5,6.5,6.5] });
+  const previous = record({ id: 'previous', at: '2026-10-09T08:00:00.000Z', essay: 'Previous draft answer.', band: 6, scores: [6,6,6,6] });
+  previous.report.criteria = { unexpected: 'legacy malformed storage' };
+  current.report.criteria = null;
+  const result = buildRevisionComparison(current, [current, previous]);
+  assert.ok(result);
+  assert.deepEqual(result.criteria, []);
+});
