@@ -54,6 +54,8 @@ let agentStreamError = null;
 let agentSessionMetadata = null;
 let agentSessionId = '';
 let agentCancelRequested = false;
+let examTimerHandle = 0;
+let examSecondsRemaining = 40 * 60;
 
 function safeParse(value, fallback) { try { return JSON.parse(value); } catch { return fallback; } }
 function escapeHtml(value) {
@@ -73,6 +75,11 @@ function setStatus(selector, message, bad = false) {
   el.style.color = bad ? 'var(--red)' : '';
 }
 function readDraft(taskId) { return localStorage.getItem(DRAFT_PREFIX + taskId) || ''; }
+function countParagraphs(value) {
+  const text = String(value || '').trim();
+  if (!text) return 0;
+  return text.split(/\r?\n\s*\r?\n+/).filter(block => block.trim().length > 0).length;
+}
 function saveDraft(announce = false) {
   if (!currentTask) return;
   localStorage.setItem(DRAFT_PREFIX + currentTask.id, $('#essay-editor').value);
@@ -84,7 +91,74 @@ function saveDraft(announce = false) {
 function countWords(value) { return String(value || '').trim().match(/\b[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)?.length || 0; }
 function updateWordTarget() {
   const type = currentTask?.type || 'task2';
+  const target = type === 'task2' ? 250 : 150;
   $('#word-target').textContent = type === 'task1-general' ? 'Mục tiêu tham khảo: 150 từ' : type === 'task2' ? 'Mục tiêu tham khảo: 250 từ' : 'Mục tiêu tham khảo: 150 từ';
+  const text = $('#essay-editor')?.value || '';
+  const words = countWords(text);
+  const paragraphs = countParagraphs(text);
+  const paraEl = $('#paragraph-count');
+  if (paraEl) paraEl.textContent = String(paragraphs);
+  const fillEl = $('#word-progress-fill');
+  if (fillEl) {
+    const pct = Math.min(100, Math.round((words / target) * 100));
+    fillEl.style.width = pct + '%';
+    fillEl.classList.toggle('target-reached', words >= target);
+  }
+  const badgeEl = $('#active-task-badge');
+  if (badgeEl) {
+    badgeEl.textContent = type === 'task2' ? 'Task 2' : type === 'task1-general' ? 'Task 1 GT' : 'Task 1 Academic';
+  }
+}
+function formatTimer(seconds) {
+  const safe = Math.max(0, Math.floor(seconds));
+  const m = String(Math.floor(safe / 60)).padStart(2, '0');
+  const s = String(safe % 60).padStart(2, '0');
+  return m + ':' + s;
+}
+function renderExamTimer() {
+  const display = $('#timer-display');
+  if (display) display.textContent = formatTimer(examSecondsRemaining);
+  const host = $('#exam-timer');
+  if (host) host.classList.toggle('timer-running', Boolean(examTimerHandle));
+  const btn = $('#timer-toggle');
+  if (btn) btn.textContent = examTimerHandle ? 'Tạm dừng' : 'Bắt đầu';
+}
+function resetExamTimer(minutes = currentTask?.estimatedMinutes || 40) {
+  if (examTimerHandle) { clearInterval(examTimerHandle); examTimerHandle = 0; }
+  examSecondsRemaining = Math.max(5, Number(minutes) || 40) * 60;
+  renderExamTimer();
+}
+function toggleExamTimer() {
+  if (examTimerHandle) {
+    clearInterval(examTimerHandle);
+    examTimerHandle = 0;
+    renderExamTimer();
+    return;
+  }
+  if (examSecondsRemaining <= 0) resetExamTimer();
+  examTimerHandle = setInterval(() => {
+    examSecondsRemaining = Math.max(0, examSecondsRemaining - 1);
+    renderExamTimer();
+    if (examSecondsRemaining === 0) {
+      clearInterval(examTimerHandle);
+      examTimerHandle = 0;
+      renderExamTimer();
+      setToast('Đã hết thời gian luyện bài! Hãy kiểm tra lại và nộp bài.');
+    }
+  }, 1000);
+  renderExamTimer();
+}
+function setCopilotTab(mode = 'all') {
+  const selected = ['all', 'agent', 'mentor'].includes(mode) ? mode : 'all';
+  $$('[data-copilot-tab]').forEach(btn => {
+    const active = btn.dataset.copilotTab === selected;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+  const agentEl = $('#agent-workspace');
+  const mentorEl = $('#coach-panel');
+  if (agentEl) agentEl.hidden = selected === 'mentor';
+  if (mentorEl) mentorEl.hidden = selected === 'agent';
 }
 function showPage(page) {
   const key = ['workspace', 'learn', 'report', 'settings'].includes(page) ? page : 'workspace';
@@ -132,6 +206,7 @@ function loadCurrentTask() {
   $('#autosave-label').textContent = 'Bản nháp cục bộ';
   $('#word-count').textContent = String(countWords($('#essay-editor').value));
   updateWordTarget();
+  resetExamTimer(currentTask.estimatedMinutes || 40);
   coachTurns = normaliseLocalCoachTurns(safeParse(localStorage.getItem(COACH_PREFIX + currentTask.id), []));
   renderCoachTurns();
   renderRubricGuide();
@@ -946,6 +1021,7 @@ async function runWritingAgent() {
   } };
   agentCancelRequested = false;
   agentController = new AbortController();
+  $('#agent-workspace')?.classList.add('is-running');
   $('#run-writing-agent').disabled = true;
   $('#cancel-writing-agent').hidden = false;
   $('#cancel-writing-agent').disabled = true;
@@ -999,6 +1075,7 @@ async function runWritingAgent() {
   } finally {
     agentBusy = false;
     agentController = null;
+    $('#agent-workspace')?.classList.remove('is-running');
     $('#run-writing-agent').disabled = false;
     $('#cancel-writing-agent').hidden = true;
     $('#cancel-writing-agent').disabled = false;
@@ -1460,9 +1537,33 @@ function attachEvents() {
   $$('[data-page]').forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
   $('#top-settings').addEventListener('click', () => showPage('settings'));
   $('#mobile-menu').addEventListener('click', () => $('#sidebar').classList.toggle('mobile-open'));
+  $('#timer-toggle')?.addEventListener('click', toggleExamTimer);
+  $('#timer-reset')?.addEventListener('click', () => resetExamTimer());
+  $('#zen-toggle')?.addEventListener('click', () => {
+    const shell = $('#app-shell');
+    if (!shell) return;
+    const active = shell.classList.toggle('zen-mode');
+    $('#zen-toggle').setAttribute('aria-pressed', String(active));
+    setToast(active ? 'Đã bật Chế độ Tập trung (Zen Mode).' : 'Đã thoát Chế độ Tập trung.');
+  });
+  $('#toggle-prompt')?.addEventListener('click', () => {
+    const card = $('#prompt-card');
+    if (!card) return;
+    const collapsed = card.classList.toggle('is-collapsed');
+    $('#toggle-prompt').textContent = collapsed ? 'Mở rộng đề' : 'Thu gọn đề';
+    $('#toggle-prompt').setAttribute('aria-expanded', String(!collapsed));
+  });
+  $$('[data-copilot-tab]').forEach(el => el.addEventListener('click', () => setCopilotTab(el.dataset.copilotTab)));
+  $$('[data-agent-preset]').forEach(el => el.addEventListener('click', () => {
+    $('#agent-task-input').value = el.dataset.agentPreset || '';
+    $('#agent-task-input').focus();
+    if ($('#essay-editor').value.trim()) runWritingAgent();
+    else setToast('Đã điền mục tiêu Agent. Hãy nhập bài nháp rồi bấm Chạy Agent.');
+  }));
   $('#task-select').addEventListener('change', () => { saveDraft(); loadCurrentTask(); });
   $('#essay-editor').addEventListener('input', () => {
     $('#word-count').textContent = String(countWords($('#essay-editor').value));
+    updateWordTarget();
     $('#autosave-label').textContent = 'Đang lưu…';
     clearTimeout(savingTimer);
     savingTimer = setTimeout(() => saveDraft(), 280);
@@ -1539,7 +1640,7 @@ function attachEvents() {
     finally { $('#import-file').value = ''; }
   });
   $('#export-report').addEventListener('click', exportReport);
-  $('#export-current-report').addEventListener('click', exportReport);
+  $('#export-current-report')?.addEventListener('click', exportReport);
   $('#clear-local-data').addEventListener('click', clearLocalData);
   $('#theme-toggle').addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
   $$('[data-theme-choice]').forEach(el => el.addEventListener('click', () => setTheme(el.dataset.themeChoice)));

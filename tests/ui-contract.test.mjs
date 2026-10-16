@@ -181,3 +181,19 @@ test('adaptive learning page surfaces device-local micro-practice coverage witho
   assert.match(app, /không phải band IELTS, đánh giá chất lượng câu trả lời hay bằng chứng người học đã thành thạo/i);
   assert.match(app, /agent-practice-overview-metrics/);
 });
+
+
+test('Editorial Studio exposes exam timer, zen mode, word progress gauge, co-pilot switcher and agent presets', () => {
+  for (const id of [
+    'exam-timer', 'timer-display', 'timer-toggle', 'timer-reset',
+    'zen-toggle', 'word-progress-fill', 'paragraph-count', 'toggle-prompt'
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing Editorial Studio control #' + id);
+  }
+  assert.match(html, /data-copilot-tab="agent"/);
+  assert.match(html, /data-agent-preset=/);
+  assert.match(app, /function toggleExamTimer\(\)/);
+  assert.match(app, /function setCopilotTab\(/);
+  assert.match(css, /\.agent-workspace-panel\.is-running/);
+});
+
