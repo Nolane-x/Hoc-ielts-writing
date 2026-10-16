@@ -24,6 +24,8 @@ function listenForErrors(page, label) {
 
 async function capture(page, name, options = {}) {
   const file = path.join(outputDir, name);
+  // Let transient toast notifications disappear before capturing review evidence.
+  await page.locator('#toast.visible').waitFor({ state: 'hidden', timeout: 4500 }).catch(() => {});
   await page.screenshot({ path: file, animations: 'disabled', ...options });
   screenshots.push({ file, page: name });
 }
