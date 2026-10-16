@@ -11,7 +11,7 @@
 
 1. **Deliberate Practice Loop (Vòng lặp Luyện tập Có Chủ Đích):**
    - Không dừng lại ở việc chấm điểm thụ động. Người học được trang bị tư duy và vốn từ **trước khi viết**, trải nghiệm áp lực **trong khi viết**, và được mổ xẻ câu văn kèm bài tập phản xạ **sau khi viết**.
-2. **Authentic Exam Fidelity (Mô phỏng 100% Phòng Thi Quốc Tế):**
+2. **Authentic Exam Fidelity (Chế độ luyện thi IELTS trên máy tính):**
    - Chế độ **Computer-Delivered IELTS Simulator** tái hiện trung thực giao diện phần mềm thi chính thức của IDP / British Council: Bảng màu xám trung tính, phông chữ Arial/Verdana chuẩn thi máy, cơ chế chia đôi màn hình 50/50, công cụ Highlight & Take Notes trên đề bài, và cấm dán bài từ bên ngoài nhằm rèn luyện tốc độ gõ phím thực tế.
 3. **Pure Native & 100% Offline-Safe (Bảo toàn Chính sách Bảo mật):**
    - Toàn bộ đồ thị trực quan (Biểu đồ Radar đa giác 4 tiêu chí và Biểu đồ đường xu hướng tiến bộ) được dựng bằng **thuần SVG toán học** và CSS. Tuyệt đối không cài thêm thư viện đồ họa JavaScript từ bên ngoài, giữ vững tiêu chuẩn kiểm thử CSP của ứng dụng và đảm bảo chạy mượt trên mọi thiết bị offline.
@@ -192,3 +192,8 @@ graph TD
 | **Giai đoạn 4** | Triển khai **Sentence Surgery**, **Bộ Lọc Tiêu Chí** & **Đối Sánh Bài Mẫu Band 8.5+**. | Lọc thẻ lỗi theo từng tiêu chí mượt mà, hiển thị bảng so sánh bài mẫu song song. |
 | **Giai đoạn 5** | Triển khai **Native SVG Radar** & **Interactive Socratic Gym** (Collocation Matcher, Cohesion Puzzle). | Vẽ SVG Radar chuẩn xác, bài tập kéo/chọn tương tác phản hồi tức thì. |
 | **Giai đoạn 6** | Tối ưu hóa **In ấn & PDF `@media print`**, viết kiểm thử hợp đồng UI mới trong `tests/ui-contract.test.mjs`, chạy CI & Release. | 100% tests passed, build web & desktop thành công. |
+
+
+## Production integrity note (2026-10-16)
+
+Mẫu Academy là khung luyện viết minh họa, không phải bài mẫu chính thức hoặc kết quả chấm band đã hiệu chuẩn. Chỉ được hiển thị band số nếu đúng bài mẫu đó đã được chấm độc lập theo quy trình có tài liệu. Fallback Task 1 phải dùng placeholder và không bịa số liệu biểu đồ, thay đổi bản đồ hay bước quy trình. Khi chưa có điểm năng lực hợp lệ của người học, biểu đồ radar phải hiển thị trạng thái chưa đủ dữ liệu thay vì điểm mặc định.
