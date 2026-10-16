@@ -983,6 +983,8 @@ async function saveSettings(event) {
     $('#key-status').textContent = keyIsAvailable() ? 'Đang có khóa' : 'Chưa lưu';
     setStatus('#settings-status', 'Đã lưu cài đặt. ' + (settings.externalAllowed ? 'Provider chỉ được gọi khi bạn chủ động nộp bài hoặc gửi câu hỏi.' : 'Chế độ offline đang bật; không gửi nội dung ra ngoài.'));
     fillSettingsForm(); updateProviderStatus();
+    setCompanionControlsFromPrefs();
+    if (companionPrefs.proactiveReview && settings.externalAllowed) scheduleProactiveReview(PROACTIVE_IDLE_MS);
     setToast('Cài đặt đã được lưu.');
   } catch (error) { setStatus('#settings-status', 'Không lưu được cài đặt: ' + error.message, true); }
 }
@@ -1066,7 +1068,7 @@ function agentPracticeAttempts() {
   return normaliseAgentPracticeAttempts(safeParse(localStorage.getItem(AGENT_PRACTICE_ATTEMPTS_KEY), []), tasks.map(task => task.id));
 }
 function persistAgentPracticeAttempts(records) {
-  const clean = normaliseAgentPracticeAttempts(records, TASKS.map(task => task.id));
+  const clean = normaliseAgentPracticeAttempts(records, tasks.map(task => task.id));
   localStorage.setItem(AGENT_PRACTICE_ATTEMPTS_KEY, JSON.stringify(clean.slice(0, 100)));
   return clean.slice(0, 100);
 }
@@ -1735,7 +1737,7 @@ async function evaluateAgentPractice(index) {
       feedback: '',
       feedbackSource: 'unavailable',
       reviewedAt: ''
-    }, TASKS.map(task => task.id));
+    }, tasks.map(task => task.id));
     persistAgentPracticeAttempts([attempt, ...agentPracticeAttempts()]);
     renderAgentPracticeJournal();
   } catch {
@@ -1893,11 +1895,15 @@ function exportData() {
     coachHistories[task.id] = normaliseLocalCoachTurns(safeParse(localStorage.getItem(COACH_PREFIX + task.id), []));
     agentRevisions[task.id] = agentRevisionSnapshots(task.id);
   }
+  const examNotes = {};
+  for (const task of tasks) examNotes[task.id] = String(localStorage.getItem(EXAM_NOTES_PREFIX + task.id) || '').slice(0, 280);
   const payload = {
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
     theme: localStorage.getItem(THEME_KEY) || 'system',
     settings: { ...settings, apiKey: undefined },
+    customTasks,
+    examNotes,
     drafts,
     history,
     coachHistories,
@@ -1915,25 +1921,35 @@ async function importBackupFile(file) {
     return;
   }
   try {
-    const backup = parseLocalBackup(await file.text(), TASKS.map(task => task.id));
+    const backup = parseLocalBackup(await file.text(), tasks.map(task => task.id));
     const draftCount = Object.keys(backup.drafts).length;
     const artifactCount = Array.isArray(backup.agentArtifacts) ? backup.agentArtifacts.length : 0;
     const revisionCount = Object.values(backup.agentRevisions || {}).reduce((sum, items) => sum + items.length, 0);
     const practiceCount = Array.isArray(backup.agentPracticeAttempts) ? backup.agentPracticeAttempts.length : 0;
     if (!confirm('Khôi phục ' + draftCount + ' bản nháp, ' + backup.history.length + ' báo cáo, ' + artifactCount + ' tài liệu Agent, ' + revisionCount + ' phiên bản và ' + practiceCount + ' lượt luyện? Dữ liệu cục bộ hiện có sẽ được thay thế. Provider, quyền gửi dữ liệu và API key hiện tại sẽ không thay đổi.')) return;
+    const restoredCustomTasks = normaliseCustomTasks(backup.customTasks || [], TASKS);
+    const restoredTasks = [...TASKS, ...restoredCustomTasks];
+    const restoredIds = new Set(restoredTasks.map(task => task.id));
+    const allTaskIds = [...new Set([...tasks, ...restoredTasks].map(task => task.id))];
     const changes = {};
-    for (const task of tasks) {
-      changes[DRAFT_PREFIX + task.id] = backup.drafts[task.id] || '';
-      const turns = backup.coachHistories[task.id] || [];
-      changes[COACH_PREFIX + task.id] = turns.length ? JSON.stringify(turns) : null;
-      const revisions = backup.agentRevisions?.[task.id] || [];
-      changes[agentRevisionKey(task.id)] = revisions.length ? JSON.stringify(revisions) : null;
+    for (const id of allTaskIds) {
+      changes[DRAFT_PREFIX + id] = restoredIds.has(id) ? (backup.drafts[id] || '') : null;
+      const turns = backup.coachHistories[id] || [];
+      changes[COACH_PREFIX + id] = restoredIds.has(id) && turns.length ? JSON.stringify(turns) : null;
+      const revisions = backup.agentRevisions?.[id] || [];
+      changes[agentRevisionKey(id)] = restoredIds.has(id) && revisions.length ? JSON.stringify(revisions) : null;
+      const note = String(backup.examNotes?.[id] || '').slice(0, 280);
+      changes[EXAM_NOTES_PREFIX + id] = restoredIds.has(id) && note ? note : null;
     }
+    changes[CUSTOM_TASKS_KEY] = JSON.stringify(restoredCustomTasks);
     changes[AGENT_ARTIFACTS_KEY] = JSON.stringify(backup.agentArtifacts || []);
     changes[AGENT_PRACTICE_ATTEMPTS_KEY] = JSON.stringify(backup.agentPracticeAttempts || []);
     changes[HISTORY_KEY] = JSON.stringify(backup.history.slice(0, 30));
     changes[THEME_KEY] = backup.theme;
     applyStorageTransaction(localStorage, changes);
+    customTasks = restoredCustomTasks;
+    tasks = restoredTasks;
+    renderTaskOptions(currentTask?.id || TASKS[0].id);
     history = backup.history.slice(0, 30);
     renderHistoryCount();
     setTheme(backup.theme, false);
@@ -1967,7 +1983,11 @@ async function clearLocalData() {
     localStorage.removeItem(DRAFT_PREFIX + task.id);
     localStorage.removeItem(COACH_PREFIX + task.id);
     localStorage.removeItem(agentRevisionKey(task.id));
+    localStorage.removeItem(EXAM_NOTES_PREFIX + task.id);
   }
+  localStorage.removeItem(CUSTOM_TASKS_KEY);
+  customTasks = [];
+  tasks = TASKS;
   localStorage.removeItem(AGENT_ARTIFACTS_KEY);
   localStorage.removeItem(AGENT_PRACTICE_ATTEMPTS_KEY);
   localStorage.removeItem(HISTORY_KEY);
@@ -1982,6 +2002,11 @@ async function clearLocalData() {
   $('#agent-result').innerHTML = '';
   $('#agent-activity').innerHTML = '';
   $('#essay-editor').value = '';
+  liveAnnotationVisible = true;
+  localStorage.removeItem(COMPANION_PREFS_KEY);
+  companionPrefs = { proactiveReview: false, voiceReminders: false, minChangedCharacters: 100, lastProactiveAt: 0 };
+  setCompanionControlsFromPrefs();
+  renderTaskOptions(TASKS[0].id);
   loadHistory();
   loadCurrentTask();
   renderReport(null);
