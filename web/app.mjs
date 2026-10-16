@@ -1319,7 +1319,7 @@ function renderLiveAnnotationPreview(rawAnnotations = []) {
   preview.innerHTML = html || '<span class="annotation-empty">Không có trích dẫn nào còn khớp duy nhất với bản nháp hiện tại.</span>';
   list.innerHTML = safeSpans.map(item =>
     '<article class="live-annotation-card live-mark-border-' + escapeHtml(item.category || 'other') + '">' +
-      '<div class="live-annotation-card-top"><span>' + escapeHtml(({ 'task-response':'TR / TA', coherence:'Mạch lạc', lexical:'Từ vựng', grammar:'Ngữ pháp', other:'Khác' })[item.category] || 'Khác') + '</span>' +
+      '<div class="live-annotation-card-top"><span>' + escapeHtml(({ 'task-achievement':'Task Achievement', 'task-response':'Task Response', coherence:'Mạch lạc', lexical:'Từ vựng', grammar:'Ngữ pháp', other:'Khác' })[item.category] || 'Khác') + '</span>' +
       '<button type="button" class="quiet-button" data-live-annotation="' + item.sourceIndex + '">Đi tới đoạn</button></div>' +
       '<blockquote>' + escapeHtml(item.quote) + '</blockquote><p>' + escapeHtml(item.note || '') + '</p></article>'
   ).join('');
