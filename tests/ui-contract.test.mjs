@@ -261,8 +261,10 @@ test('AI-created prompts remain drafts until explicit save/open and stay labelle
   assert.doesNotMatch(app, /postJson\('\/api\/tasks\/generate', \{[^}]*essay:/);
   assert.ok(app.includes('let taskGenerationController = null;'));
   assert.ok(app.includes('taskGenerationController.abort();'));
-  assert.ok(app.includes("{ signal: controller.signal }));"),
-    'Both web requests and native provider calls must receive the abort signal.');
+  assert.ok(app.includes("timeoutMs: 45000, signal: controller.signal });"),
+    'Native provider calls must receive the abort signal.');
+  assert.ok(app.includes("{ signal: controller.signal });"),
+    'Web requests must receive the abort signal.');
   assert.ok(app.includes("$('#custom-task-type')?.addEventListener('change', () => {"));
   assert.ok(app.includes("parseGeneratedTaskResponse(answer, type)"));
 });
