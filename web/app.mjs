@@ -577,7 +577,10 @@ function renderSocraticGym(task) {
   }
 }
 function loadCurrentTask() {
+  clearTimeout(proactiveTimer);
+  proactiveTimer = 0;
   currentTask = tasks.find(x => x.id === $('#task-select').value) || tasks[0] || TASKS[0];
+  lastAgentSnapshotDraft = readDraft(currentTask.id);
   promptHighlights = [];
   cohesionSelectedOrder = [];
   renderTaskDetails(currentTask);
