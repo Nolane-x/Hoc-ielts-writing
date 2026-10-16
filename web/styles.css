@@ -4201,3 +4201,145 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 .word-progress-fill.progress-p90, .skill-progress-fill.progress-p90 { transform: scaleX(0.9); }
 .word-progress-fill.progress-p95, .skill-progress-fill.progress-p95 { transform: scaleX(0.95); }
 .word-progress-fill.progress-p100, .skill-progress-fill.progress-p100 { transform: scaleX(1); }
+
+
+/* Proactive Writing Companion and custom prompt authoring */
+.custom-task-panel {
+  margin: 14px 0;
+  padding: 13px 15px;
+  border: 1px solid var(--border, #d9deea);
+  border-radius: 14px;
+  background: var(--surface-soft, rgba(127, 140, 170, 0.06));
+}
+.custom-task-panel > summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 750;
+  color: var(--text-primary, inherit);
+  min-height: 24px;
+}
+.custom-task-fields { display: grid; gap: 12px; padding-top: 14px; }
+.custom-task-row { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 12px; }
+.custom-task-fields .field { display: grid; gap: 6px; min-width: 0; }
+.custom-task-fields label,
+.proactive-threshold-field label {
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+}
+.custom-task-fields input,
+.custom-task-fields textarea,
+.custom-task-fields select,
+.proactive-threshold-field select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--border, #d9deea);
+  border-radius: 9px;
+  padding: 10px 11px;
+  color: var(--text-primary, #172033);
+  background: var(--input-bg, var(--surface, #fff));
+  font: inherit;
+}
+.custom-task-fields textarea { resize: vertical; }
+.custom-task-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.field-help { margin: 0; font-size: .78rem; line-height: 1.5; color: var(--text-muted, #65708a); }
+.live-companion-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 18px;
+  padding: 14px;
+  border: 1px solid var(--border, #d9deea);
+  border-radius: 14px;
+  background: var(--surface-soft, rgba(127, 140, 170, 0.05));
+}
+.live-companion-control { min-width: 0; }
+.toggle-line { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.toggle-line input { width: 18px; height: 18px; flex: 0 0 auto; margin-top: 2px; accent-color: var(--accent, #4f46e5); }
+.toggle-line span { display: grid; gap: 4px; }
+.toggle-line strong { font-size: .85rem; line-height: 1.35; }
+.toggle-line small { font-size: .76rem; line-height: 1.45; color: var(--text-muted, #65708a); }
+.proactive-threshold-field { grid-column: 1 / -1; display: grid; gap: 6px; }
+.companion-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: var(--surface, #fff);
+  color: var(--text-muted, #65708a);
+  font-size: .78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.companion-status.is-error { color: var(--danger, #b42318); }
+.live-annotation-panel {
+  margin: 15px 0 18px;
+  padding: 15px;
+  border: 1px solid var(--border, #d9deea);
+  border-radius: 15px;
+  background: var(--surface, #fff);
+}
+.live-annotation-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.live-annotation-heading h3 { margin: 4px 0 5px; font-size: 1rem; }
+.live-annotation-heading p { margin: 0; font-size: .78rem; line-height: 1.5; color: var(--text-muted, #65708a); }
+.live-annotation-preview {
+  margin-top: 12px;
+  padding: 13px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--border, #d9deea);
+  border-radius: 10px;
+  background: var(--surface-soft, #f7f8fc);
+  color: var(--text-primary, #172033);
+  font-size: .86rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+}
+.live-annotation-preview .annotation-empty { color: var(--text-muted, #65708a); font-style: italic; }
+.live-annotation-mark {
+  border-radius: 3px;
+  padding: 1px 2px;
+  cursor: pointer;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.live-mark-task-response { background: rgba(59, 130, 246, .2); outline: 1px solid rgba(59, 130, 246, .45); }
+.live-mark-coherence { background: rgba(139, 92, 246, .2); outline: 1px solid rgba(139, 92, 246, .42); }
+.live-mark-lexical { background: rgba(16, 185, 129, .2); outline: 1px solid rgba(16, 185, 129, .45); }
+.live-mark-grammar { background: rgba(244, 114, 182, .22); outline: 1px solid rgba(219, 39, 119, .42); }
+.live-mark-other { background: rgba(245, 158, 11, .2); outline: 1px solid rgba(217, 119, 6, .42); }
+.live-annotation-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.live-annotation-card {
+  min-width: 0;
+  border: 1px solid var(--border, #d9deea);
+  border-left: 4px solid var(--annotation-color, #9ca3af);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface, #fff);
+}
+.live-mark-border-task-response { --annotation-color: #3b82f6; }
+.live-mark-border-coherence { --annotation-color: #8b5cf6; }
+.live-mark-border-lexical { --annotation-color: #10b981; }
+.live-mark-border-grammar { --annotation-color: #db2777; }
+.live-mark-border-other { --annotation-color: #d97706; }
+.live-annotation-card-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.live-annotation-card-top > span { font-size: .7rem; font-weight: 800; letter-spacing: .05em; color: var(--annotation-color, #65708a); }
+.live-annotation-card blockquote { margin: 8px 0; padding-left: 10px; border-left: 2px solid var(--annotation-color, #d9deea); font-size: .84rem; line-height: 1.55; overflow-wrap: anywhere; }
+.live-annotation-card p { margin: 0; font-size: .8rem; line-height: 1.55; color: var(--text-muted, #65708a); overflow-wrap: anywhere; }
+.live-annotation-mark:focus-visible,
+.live-annotation-card button:focus-visible { outline: 3px solid var(--accent, #4f46e5); outline-offset: 3px; }
+@media (max-width: 820px) {
+  .custom-task-row { grid-template-columns: minmax(0, 1fr); }
+  .live-companion-controls { grid-template-columns: minmax(0, 1fr); }
+  .proactive-threshold-field, .companion-status { grid-column: 1; }
+  .live-annotation-list { grid-template-columns: minmax(0, 1fr); }
+  .live-annotation-heading { flex-direction: column; }
+  .live-annotation-heading button { align-self: flex-start; }
+  .custom-task-actions .button { flex: 1 1 190px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-annotation-mark, .live-annotation-card { scroll-behavior: auto; transition: none; }
+}
