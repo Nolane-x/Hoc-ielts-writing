@@ -65,3 +65,15 @@ test('spoken summary removes URLs, bounds length and avoids speaking empty conte
   assert.doesNotMatch(buildSpokenSummary('key sk-123456789012345678901234567890'), /sk-123456789012345678901234567890/);
   assert.doesNotMatch(buildSpokenSummary('password=hunter2'), /hunter2/);
 });
+
+
+test('custom task bank has a hard maximum and accepts only unique namespaced IDs', () => {
+  const candidates = Array.from({ length: 45 }, (_, index) => task({
+    id: 'custom-example-task-' + String(index).padStart(2, '0'),
+    title: 'Custom practice ' + index
+  }));
+  const normalized = normaliseCustomTasks(candidates, baseTasks);
+  assert.equal(normalized.length, 30);
+  assert.equal(new Set(normalized.map(item => item.id)).size, 30);
+  assert.equal(normaliseCustomTasks(candidates, [{ id: 'custom-example-task-00' }]).length, 29);
+});
