@@ -4350,3 +4350,44 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 .app-shell.idp-bc-mode .live-companion-controls {
   display: none !important;
 }
+
+
+.saved-custom-task-manager {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border, #d9deea);
+  border-radius: 11px;
+  background: var(--surface, #fff);
+}
+.saved-custom-task-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.saved-custom-task-heading strong { font-size: .82rem; }
+.saved-custom-task-list { display: grid; gap: 8px; min-width: 0; }
+.saved-custom-task-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 9px 0;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+.saved-custom-task-meta { display: grid; gap: 4px; min-width: 0; }
+.saved-custom-task-meta strong,
+.saved-custom-task-meta small { overflow-wrap: anywhere; }
+.saved-custom-task-meta strong { font-size: .83rem; line-height: 1.35; }
+.saved-custom-task-meta small { color: var(--text-muted, #65708a); font-size: .72rem; }
+.saved-custom-task-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 0 0 auto; }
+.saved-custom-task-actions .button { min-height: 34px; padding: 7px 10px; font-size: .76rem; }
+.saved-custom-task-actions .quiet-button { padding: 7px 9px; font-size: .76rem; }
+@media (max-width: 520px) {
+  .saved-custom-task-row { align-items: flex-start; flex-direction: column; }
+  .saved-custom-task-actions { width: 100%; }
+  .saved-custom-task-actions > button { flex: 1 1 auto; }
+}
