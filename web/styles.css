@@ -3825,7 +3825,6 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 }
 .app-shell.idp-bc-mode .editor-top-bar,
 .app-shell.idp-bc-mode .task-select-wrap,
-.app-shell.idp-bc-mode .editor-telemetry,
 .app-shell.idp-bc-mode .editor-footer,
 .app-shell.idp-bc-mode .editor-actions,
 .app-shell.idp-bc-mode #agent-revisions {
@@ -3836,6 +3835,10 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   min-height: 440px;
   border-radius: 6px;
   border: 2px solid #9ca3af;
+}
+.app-shell.idp-bc-mode .editor-telemetry {
+  grid-column: 2;
+  align-self: start;
 }
 .app-shell.idp-bc-mode .canvas-paper-frame {
   grid-column: 2;
