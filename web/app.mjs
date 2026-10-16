@@ -1169,6 +1169,56 @@ function setAgentStatus(message, bad = false) {
   host.textContent = message;
   host.classList.toggle('is-error', bad);
 }
+function renderLiveAnnotationPreview(rawAnnotations = []) {
+  const panel = $('#live-annotation-panel');
+  const preview = $('#live-annotation-preview');
+  const list = $('#live-annotation-list');
+  if (!panel || !preview || !list) return;
+  const editorText = currentTask?.id === agentResultTaskId ? $('#essay-editor')?.value || '' : '';
+  const annotations = Array.isArray(rawAnnotations) ? rawAnnotations : [];
+  const located = [];
+  for (let index = 0; index < annotations.length; index++) {
+    const item = annotations[index];
+    if (!item || typeof item.quote !== 'string' || !item.quote.trim()) continue;
+    const start = editorText.indexOf(item.quote);
+    if (start < 0 || editorText.indexOf(item.quote, start + 1) >= 0) continue;
+    located.push({ ...item, sourceIndex: index, start, end: start + item.quote.length });
+  }
+  located.sort((a, b) => a.start - b.start || a.end - b.end);
+  const safeSpans = [];
+  for (const item of located) {
+    if (safeSpans.length && item.start < safeSpans[safeSpans.length - 1].end) continue;
+    safeSpans.push(item);
+  }
+  const valid = new Set(safeSpans.map(item => item.sourceIndex));
+  let cursor = 0;
+  let html = '';
+  for (const item of safeSpans) {
+    html += escapeHtml(editorText.slice(cursor, item.start));
+    html += '<mark class="live-annotation-mark live-mark-' + escapeHtml(item.category || 'other') + '" data-live-annotation="' + item.sourceIndex + '">' + escapeHtml(editorText.slice(item.start, item.end)) + '</mark>';
+    cursor = item.end;
+  }
+  html += escapeHtml(editorText.slice(cursor));
+  preview.textContent = '';
+  preview.innerHTML = html || '<span class="annotation-empty">Không có trích dẫn nào còn khớp duy nhất với bản nháp hiện tại.</span>';
+  list.innerHTML = safeSpans.map(item =>
+    '<article class="live-annotation-card live-mark-border-' + escapeHtml(item.category || 'other') + '">' +
+      '<div class="live-annotation-card-top"><span>' + escapeHtml(({ 'task-response':'TR / TA', coherence:'Mạch lạc', lexical:'Từ vựng', grammar:'Ngữ pháp', other:'Khác' })[item.category] || 'Khác') + '</span>' +
+      '<button type="button" class="quiet-button" data-live-annotation="' + item.sourceIndex + '">Đi tới đoạn</button></div>' +
+      '<blockquote>' + escapeHtml(item.quote) + '</blockquote><p>' + escapeHtml(item.note || '') + '</p></article>'
+  ).join('');
+  panel.hidden = !(liveAnnotationVisible && safeSpans.length);
+  const clear = $('#clear-live-annotations');
+  if (clear) clear.disabled = !safeSpans.length;
+}
+function openAgentGeneratedTask(index) {
+  const task = agentResult?.practiceTasks?.[index];
+  if (!task || task.savedToWorkspace) return;
+  const saved = persistCustomTask(task, true);
+  if (!saved) return;
+  task.savedToWorkspace = true;
+  renderAgentResult(agentResult);
+}
 function renderAgentResult(result) {
   const host = $('#agent-result');
   if (!host || !result) return;
@@ -1176,6 +1226,8 @@ function renderAgentResult(result) {
   const exercises = Array.isArray(result.exercises) ? result.exercises : [];
   const goals = Array.isArray(result.learningGoals) ? result.learningGoals : [];
   const practiceMatches = Array.isArray(result.practiceMatches) ? result.practiceMatches : [];
+  const annotations = Array.isArray(result.annotations) ? result.annotations : [];
+  const practiceTasks = Array.isArray(result.practiceTasks) ? result.practiceTasks : [];
   const patchesHtml = patches.length
     ? '<section class="agent-result-section"><div class="agent-result-heading"><div><span class="section-kicker">PROPOSED PATCHES</span><h3>Đề xuất sửa bài</h3></div><span class="count-badge">' + patches.filter((patch,index)=>!agentAppliedPatches.has(index)).length + ' đang chờ</span></div>' +
       '<p class="agent-result-note">Các thay đổi được kiểm tra bằng đoạn nguồn chính xác. Bấm một sửa đổi hoặc áp dụng tất cả; mỗi lần áp dụng đều lưu lại phiên bản trước.</p>' +
@@ -1210,17 +1262,26 @@ function renderAgentResult(result) {
       practiceMatches.map(item => '<article class="agent-practice-card"><div><span class="agent-kind-label">' + escapeHtml(item.type || '') + ' · ' + escapeHtml(item.difficulty || '') + '</span><h4>' + escapeHtml(item.title || 'Đề luyện') + '</h4><p>' + escapeHtml(item.skillFocus || '') + '</p></div><p>' + escapeHtml(item.goal || '') + '</p><details><summary>Xem đề và gợi ý</summary><blockquote>' + escapeHtml(item.prompt || '') + '</blockquote>' +
       '<ul>' + (Array.isArray(item.tips) ? item.tips : []).map(tip => '<li>' + escapeHtml(tip) + '</li>').join('') + '</ul></details><button class="button button-secondary" type="button" data-agent-start-task="' + escapeHtml(item.id) + '">Mở đề này để luyện →</button></article>').join('') + '</section>'
     : '';
+  const annotationHtml = annotations.length
+    ? '<section class="agent-result-section"><div class="agent-result-heading"><div><span class="section-kicker">EVIDENCE-GROUNDED ANNOTATIONS</span><h3>Chú thích theo trích dẫn nguyên văn</h3></div><span class="count-badge">' + annotations.length + '</span></div><p class="agent-result-note">AI đã tạo chú thích theo vị trí văn bản cụ thể. Xem bản xem trước có màu ngay dưới trình soạn thảo; những vùng đã thay đổi hoặc trở nên mơ hồ sẽ không được tô.</p></section>'
+    : '';
+  const generatedTasksHtml = practiceTasks.length
+    ? '<section class="agent-result-section"><div class="agent-result-heading"><div><span class="section-kicker">GENERATED PRACTICE</span><h3>Đề IELTS mới do Agent tạo</h3></div><span class="count-badge">' + practiceTasks.length + '</span></div>' +
+      '<p class="agent-result-note">Đề AI tạo chưa được kiểm định độc lập và không phải đề thi chính thức. Đọc lại đề rồi bấm để lưu/mở trong ngân hàng đề của bạn.</p>' +
+      practiceTasks.map((item, index) => '<article class="agent-practice-card"><span class="agent-kind-label">' + escapeHtml(item.type) + ' · Chưa kiểm định</span><h4>' + escapeHtml(item.title) + '</h4><blockquote>' + escapeHtml(item.prompt) + '</blockquote><p>' + escapeHtml(item.goal) + '</p><button class="button button-secondary" type="button" data-agent-open-task="' + index + '"' + (item.savedToWorkspace ? ' disabled' : '') + '>' + (item.savedToWorkspace ? '✓ Đã lưu trong ngân hàng đề' : 'Lưu và mở đề này') + '</button></article>').join('') + '</section>'
+    : '';
   const hasArtifacts = Boolean(result.outline || exercises.length || goals.length || result.focus);
-  const hasStructuredOutput = Boolean(hasArtifacts || patches.length || practiceMatches.length);
+  const hasStructuredOutput = Boolean(hasArtifacts || patches.length || practiceMatches.length || annotations.length || practiceTasks.length);
   const learningMeta = agentSessionMetadata?.learningSignals ? ' · Tín hiệu học tập: ' + escapeHtml(agentSessionMetadata.learningSignals.eligibleEssayCount) + ' bài AI đủ điều kiện, ' + escapeHtml(agentSessionMetadata.learningSignals.recurringPatternCount) + ' nhóm lỗi lặp lại' : '';
   const metadataLine = agentSessionMetadata ? '<small>Provider: ' + escapeHtml(agentSessionMetadata.provider || '—') + ' · Model: ' + escapeHtml(agentSessionMetadata.model || '—') + ' · Ước tính phiên: ' + escapeHtml(agentSessionMetadata.localEndpoint ? '0 USD · cục bộ' : Number.isFinite(agentSessionMetadata.estimatedSessionCostUsd) ? '$' + agentSessionMetadata.estimatedSessionCostUsd.toFixed(4) : 'chưa có') + ' · Giới hạn: ' + escapeHtml(agentSessionMetadata.maximumModelTurns ?? WRITING_AGENT_MAX_MODEL_TURNS) + ' lượt / ' + escapeHtml(agentSessionMetadata.maximumToolCalls ?? WRITING_AGENT_MAX_TOOL_CALLS) + ' thao tác' + learningMeta + '</small>' : '';
   host.innerHTML = '<section class="agent-final-message"><span class="section-kicker">AGENT SUMMARY</span><p>' + escapeHtml(result.message || 'Agent đã hoàn tất.') + '</p><small>Phiên này thuộc đề: ' + escapeHtml(agentResultTaskTitle || 'Đề hiện tại') + '</small>' + metadataLine + '<small>' +
     'Model calls: ' + escapeHtml(result.usage?.modelCalls ?? '—') + ' · Workspace tools: ' + escapeHtml(result.usage?.toolCalls ?? '—') + ' · ' +
     (result.safety?.liveDraftModified ? 'Có thao tác trực tiếp' : 'Bản nháp gốc không bị tự động ghi đè') + '</small></section>' +
-    (focusHtml + patchesHtml + outlineHtml + exercisesHtml + goalsHtml + practiceHtml) +
+    (focusHtml + patchesHtml + outlineHtml + exercisesHtml + goalsHtml + practiceHtml + annotationHtml + generatedTasksHtml) +
     (hasArtifacts ? '<button class="button button-secondary agent-save-artifacts" type="button" data-agent-save-artifacts' + (result.savedArtifacts ? ' disabled' : '') + '>' +
       (result.savedArtifacts ? '✓ Đã lưu tài liệu vào thiết bị' : 'Lưu dàn ý, bài luyện và mục tiêu cục bộ') + '</button>' : '') +
     (!hasStructuredOutput ? '<div class="agent-empty-state">Agent chưa tạo thao tác có cấu trúc ở phiên này. Bạn vẫn có thể hỏi tiếp với mục tiêu cụ thể hơn.</div>' : '');
+  renderLiveAnnotationPreview(currentTask?.id === agentResultTaskId ? annotations : []);
 }
 function handleWritingAgentEvent(type, payload) {
   if (type === 'progress') {
@@ -2054,6 +2115,8 @@ function attachEvents() {
     if (nextTask) { openAgentPracticeTask(nextTask.dataset.agentStartTask); return; }
     const saveArtifacts = event.target.closest('[data-agent-save-artifacts]');
     if (saveArtifacts) { saveAgentArtifacts(); return; }
+    const generatedTask = event.target.closest('[data-agent-open-task]');
+    if (generatedTask) { openAgentGeneratedTask(Number(generatedTask.dataset.agentOpenTask)); return; }
     const evaluate = event.target.closest('[data-agent-evaluate]');
     if (evaluate) evaluateAgentPractice(Number(evaluate.dataset.agentEvaluate));
   });
