@@ -4343,3 +4343,10 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 @media (prefers-reduced-motion: reduce) {
   .live-annotation-mark, .live-annotation-card { scroll-behavior: auto; transition: none; }
 }
+
+
+/* These authoring-only controls must not become extra auto-placed columns in the exam split grid. */
+.app-shell.idp-bc-mode .custom-task-panel,
+.app-shell.idp-bc-mode .live-companion-controls {
+  display: none !important;
+}
