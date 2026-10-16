@@ -1,0 +1,66 @@
+name: Visual UI Smoke
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: visual-smoke-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-smoke:
+    name: Browser smoke and UI screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked application dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build production web bundle
+        run: npm run build:web
+      - name: Install Playwright for CI only
+        run: npm install --no-save --package-lock=false playwright
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Start isolated loopback app
+        env:
+          HOST: 127.0.0.1
+          PORT: 4179
+          WMR_DATA_DIR: ${{ runner.temp }}/wmr-visual-smoke-data
+        run: |
+          mkdir -p artifacts/ui-screenshots
+          npm start > "$RUNNER_TEMP/wmr-server.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/wmr-server.pid"
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:4179/api/status >/dev/null; then
+              echo "WMR loopback runtime is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/wmr-server.log"
+          exit 1
+      - name: Test desktop/mobile UI and capture screenshots
+        run: node scripts/visual-smoke.mjs
+      - name: Stop isolated app
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/wmr-server.pid" ]; then kill "$(cat "$RUNNER_TEMP/wmr-server.pid")" 2>/dev/null || true; fi
+          if [ -f "$RUNNER_TEMP/wmr-server.log" ]; then cp "$RUNNER_TEMP/wmr-server.log" artifacts/ui-screenshots/wmr-server.log 2>/dev/null || true; fi
+      - name: Upload screenshots and smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wmr-ui-screenshots
+          path: artifacts/ui-screenshots/
+          if-no-files-found: warn
+          retention-days: 14
