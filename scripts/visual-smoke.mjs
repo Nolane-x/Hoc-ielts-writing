@@ -48,6 +48,43 @@ try {
   assert.ok((await page.locator('#agent-practice-journal').count()) > 0, 'Practice journal mount point should exist.');
   await capture(page, '01-writing-workspace-desktop.png');
 
+  // Verify the extra AI action remains blocked until the existing provider-consent switch is enabled.
+  await page.locator('#custom-task-panel > summary').click();
+  await page.locator('#custom-task-title').fill('Smoke-test custom task');
+  await page.locator('#custom-task-prompt').fill('Some people support this change while others disagree. Discuss both views and give your own opinion.');
+  let coachRequests = 0;
+  page.on('request', request => { if (request.url().endsWith('/api/coach')) coachRequests++; });
+  await page.locator('#generate-custom-task').click();
+  await page.waitForFunction(() => document.querySelector('#toast')?.textContent.toLowerCase().includes('quyền gửi provider'));
+  assert.equal(coachRequests, 0, 'Custom-task generation must not call the provider while permission is off.');
+  assert.equal(await page.locator('#external-allowed').isChecked().catch(() => false), false);
+
+  // Learner-created tasks are persisted locally and can be removed with a clear destructive confirmation.
+  await page.locator('#custom-task-title').fill('Smoke-test custom task');
+  await page.locator('#custom-task-prompt').fill('Some people support this change while others disagree. Discuss both views and give your own opinion.');
+  await page.locator('#custom-task-goal').fill('Compare both positions and support a clear opinion with developed reasons.');
+  await page.locator('#save-custom-task').click();
+  const customOption = page.locator('#task-select option').filter({ hasText: 'Smoke-test custom task' });
+  await customOption.waitFor({ state: 'attached', timeout: 5000 });
+  const customId = await customOption.getAttribute('value');
+  assert.ok(customId?.startsWith('custom-'), 'Custom task needs a namespaced local identifier.');
+  await page.locator('#essay-editor').fill('This is a local smoke-test draft for a custom writing task.');
+  await page.waitForTimeout(350);
+  await page.locator('#custom-task-panel > summary').click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('[data-delete-custom-task="' + customId + '"]').click();
+  await page.waitForFunction(id => ![...document.querySelector('#task-select').options].some(option => option.value === id), customId);
+  assert.equal(await page.evaluate(id => localStorage.getItem('wmr-draft-v1:' + id), customId), null,
+    'Deleting a custom task should transactionally remove its local draft.');
+  assert.equal(coachRequests, 0, 'Custom task CRUD must not call the external provider.');
+
+  const manualAgentObjective = 'Keep my own manual Agent instruction intact.';
+  await page.locator('#agent-task-input').fill(manualAgentObjective);
+  await page.locator('#proactive-review-toggle').check();
+  assert.equal(await page.locator('#agent-task-input').inputValue(), manualAgentObjective,
+    'Enabling proactive review must not overwrite the learner-authored Agent objective.');
+  await page.locator('#proactive-review-toggle').uncheck();
+
   await page.locator('#toggle-idea-lab').click();
   await page.locator('#idea-lab').waitFor({ state: 'visible', timeout: 5000 });
   await capture(page, '01b-academy-idea-lab-desktop.png');
