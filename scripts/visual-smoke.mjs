@@ -119,6 +119,8 @@ try {
   await mobilePage.locator('#learn-title').waitFor({ state: 'visible', timeout: 10000 });
   assert.equal(await mobilePage.locator('#sidebar.mobile-open').count(), 0, 'Selecting a mobile page should close the navigation drawer.');
 
+  await mobilePage.locator('#mobile-menu').click();
+  await mobilePage.locator('#sidebar.mobile-open').waitFor({ state: 'visible', timeout: 5000 });
   await mobilePage.locator('button.nav-item[data-page="workspace"]').click();
   await mobilePage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 10000 });
   await mobilePage.locator('#exam-mode-toggle').click();
