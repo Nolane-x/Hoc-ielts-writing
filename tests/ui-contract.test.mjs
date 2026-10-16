@@ -297,7 +297,7 @@ test('saved custom-task deletion requires confirmation and rolls related device 
     'function renderCustomTaskManager()',
     'function openCustomTask(taskId)',
     'function deleteCustomTask(taskId)',
-    '((coachBusy || submitting) && currentTask?.id === taskId)',
+    'if (agentBusy || coachBusy || submitting)',
     'generationFields.forEach(field => { field.disabled = true; })',
     'generationFields.forEach(field => { field.disabled = false; })',
     'if (customTasks.length >= 30)',
