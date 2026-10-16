@@ -1206,7 +1206,7 @@ function renderLiveAnnotationPreview(rawAnnotations = []) {
   let html = '';
   for (const item of safeSpans) {
     html += escapeHtml(editorText.slice(cursor, item.start));
-    html += '<mark class="live-annotation-mark live-mark-' + escapeHtml(item.category || 'other') + '" data-live-annotation="' + item.sourceIndex + '">' + escapeHtml(editorText.slice(item.start, item.end)) + '</mark>';
+    html += '<mark class="live-annotation-mark live-mark-' + escapeHtml(item.category || 'other') + '" data-live-annotation="' + item.sourceIndex + '" tabindex="0" role="button" aria-label="Chọn đoạn chú thích ' + (item.sourceIndex + 1) + '">' + escapeHtml(editorText.slice(item.start, item.end)) + '</mark>';
     cursor = item.end;
   }
   html += escapeHtml(editorText.slice(cursor));
@@ -2211,10 +2211,7 @@ function attachEvents() {
   });
   $('#save-custom-task')?.addEventListener('click', saveCustomTaskFromForm);
   $('#generate-custom-task')?.addEventListener('click', generateCustomTaskWithAI);
-  ['#custom-task-title', '#custom-task-prompt', '#custom-task-goal'].forEach(selector => {
-    $(selector)?.addEventListener('input', () => { generatedTaskDraft = false; });
-  });
-  $('#live-annotation-list')?.addEventListener('click', event => {
+  $('#live-annotation-panel')?.addEventListener('click', event => {
     const button = event.target.closest('[data-live-annotation]');
     if (!button || currentTask?.id !== agentResultTaskId) return;
     const item = agentResult?.annotations?.[Number(button.dataset.liveAnnotation)];
@@ -2229,6 +2226,13 @@ function attachEvents() {
     $('#essay-editor').focus();
     $('#essay-editor').setSelectionRange(start, start + item.quote.length);
     setToast('Đã chọn đúng đoạn được chú thích.');
+  });
+  $('#live-annotation-panel')?.addEventListener('keydown', event => {
+    if (!['Enter', ' '].includes(event.key)) return;
+    const mark = event.target.closest('.live-annotation-mark[data-live-annotation]');
+    if (!mark) return;
+    event.preventDefault();
+    mark.click();
   });
   $('#clear-live-annotations')?.addEventListener('click', () => {
     liveAnnotationVisible = false;
