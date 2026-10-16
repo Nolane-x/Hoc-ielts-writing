@@ -4113,6 +4113,16 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   .app-shell.idp-bc-mode .editor-column {
     grid-template-columns: minmax(0, 1fr);
   }
+  .app-shell.idp-bc-mode .prompt-card,
+  .app-shell.idp-bc-mode .editor-telemetry,
+  .app-shell.idp-bc-mode .canvas-paper-frame {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 0;
+  }
+  .app-shell.idp-bc-mode .editor-telemetry {
+    position: static;
+  }
 }
 
 /* Stage 6: Academic Print & PDF Dossier (@media print) */
