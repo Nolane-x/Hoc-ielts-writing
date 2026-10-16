@@ -289,3 +289,72 @@ test('learner profile context is bounded and contains only aggregate learning si
   });
   assert.deepEqual(received[0], profile);
 });
+
+
+test('agent annotations require exact unique quotes and create bounded anchored notes', () => {
+  const state = createWritingAgentState({ essay, message: 'Annotate the main issue.' });
+  const ok = executeWritingAgentTool(state, 'annotate_draft', {
+    quote: 'This policy could reduce traffic',
+    category: 'coherence',
+    note: 'Cần giải thích cơ chế giảm ùn tắc cụ thể hơn.'
+  });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.annotation.start, essay.indexOf(ok.annotation.quote));
+  assert.equal(state.annotations.length, 1);
+  assert.equal(executeWritingAgentTool(state, 'annotate_draft', {
+    quote: 'public transport',
+    category: 'lexical',
+    note: 'Repeated phrase.'
+  }).code, 'annotation_ambiguous');
+  assert.equal(executeWritingAgentTool(state, 'annotate_draft', {
+    quote: 'this quote does not exist',
+    category: 'grammar',
+    note: 'Note.'
+  }).code, 'annotation_not_found');
+  assert.equal(executeWritingAgentTool(state, 'annotate_draft', {
+    quote: 'This policy could reduce traffic',
+    category: 'other',
+    note: 'Overlap must be rejected.'
+  }).code, 'annotation_overlap');
+});
+
+test('agent can draft an unverified new practice task without silently persisting or opening it', () => {
+  const state = createWritingAgentState({ essay, message: 'Create a new Task 2 prompt.' });
+  const result = executeWritingAgentTool(state, 'create_practice_task', {
+    title: 'Technology and independent learning',
+    taskType: 'task2',
+    prompt: 'Some people believe that artificial intelligence improves independent learning, while others think it reduces critical thinking. Discuss both views and give your own opinion.',
+    goal: 'Evaluate both effects and support a clear position with developed reasons.'
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.persisted, false);
+  assert.equal(result.practiceTask.provenance, 'ai-generated-unverified');
+  assert.equal(state.practiceTasks.length, 1);
+  assert.equal(executeWritingAgentTool(state, 'create_practice_task', {
+    title: 'Invalid type',
+    taskType: 'desktop-control',
+    prompt: 'A'.repeat(100),
+    goal: 'A clear goal.'
+  }).ok, false);
+  assert.equal(executeWritingAgentTool(state, 'create_practice_task', {
+    title: 'Too short',
+    taskType: 'task2',
+    prompt: 'Question?',
+    goal: 'A clear goal.'
+  }).code, 'practice_task_incomplete');
+});
+
+test('agent snapshot includes scratchpad notes as untrusted task context', async () => {
+  let snapshot;
+  const result = await runWritingAgentSession({
+    input: { essay, message: 'Inspect the draft.', scratchpadNotes: 'Focus on the counterargument.' },
+    complete: async ({ messages }) => {
+      snapshot = messages.at(-1).content;
+      return { text: JSON.stringify({ kind: 'final', message: 'Reviewed.' }) };
+    },
+    onEvent: () => {}
+  });
+  assert.match(snapshot, /scratchpadNotes/);
+  assert.match(snapshot, /Focus on the counterargument/);
+  assert.equal(result.safety.liveDraftModified, false);
+});
