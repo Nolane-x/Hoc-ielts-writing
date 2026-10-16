@@ -228,8 +228,14 @@ function toggleExamTimer() {
   examTimerHandle = setInterval(() => {
     examSecondsRemaining = Math.max(0, examSecondsRemaining - 1);
     renderExamTimer();
-    if (examSecondsRemaining === 300) setToast('Còn 5 phút! Hãy hoàn thiện đoạn kết và kiểm tra lại số từ.');
-    if (examSecondsRemaining === 60) setToast('Còn 1 phút cuối! Hãy rà soát lỗi chính tả và dấu câu.');
+    if (examSecondsRemaining === 300) {
+      setToast('Còn 5 phút! Hãy hoàn thiện đoạn kết và kiểm tra lại số từ.');
+      speakReminder('Còn 5 phút! Hãy hoàn thiện đoạn kết và kiểm tra lại số từ.');
+    }
+    if (examSecondsRemaining === 60) {
+      setToast('Còn 1 phút cuối! Hãy rà soát lỗi chính tả và dấu câu.');
+      speakReminder('Còn 1 phút cuối! Hãy rà soát lỗi chính tả và dấu câu.');
+    }
     if (examSecondsRemaining === 0) {
       clearInterval(examTimerHandle);
       examTimerHandle = 0;
@@ -1308,6 +1314,7 @@ function handleWritingAgentEvent(type, payload) {
     agentResult.savedArtifacts = false;
     renderAgentResult(agentResult);
     const status = payload.status || 'complete';
+    if (companionPrefs.voiceReminders) speakReminder(payload.message || 'Writing Agent đã hoàn tất. Hãy xem các chú thích và đề xuất trước khi áp dụng.');
     const statusMessage = status === 'partial'
       ? 'Phiên dừng giữa chừng; các đề xuất đã tạo vẫn còn để bạn xem và duyệt.'
       : status === 'failed'
@@ -1387,7 +1394,49 @@ function buildAgentLearningContext() {
   };
 }
 
-async function runWritingAgent() {
+function scheduleProactiveReview(delayMs = PROACTIVE_IDLE_MS) {
+  clearTimeout(proactiveTimer);
+  proactiveTimer = 0;
+  if (!companionPrefs.proactiveReview) return;
+  proactiveTimer = setTimeout(() => {
+    proactiveTimer = 0;
+    const draft = $('#essay-editor')?.value || '';
+    const busy = agentBusy || coachBusy || submitting;
+    const check = evaluateProactiveReview({
+      enabled: companionPrefs.proactiveReview,
+      providerAllowed: settings.externalAllowed,
+      busy,
+      draft,
+      previousDraft: lastAgentSnapshotDraft,
+      now: Date.now(),
+      lastTriggeredAt: companionPrefs.lastProactiveAt,
+      minChangedCharacters: companionPrefs.minChangedCharacters,
+      cooldownMs: PROACTIVE_COOLDOWN_MS,
+      minWords: 35
+    });
+    if (!check.eligible) {
+      if (check.reasons.includes('workspace-busy')) {
+        setCompanionStatus('Bản nháp đã thay đổi; AI sẽ đợi phiên hiện tại kết thúc trước khi kiểm tra.');
+        scheduleProactiveReview(PROACTIVE_IDLE_MS);
+      } else if (check.reasons.includes('cooldown')) {
+        setCompanionStatus('AI đang nghỉ giữa các lần kiểm tra để tránh làm phiền và giảm chi phí.');
+        scheduleProactiveReview(Math.max(PROACTIVE_IDLE_MS, check.cooldownRemainingMs));
+      } else if (check.reasons.includes('provider-permission-off')) {
+        setCompanionStatus('Theo dõi đang bật nhưng quyền gửi provider tắt. Không có nội dung nào được tự gửi.');
+      } else if (check.reasons.includes('not-enough-new-or-changed-text')) {
+        setCompanionStatus('AI đang đợi thêm nội dung mới trước khi kiểm tra.');
+      }
+      return;
+    }
+    $('#agent-task-input').value = 'Rà soát chủ động bản nháp mới nhất theo đúng đề. Ưu tiên tối đa 2 vấn đề có ảnh hưởng cao nhất trong phần vừa thay đổi, nhưng kiểm tra toàn bài nếu cần ngữ cảnh. Dùng annotate_draft cho trích dẫn cần lưu ý và propose_edit chỉ khi có sửa đổi thực sự cần thiết. Đưa ra một lời nhắc ngắn, cụ thể và không làm gián đoạn; tuyệt đối không tự áp dụng sửa đổi, không bịa band IELTS, không tạo bài luận thay người học.';
+    setCompanionStatus('Đã đến thời điểm kiểm tra sau khoảng nghỉ gõ. Đang mở một phiên Agent có giới hạn chi phí/budget.');
+    setCopilotTab('agent');
+    runWritingAgent({ proactive: true });
+  }, Math.max(1000, Math.min(delayMs, 10 * 60 * 1000)));
+}
+async function runWritingAgent({ proactive = false } = {}) {
+  clearTimeout(proactiveTimer);
+  proactiveTimer = 0;
   if (agentBusy || coachBusy || submitting) return;
   const essay = $('#essay-editor').value;
   if (!essay.trim()) { setToast('Viết một bản nháp trước khi chạy Agent.'); $('#essay-editor').focus(); return; }
@@ -1396,13 +1445,21 @@ async function runWritingAgent() {
     setToast('Writing Agent cần provider đã được bạn cho phép.');
     return;
   }
-  const message = String($('#agent-task-input').value || '').trim().slice(0, 4000) ||
-    'Đọc đề và bài nháp. Kiểm tra cấu trúc, tìm vấn đề có ảnh hưởng lớn nhất, đề xuất tối đa 3 sửa đổi nhỏ có bằng chứng, rồi tạo một bài luyện để tôi tự cải thiện.';
+  const message = proactive
+    ? 'Rà soát chủ động bản nháp mới nhất theo đúng đề. Ưu tiên tối đa 2 vấn đề có ảnh hưởng cao nhất, dùng chú thích có màu dựa trên trích dẫn nguyên văn khi hữu ích, đề xuất sửa chính xác nhưng không tự áp dụng, và đưa một lời nhắc ngắn. Không bịa band IELTS và không viết thay cả bài.'
+    : (String($('#agent-task-input').value || '').trim().slice(0, 4000) ||
+      'Đọc đề và bài nháp. Kiểm tra cấu trúc, tìm vấn đề có ảnh hưởng lớn nhất, đề xuất tối đa 3 sửa đổi nhỏ có bằng chứng, rồi tạo một bài luyện để tôi tự cải thiện.');
   $('#agent-task-input').value = message;
   saveDraft();
   const taskSnapshot = { ...currentTask };
   agentSessionId = createAgentSessionId();
-  const input = { taskType: taskSnapshot.type, taskPrompt: taskSnapshot.prompt, essay: essay.slice(0, 20000), message, history: normaliseLocalCoachTurns(coachTurns).slice(-4), learningContext: buildAgentLearningContext(), sessionId: agentSessionId };
+  const input = { taskType: taskSnapshot.type, taskPrompt: taskSnapshot.prompt, essay: essay.slice(0, 20000), scratchpadNotes: String($('#exam-notes-input')?.value || '').slice(0, 2000), message, history: normaliseLocalCoachTurns(coachTurns).slice(-4), learningContext: buildAgentLearningContext(), sessionId: agentSessionId };
+  lastAgentSnapshotDraft = essay;
+  if (proactive) {
+    companionPrefs.lastProactiveAt = Date.now();
+    saveCompanionPrefs();
+    setCompanionStatus('AI đang rà soát bản nháp. Nó sẽ không tự áp dụng thay đổi; bạn có thể hủy phiên hoặc duyệt từng đề xuất.');
+  }
   agentBusy = true;
   agentResultTaskId = taskSnapshot.id;
   agentResultTaskTitle = taskSnapshot.title;
@@ -1476,6 +1533,7 @@ async function runWritingAgent() {
     $('#cancel-writing-agent').disabled = false;
     agentCancelRequested = false;
     agentSessionId = '';
+    if (companionPrefs.proactiveReview) scheduleProactiveReview(PROACTIVE_IDLE_MS);
   }
 }
 function cancelWritingAgent() {
@@ -2080,6 +2138,69 @@ function attachEvents() {
     $('#autosave-label').textContent = 'Đang lưu…';
     clearTimeout(savingTimer);
     savingTimer = setTimeout(() => saveDraft(), 280);
+    if (agentResultTaskId === currentTask?.id && agentResult?.annotations?.length) {
+      renderLiveAnnotationPreview(agentResult.annotations);
+    }
+    if (companionPrefs.proactiveReview) {
+      setCompanionStatus('Đang chờ bạn tạm dừng gõ; khi có đủ nội dung mới, AI sẽ xem xét theo giới hạn đã đặt.');
+      scheduleProactiveReview(PROACTIVE_IDLE_MS);
+    }
+  });
+  $('#exam-notes-input')?.addEventListener('input', () => {
+    const value = String($('#exam-notes-input').value || '').slice(0, 280);
+    try { localStorage.setItem(EXAM_NOTES_PREFIX + currentTask.id, value); } catch {}
+  });
+  $('#proactive-review-toggle')?.addEventListener('change', event => {
+    companionPrefs.proactiveReview = event.target.checked === true;
+    lastAgentSnapshotDraft = $('#essay-editor')?.value || '';
+    saveCompanionPrefs();
+    if (!companionPrefs.proactiveReview) {
+      clearTimeout(proactiveTimer);
+      proactiveTimer = 0;
+    }
+    setCompanionControlsFromPrefs();
+    if (companionPrefs.proactiveReview) {
+      if (!settings.externalAllowed) setCompanionStatus('Đã bật theo dõi, nhưng quyền gửi provider đang tắt. AI sẽ không gọi model cho đến khi bạn tự bật quyền trong Settings.');
+      scheduleProactiveReview(PROACTIVE_IDLE_MS);
+    }
+  });
+  $('#voice-reminder-toggle')?.addEventListener('change', event => {
+    companionPrefs.voiceReminders = event.target.checked === true;
+    saveCompanionPrefs();
+    if (!companionPrefs.voiceReminders) globalThis.speechSynthesis?.cancel?.();
+    setCompanionControlsFromPrefs();
+    if (companionPrefs.voiceReminders) {
+      const spoke = speakReminder('Đã bật lời nhắc bằng giọng nói. WMR không ghi âm microphone.');
+      if (!spoke) setCompanionStatus('Lời nhắc bằng giọng nói đã bật, nhưng trình duyệt hiện tại có thể không hỗ trợ đọc thành tiếng.');
+    }
+  });
+  $('#proactive-threshold')?.addEventListener('change', event => {
+    const value = Number(event.target.value);
+    companionPrefs.minChangedCharacters = [100, 180, 280].includes(value) ? value : 100;
+    saveCompanionPrefs();
+    setCompanionStatus('Đã cập nhật ngưỡng nội dung thay đổi trước khi AI kiểm tra.');
+  });
+  $('#save-custom-task')?.addEventListener('click', saveCustomTaskFromForm);
+  $('#generate-custom-task')?.addEventListener('click', generateCustomTaskWithAI);
+  $('#live-annotation-list')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-live-annotation]');
+    if (!button || currentTask?.id !== agentResultTaskId) return;
+    const item = agentResult?.annotations?.[Number(button.dataset.liveAnnotation)];
+    if (!item?.quote) return;
+    const value = $('#essay-editor').value;
+    const start = value.indexOf(item.quote);
+    if (start < 0 || value.indexOf(item.quote, start + 1) >= 0) {
+      setToast('Đoạn đã thay đổi hoặc không còn duy nhất; AI không đoán vị trí.');
+      renderLiveAnnotationPreview(agentResult.annotations);
+      return;
+    }
+    $('#essay-editor').focus();
+    $('#essay-editor').setSelectionRange(start, start + item.quote.length);
+    setToast('Đã chọn đúng đoạn được chú thích.');
+  });
+  $('#clear-live-annotations')?.addEventListener('click', () => {
+    liveAnnotationVisible = false;
+    renderLiveAnnotationPreview(agentResultTaskId === currentTask?.id ? (agentResult?.annotations || []) : []);
   });
   $('#save-draft').addEventListener('click', () => saveDraft(true));
   $('#submit-review').addEventListener('click', () => runReview(true));
@@ -2232,12 +2353,16 @@ function attachEvents() {
   });
 }
 async function boot() {
+  loadCompanionPrefs();
+  loadCustomTasks();
   renderTaskOptions();
+  setCompanionControlsFromPrefs();
   renderProviders();
   loadHistory();
   setTheme(localStorage.getItem(THEME_KEY) || 'system');
   attachEvents();
   await loadSettings();
+  setCompanionControlsFromPrefs();
   renderLearning();
   renderReport(null);
   $('#essay-editor').focus({ preventScroll: true });
