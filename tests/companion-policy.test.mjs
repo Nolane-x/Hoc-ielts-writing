@@ -75,5 +75,8 @@ test('custom task bank has a hard maximum and accepts only unique namespaced IDs
   const normalized = normaliseCustomTasks(candidates, baseTasks);
   assert.equal(normalized.length, 30);
   assert.equal(new Set(normalized.map(item => item.id)).size, 30);
-  assert.equal(normaliseCustomTasks(candidates, [{ id: 'custom-example-task-00' }]).length, 29);
+  const reservedResult = normaliseCustomTasks(candidates, [{ id: 'custom-example-task-00' }]);
+  assert.equal(reservedResult.length, 30);
+  assert.equal(reservedResult[0].id, 'custom-example-task-01',
+    'A reserved identifier must be rejected rather than consuming a bank slot.');
 });
