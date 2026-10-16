@@ -8,6 +8,10 @@ WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking le
 - Writing Agent event streaming has protocol-level regression coverage.
 - Backup restore uses rollback for failed multi-key local writes.
 - Application version is generated from package metadata; dynamic progress styling is CSP-safe.
+- Opt-in proactive review after a pause in writing, with change threshold, cooldown and existing usage/budget gates.
+- Browser/system speech synthesis for Agent summaries and timer reminders; no microphone capture.
+- Evidence-grounded, colour-coded annotation map that revalidates exact quotes against the live draft.
+- Learner-created and AI-generated custom prompts, persisted locally and included in validated backups; AI prompts are labelled unverified.
 
 ## Highlights in 1.4.0
 
@@ -36,10 +40,11 @@ WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking le
 ## Privacy and AI boundary
 
 - Drafts, tasks, local checks, history, learning summaries, Mentor history and theme settings work locally.
-- Provider access is disabled by default. The explicit permission switch must be enabled, and the learner must submit a review or Mentor question before text is sent.
+- Provider access is disabled by default. The explicit permission switch must be enabled. Proactive review requires a separate opt-in toggle and only sends after the configured idle/change threshold; direct AI task generation sends the task request, not the current essay.
 - On desktop, the API key stays in process memory and must be re-entered after restarting WMR. On Android, the key is stored using Android Keystore-backed secure storage.
 - No user account, cloud sync or multi-user web service is implemented. The local HTTP runtime binds to loopback only; do not expose its port through a LAN, tunnel or reverse proxy.
-- The agent has no shell, generic tool-execution or arbitrary file/browser access. Learner essay, prompt and previous conversation turns are untrusted content.
+- The agent has no shell, generic tool-execution, arbitrary file/browser access, screen capture or microphone access. Learner essay, prompt, scratchpad and previous conversation turns are untrusted content.
+- Voice output uses local browser/system speech synthesis only; no audio is recorded or uploaded.
 - Hosted endpoints must use HTTPS and explicitly supplied input/output token prices. WMR estimates spend; the provider's actual billing can differ.
 - On Android, 127.0.0.1 means the Android device itself. It does not reach an Ollama/LM Studio instance on a different computer.
 
