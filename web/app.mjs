@@ -1440,7 +1440,6 @@ function scheduleProactiveReview(delayMs = PROACTIVE_IDLE_MS) {
       }
       return;
     }
-    $('#agent-task-input').value = 'Rà soát chủ động bản nháp mới nhất theo đúng đề. Ưu tiên tối đa 2 vấn đề có ảnh hưởng cao nhất trong phần vừa thay đổi, nhưng kiểm tra toàn bài nếu cần ngữ cảnh. Dùng annotate_draft cho trích dẫn cần lưu ý và propose_edit chỉ khi có sửa đổi thực sự cần thiết. Đưa ra một lời nhắc ngắn, cụ thể và không làm gián đoạn; tuyệt đối không tự áp dụng sửa đổi, không bịa band IELTS, không tạo bài luận thay người học.';
     setCompanionStatus('Đã đến thời điểm kiểm tra sau khoảng nghỉ gõ. Đang mở một phiên Agent có giới hạn chi phí/budget.');
     setCopilotTab('agent');
     runWritingAgent({ proactive: true });
@@ -1461,7 +1460,7 @@ async function runWritingAgent({ proactive = false } = {}) {
     ? 'Rà soát chủ động bản nháp mới nhất theo đúng đề. Ưu tiên tối đa 2 vấn đề có ảnh hưởng cao nhất, dùng chú thích có màu dựa trên trích dẫn nguyên văn khi hữu ích, đề xuất sửa chính xác nhưng không tự áp dụng, và đưa một lời nhắc ngắn. Không bịa band IELTS và không viết thay cả bài.'
     : (String($('#agent-task-input').value || '').trim().slice(0, 4000) ||
       'Đọc đề và bài nháp. Kiểm tra cấu trúc, tìm vấn đề có ảnh hưởng lớn nhất, đề xuất tối đa 3 sửa đổi nhỏ có bằng chứng, rồi tạo một bài luyện để tôi tự cải thiện.');
-  $('#agent-task-input').value = message;
+  if (!proactive) $('#agent-task-input').value = message;
   saveDraft();
   const taskSnapshot = { ...currentTask };
   agentSessionId = createAgentSessionId();
