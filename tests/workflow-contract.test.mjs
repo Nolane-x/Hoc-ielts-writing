@@ -9,10 +9,12 @@ const [releaseWorkflow, ciWorkflow, packageJson] = await Promise.all([
 ]);
 
 test('release workflow waits for all three platform jobs before publishing', () => {
-  assert.match(releaseWorkflow, /windows:\s*\n\s+runs-on:\s*windows-latest/);
-  assert.match(releaseWorkflow, /linux:\s*\n\s+runs-on:\s*ubuntu-latest/);
-  assert.match(releaseWorkflow, /android:\s*\n\s+runs-on:\s*ubuntu-latest/);
-  assert.match(releaseWorkflow, /needs:\s*\[windows, linux, android\]/);
+  assert.match(releaseWorkflow, /verify:\s*\n\s+name: Verify candidate/);
+  assert.match(releaseWorkflow, /visual-smoke:\s*\n\s+name: Visual smoke and screenshots/);
+  assert.match(releaseWorkflow, /windows:\s*\n\s+needs: \[verify, visual-smoke\]\s*\n\s+runs-on:\s*windows-latest/);
+  assert.match(releaseWorkflow, /linux:\s*\n\s+needs: \[verify, visual-smoke\]\s*\n\s+runs-on:\s*ubuntu-latest/);
+  assert.match(releaseWorkflow, /android:\s*\n\s+needs: \[verify, visual-smoke\]\s*\n\s+runs-on:\s*ubuntu-latest/);
+  assert.match(releaseWorkflow, /needs:\s*\[verify, visual-smoke, windows, linux, android\]/);
   assert.match(releaseWorkflow, /permissions:\s*\n\s+contents:\s*write/);
   assert.match(releaseWorkflow, /prerelease:\s*true/);
 });
@@ -33,7 +35,7 @@ test('release tags and display labels derive from package.json version', () => {
   assert.match(releaseWorkflow, /node -p 'require\("\.\/package\.json"\)\.version'/);
   assert.match(releaseWorkflow, /tag_name:\s*wmr-v\$\{\{ steps\.appmeta\.outputs\.version \}\}-build\.\$\{\{ github\.run_number \}\}/);
   assert.match(releaseWorkflow, /name:\s*WMR Writing Mentor v\$\{\{ steps\.appmeta\.outputs\.version \}\}/);
-  assert.equal(packageJson.version, '1.6.0');
+  assert.match(packageJson.version, /^1\.7\.0$/);
 });
 
 test('CI is read-only, uses the lockfile and blocks high-severity dependency advisories', () => {
@@ -41,6 +43,8 @@ test('CI is read-only, uses the lockfile and blocks high-severity dependency adv
   assert.match(ciWorkflow, /persist-credentials:\s*false/);
   assert.match(ciWorkflow, /npm ci --no-audit --no-fund/);
   assert.match(ciWorkflow, /npm audit --audit-level=high/);
+  assert.match(ciWorkflow, /CSP-safe dynamic styling and generated version/);
+  assert.match(ciWorkflow, /__APP_VERSION__/);
   assert.doesNotMatch(ciWorkflow, /git push origin/);
   assert.doesNotMatch(ciWorkflow, /One-time lockfile version synchronization/);
 });
