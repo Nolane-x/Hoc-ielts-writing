@@ -280,6 +280,85 @@ function setTheme(mode, persist = true) {
   $('#theme-label').textContent = effective === 'dark' ? 'Giao diện sáng' : 'Giao diện tối';
   $$('[data-theme-choice]').forEach(el => el.classList.toggle('selected', el.dataset.themeChoice === selected));
 }
+function renderCustomTaskManager() {
+  const host = $('#custom-task-manager');
+  const count = $('#custom-task-count');
+  if (!host) return;
+  if (count) count.textContent = customTasks.length + ' / 30';
+  if (!customTasks.length) {
+    host.innerHTML = '<p class="field-help">Chưa có đề riêng. Tạo đề ở bên dưới; bạn có thể mở hoặc xóa đề ở đây.</p>';
+    return;
+  }
+  host.innerHTML = customTasks.map(task =>
+    '<article class="saved-custom-task-row"><div class="saved-custom-task-meta"><strong>' + escapeHtml(task.title) + '</strong>' +
+    '<small>' + escapeHtml(task.type === 'task2' ? 'Task 2' : task.type === 'task1-general' ? 'General Task 1' : 'Academic Task 1') +
+    ' · ' + (task.provenance === 'ai-generated-unverified' ? 'AI tạo · chưa kiểm định' : 'Người học tạo') + '</small></div>' +
+    '<div class="saved-custom-task-actions"><button class="button button-secondary" type="button" data-open-custom-task="' + escapeHtml(task.id) + '">Mở</button>' +
+    '<button class="quiet-button" type="button" data-delete-custom-task="' + escapeHtml(task.id) + '">Xóa</button></div></article>'
+  ).join('');
+}
+function openCustomTask(taskId) {
+  const task = customTasks.find(item => item.id === taskId);
+  if (!task) return false;
+  renderTaskOptions(task.id);
+  showPage('workspace');
+  setToast('Đã mở đề riêng: ' + task.title);
+  return true;
+}
+function deleteCustomTask(taskId) {
+  const task = customTasks.find(item => item.id === taskId);
+  if (!task) return false;
+  if (agentBusy && agentResultTaskId === taskId) {
+    setToast('Hãy hủy hoặc đợi phiên Agent của đề này kết thúc trước khi xóa đề.');
+    return false;
+  }
+  const approved = confirm(
+    'Xóa đề riêng "' + task.title + '" khỏi ngân hàng trên thiết bị này? Bản nháp, ghi chú, hội thoại Mentor, phiên bản sửa, báo cáo, tài liệu Agent và lượt luyện gắn với riêng đề này cũng sẽ bị xóa. Không thể hoàn tác.'
+  );
+  if (!approved) return false;
+  const nextCustomTasks = customTasks.filter(item => item.id !== taskId);
+  const nextHistory = history.filter(item => item.taskId !== taskId).slice(0, 30);
+  const nextArtifacts = agentSavedArtifacts().filter(item => item.taskId !== taskId);
+  const nextAttempts = agentPracticeAttempts().filter(item => item.taskId !== taskId);
+  const changes = {
+    [CUSTOM_TASKS_KEY]: JSON.stringify(nextCustomTasks),
+    [DRAFT_PREFIX + taskId]: null,
+    [COACH_PREFIX + taskId]: null,
+    [EXAM_NOTES_PREFIX + taskId]: null,
+    [agentRevisionKey(taskId)]: null,
+    [AGENT_ARTIFACTS_KEY]: JSON.stringify(nextArtifacts),
+    [AGENT_PRACTICE_ATTEMPTS_KEY]: JSON.stringify(nextAttempts),
+    [HISTORY_KEY]: JSON.stringify(nextHistory)
+  };
+  try {
+    applyStorageTransaction(localStorage, changes);
+  } catch (error) {
+    setToast(error?.message === 'storage_transaction_rollback_failed'
+      ? 'Lỗi bộ nhớ và không hoàn tác được hoàn toàn; hãy xuất sao lưu trước khi tiếp tục.'
+      : 'Không xóa được đề vì giao dịch bộ nhớ thất bại; dữ liệu được giữ lại.');
+    return false;
+  }
+  customTasks = nextCustomTasks;
+  tasks = [...TASKS, ...customTasks];
+  history = nextHistory;
+  if (currentTask.id === taskId) currentTask = TASKS[0];
+  if (agentResultTaskId === taskId) {
+    agentResult = null;
+    agentResultTaskId = null;
+    agentResultTaskTitle = '';
+    $('#agent-result').innerHTML = '';
+    $('#agent-activity').innerHTML = '';
+  }
+  renderTaskOptions(currentTask?.id || TASKS[0].id);
+  latestReport = history[0]?.report || null;
+  renderHistoryCount();
+  renderLearning();
+  renderReport(latestReport);
+  renderSavedAgentArtifacts();
+  renderAgentPracticeJournal();
+  setToast('Đã xóa đề riêng và dữ liệu cục bộ gắn với đề đó.');
+  return true;
+}
 function createCustomTaskId() {
   return 'custom-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
 }
@@ -422,6 +501,7 @@ function renderTaskOptions(selectedId = '') {
   const preferred = selectedId || $('#task-select').value;
   currentTask = tasks.find(task => task.id === preferred) || tasks[0] || TASKS[0];
   $('#task-select').value = currentTask.id;
+  renderCustomTaskManager();
   loadCurrentTask();
 }
 function renderPromptWithHighlights(rawPrompt) {
@@ -2222,6 +2302,12 @@ function attachEvents() {
   });
   $('#save-custom-task')?.addEventListener('click', saveCustomTaskFromForm);
   $('#generate-custom-task')?.addEventListener('click', generateCustomTaskWithAI);
+  $('#custom-task-manager')?.addEventListener('click', event => {
+    const openButton = event.target.closest('[data-open-custom-task]');
+    if (openButton) { openCustomTask(openButton.dataset.openCustomTask); return; }
+    const deleteButton = event.target.closest('[data-delete-custom-task]');
+    if (deleteButton) deleteCustomTask(deleteButton.dataset.deleteCustomTask);
+  });
   $('#live-annotation-panel')?.addEventListener('click', event => {
     const button = event.target.closest('[data-live-annotation]');
     if (!button || currentTask?.id !== agentResultTaskId) return;
