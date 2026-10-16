@@ -309,8 +309,8 @@ function openCustomTask(taskId) {
 function deleteCustomTask(taskId) {
   const task = customTasks.find(item => item.id === taskId);
   if (!task) return false;
-  if (agentBusy && agentResultTaskId === taskId) {
-    setToast('Hãy hủy hoặc đợi phiên Agent của đề này kết thúc trước khi xóa đề.');
+  if ((agentBusy && agentResultTaskId === taskId) || ((coachBusy || submitting) && currentTask?.id === taskId)) {
+    setToast('Hãy hủy hoặc đợi phiên AI của đề này kết thúc trước khi xóa đề.');
     return false;
   }
   const approved = confirm(
@@ -474,8 +474,11 @@ async function generateCustomTaskWithAI() {
   ].join('\n');
   const button = $('#generate-custom-task');
   const controller = new AbortController();
+  const generationFields = ['#custom-task-type', '#custom-task-title', '#custom-task-prompt', '#custom-task-goal']
+    .map(selector => $(selector)).filter(Boolean);
   taskGenerationController = controller;
   button.disabled = true;
+  generationFields.forEach(field => { field.disabled = true; });
   const priorLabel = button.textContent;
   button.textContent = 'Đang tạo đề…';
   setCompanionStatus('Đang yêu cầu model tạo một đề riêng. Bản nháp hiện tại không được gửi trong yêu cầu này.');
@@ -511,6 +514,7 @@ async function generateCustomTaskWithAI() {
     }
   } finally {
     if (taskGenerationController === controller) taskGenerationController = null;
+    generationFields.forEach(field => { field.disabled = false; });
     button.disabled = false;
     button.textContent = priorLabel;
   }
