@@ -123,6 +123,8 @@ try {
   await mobilePage.locator('#sidebar.mobile-open').waitFor({ state: 'visible', timeout: 5000 });
   await mobilePage.locator('button.nav-item[data-page="workspace"]').click();
   await mobilePage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 10000 });
+  await mobilePage.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await mobilePage.locator('#exam-mode-toggle').scrollIntoViewIfNeeded();
   await mobilePage.locator('#exam-mode-toggle').click();
   const mobilePractice = await mobilePage.evaluate(() => {
     const prompt = document.querySelector('#prompt-card')?.getBoundingClientRect();
