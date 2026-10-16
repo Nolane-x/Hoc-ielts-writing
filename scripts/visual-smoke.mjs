@@ -55,10 +55,15 @@ try {
   await page.locator('#custom-task-panel').scrollIntoViewIfNeeded();
   await capture(page, '01d-custom-task-builder-desktop.png');
   let coachRequests = 0;
-  page.on('request', request => { if (request.url().endsWith('/api/coach')) coachRequests++; });
+  let taskGenerationRequests = 0;
+  page.on('request', request => {
+    if (request.url().endsWith('/api/coach')) coachRequests++;
+    if (request.url().endsWith('/api/tasks/generate')) taskGenerationRequests++;
+  });
   await page.locator('#generate-custom-task').click();
   await page.waitForFunction(() => document.querySelector('#toast')?.textContent.toLowerCase().includes('quyền gửi provider'));
-  assert.equal(coachRequests, 0, 'Custom-task generation must not call the provider while permission is off.');
+  assert.equal(coachRequests, 0, 'Custom-task generation must not call Mentor while permission is off.');
+  assert.equal(taskGenerationRequests, 0, 'Custom-task generation must not call the dedicated AI endpoint while permission is off.');
   assert.equal(await page.locator('#external-allowed').isChecked().catch(() => false), false);
 
   // Learner-created tasks are persisted locally and can be removed with a clear destructive confirmation.
@@ -78,7 +83,8 @@ try {
   await page.waitForFunction(id => ![...document.querySelector('#task-select').options].some(option => option.value === id), customId);
   assert.equal(await page.evaluate(id => localStorage.getItem('wmr-draft-v1:' + id), customId), null,
     'Deleting a custom task should transactionally remove its local draft.');
-  assert.equal(coachRequests, 0, 'Custom task CRUD must not call the external provider.');
+  assert.equal(coachRequests, 0, 'Custom task CRUD must not call Mentor or the external provider.');
+  assert.equal(taskGenerationRequests, 0, 'Custom task CRUD must not call the dedicated AI endpoint.');
 
   const manualAgentObjective = 'Keep my own manual Agent instruction intact.';
   await page.locator('#agent-task-input').fill(manualAgentObjective);
