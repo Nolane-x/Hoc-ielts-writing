@@ -103,6 +103,8 @@ try {
   listenForErrors(mobilePage, 'mobile');
   await mobilePage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await mobilePage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
+  assert.ok(await mobilePage.locator('#exam-mode-toggle').isVisible(), 'Practice mode toggle must remain reachable on mobile.');
+  assert.match(await mobilePage.locator('#exam-mode-toggle').getAttribute('aria-label'), /practice|luyện thi/i);
   const geometry = await mobilePage.evaluate(() => ({
     viewportWidth: window.innerWidth,
     documentWidth: document.documentElement.scrollWidth
