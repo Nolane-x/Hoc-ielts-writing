@@ -3548,6 +3548,17 @@ a {
   .zen-pill {
     display: none;
   }
+  /* Keep practice mode reachable on phones; the icon retains an explicit accessible name. */
+  .exam-sim-pill {
+    display: inline-flex;
+    min-width: 36px;
+    min-height: 36px;
+    justify-content: center;
+    padding: 8px 10px;
+  }
+  .exam-sim-pill span:nth-child(2) {
+    display: none;
+  }
   .page-view {
     padding: 20px 14px;
   }
@@ -3825,7 +3836,6 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 }
 .app-shell.idp-bc-mode .editor-top-bar,
 .app-shell.idp-bc-mode .task-select-wrap,
-.app-shell.idp-bc-mode .editor-telemetry,
 .app-shell.idp-bc-mode .editor-footer,
 .app-shell.idp-bc-mode .editor-actions,
 .app-shell.idp-bc-mode #agent-revisions {
@@ -3837,8 +3847,18 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   border-radius: 6px;
   border: 2px solid #9ca3af;
 }
+.app-shell.idp-bc-mode .editor-telemetry {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: start;
+  position: relative;
+  z-index: 1;
+}
 .app-shell.idp-bc-mode .canvas-paper-frame {
   grid-column: 2;
+  grid-row: 3;
+  margin-top: 46px;
+  min-width: 0;
 }
 .app-shell.idp-bc-mode .editor-column textarea {
   font-family: Arial, "Segoe UI", Verdana, sans-serif;
@@ -4104,6 +4124,16 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   .app-shell.idp-bc-mode .editor-column {
     grid-template-columns: minmax(0, 1fr);
   }
+  .app-shell.idp-bc-mode .prompt-card,
+  .app-shell.idp-bc-mode .editor-telemetry,
+  .app-shell.idp-bc-mode .canvas-paper-frame {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 0;
+  }
+  .app-shell.idp-bc-mode .editor-telemetry {
+    position: static;
+  }
 }
 
 /* Stage 6: Academic Print & PDF Dossier (@media print) */
@@ -4142,3 +4172,32 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   }
 }
 
+
+
+/* CSP-safe dynamic states use classes, never inline style attributes. */
+.status-error { color: var(--red) !important; }
+.mode-pill.provider-active { background: var(--amber-soft); color: var(--amber); }
+.word-progress-fill { width: 100%; transform-origin: left center; }
+.skill-progress-fill { width: 100%; transform-origin: left center; }
+.radar-empty-note { grid-column: 1 / -1; color: var(--muted); font-size: 12px; line-height: 1.55; margin: 0 0 8px; }
+.word-progress-fill.progress-p0, .skill-progress-fill.progress-p0 { transform: scaleX(0); }
+.word-progress-fill.progress-p5, .skill-progress-fill.progress-p5 { transform: scaleX(0.05); }
+.word-progress-fill.progress-p10, .skill-progress-fill.progress-p10 { transform: scaleX(0.1); }
+.word-progress-fill.progress-p15, .skill-progress-fill.progress-p15 { transform: scaleX(0.15); }
+.word-progress-fill.progress-p20, .skill-progress-fill.progress-p20 { transform: scaleX(0.2); }
+.word-progress-fill.progress-p25, .skill-progress-fill.progress-p25 { transform: scaleX(0.25); }
+.word-progress-fill.progress-p30, .skill-progress-fill.progress-p30 { transform: scaleX(0.3); }
+.word-progress-fill.progress-p35, .skill-progress-fill.progress-p35 { transform: scaleX(0.35); }
+.word-progress-fill.progress-p40, .skill-progress-fill.progress-p40 { transform: scaleX(0.4); }
+.word-progress-fill.progress-p45, .skill-progress-fill.progress-p45 { transform: scaleX(0.45); }
+.word-progress-fill.progress-p50, .skill-progress-fill.progress-p50 { transform: scaleX(0.5); }
+.word-progress-fill.progress-p55, .skill-progress-fill.progress-p55 { transform: scaleX(0.55); }
+.word-progress-fill.progress-p60, .skill-progress-fill.progress-p60 { transform: scaleX(0.6); }
+.word-progress-fill.progress-p65, .skill-progress-fill.progress-p65 { transform: scaleX(0.65); }
+.word-progress-fill.progress-p70, .skill-progress-fill.progress-p70 { transform: scaleX(0.7); }
+.word-progress-fill.progress-p75, .skill-progress-fill.progress-p75 { transform: scaleX(0.75); }
+.word-progress-fill.progress-p80, .skill-progress-fill.progress-p80 { transform: scaleX(0.8); }
+.word-progress-fill.progress-p85, .skill-progress-fill.progress-p85 { transform: scaleX(0.85); }
+.word-progress-fill.progress-p90, .skill-progress-fill.progress-p90 { transform: scaleX(0.9); }
+.word-progress-fill.progress-p95, .skill-progress-fill.progress-p95 { transform: scaleX(0.95); }
+.word-progress-fill.progress-p100, .skill-progress-fill.progress-p100 { transform: scaleX(1); }

@@ -19,7 +19,7 @@ const TASK_ACADEMY_CATALOG = {
       { phrase: 'financial literacy and civic responsibility', meaning: 'Hiểu biết tài chính và trách nhiệm công dân' }
     ],
     modelEssay: {
-      band: 8.5,
+      qualityStatus: 'illustrative-unvalidated',
       paragraphs: [
         { role: 'Introduction', text: 'Debates surrounding curriculum priorities often contrast traditional academic disciplines with hands-on life skills. While core theoretical subjects remain indispensable for intellectual development, I contend that secondary education should integrate practical training so graduates can navigate adulthood effectively.' },
         { role: 'Body Paragraph 1', text: 'On the one hand, academic subjects provide the theoretical underpinnings required for higher education and analytical professions. Mathematics, literature and the natural sciences train students to evaluate evidence, construct rigorous arguments and understand abstract systems. Without this intellectual foundation, learners may struggle to adapt when technological shifts render specific vocational routines obsolete.' },
@@ -61,7 +61,7 @@ const TASK_ACADEMY_CATALOG = {
       { phrase: 'commuter bottleneck', meaning: 'Điểm nghẽn giao thông giờ đi làm' }
     ],
     modelEssay: {
-      band: 8.5,
+      qualityStatus: 'illustrative-unvalidated',
       paragraphs: [
         { role: 'Introduction', text: 'Severe traffic congestion has become a defining challenge for modern metropolises. This predicament stems primarily from over-reliance on private vehicles and underfunded transit infrastructure, yet it can be mitigated through targeted transit investment and peak-hour road pricing.' },
         { role: 'Body Paragraph 1 (Causes)', text: 'The primary driver of urban gridlock is the disproportionate growth of private car ownership relative to road capacity. As cities expand outward, commuters living in peripheral suburbs often lack reliable rail or bus connections, forcing millions of solo drivers onto arterial highways during identical peak windows.' },
@@ -90,139 +90,157 @@ const TASK_ACADEMY_CATALOG = {
 };
 
 function buildFallbackAcademyData(task) {
-  const isTask1Academic = task.type === 'task1-academic';
-  const isTask1General = task.type === 'task1-general';
-  if (isTask1Academic) {
-    return {
-      topic: `Academic Task 1 · ${task.title}`,
-      instruction: 'Summarise main features and make supported comparisons (Tóm tắt xu hướng tổng quan và so sánh các số liệu nổi bật)',
-      traps: [
-        'Thiếu đoạn Overview (Tổng quan): Bài viết không có Overview rõ ràng rất khó vượt qua Band 6.0 ở tiêu chí Task Achievement.',
-        'Đưa ý kiến cá nhân hoặc suy đoán nguyên nhân ngoài dữ liệu đề bài cung cấp.'
-      ],
-      collocations: [
-        { phrase: 'exhibit a pronounced upward trajectory', meaning: 'Thể hiện xu hướng tăng trưởng rõ rệt' },
-        { phrase: 'account for the largest proportion', meaning: 'Chiếm tỷ trọng lớn nhất' },
-        { phrase: 'witness a marginal decline', meaning: 'Chứng kiến sự sụt giảm nhẹ' },
-        { phrase: 'outpace the remaining categories', meaning: 'Vượt tốc độ tăng của các nhóm còn lại' },
-        { phrase: 'hover around a stable plateau', meaning: 'Duy trì ổn định quanh một mức' },
-        { phrase: 'over the surveyed period', meaning: 'Trong suốt giai đoạn được khảo sát' }
-      ],
-      modelEssay: {
-        band: 8.5,
-        paragraphs: [
-          { role: 'Introduction', text: `The supplied diagram illustrates key quantitative patterns for ${task.title.toLowerCase()}, enabling direct comparison across the reported categories and time frames.` },
-          { role: 'Overview', text: 'Overall, the most striking feature is the substantial divergence between the leading and trailing categories, alongside a clear structural shift over the surveyed period.' },
-          { role: 'Details Paragraph 1', text: 'Looking first at the dominant categories, figures started at a comparatively modest baseline before experiencing steady, sustained growth. By contrast, mid-tier groups showed far more moderate fluctuations.' },
-          { role: 'Details Paragraph 2', text: 'Turning to the remaining segments, their relative share either contracted slightly or increased at a slower pace, reinforcing the gap observed at the end of the timeframe.' }
-        ]
-      },
-      collocationDrill: {
-        sentence: 'Overall, renewable generation ______ a pronounced upward trajectory across all three regions between 2005 and 2025.',
-        options: ['exhibited', 'made', 'did', 'happened'],
-        answerIndex: 0,
-        explanation: '“Exhibit/demonstrate an upward trajectory” là cách diễn đạt học thuật chuẩn xác thay cho những từ đơn giản như “made/did”.'
-      },
-      cohesionPuzzle: {
-        prompt: 'Sắp xếp 4 câu sau theo cấu trúc chuẩn của bài Academic Task 1 (Intro → Overview → Detail 1 → Detail 2):',
-        items: [
-          { id: 'A', role: 'Overview', text: 'Overall, all three regions increased their renewable share markedly, with the South recording the fastest relative growth.' },
-          { id: 'B', role: 'Intro', text: 'The table compares the proportion of electricity generated from renewable sources in three regions between 2005 and 2025.' },
-          { id: 'C', role: 'Detail 2', text: 'Meanwhile, the South began at just 9% in 2005 but more than quadrupled to 39% by 2025, narrowing the gap with the other regions.' },
-          { id: 'D', role: 'Detail 1', text: 'In 2005, Central led at 22%, closely followed by North at 18%; however, North overtook Central by 2025, reaching 47% compared with 42%.' }
-        ],
-        correctOrder: ['B', 'A', 'D', 'C'],
-        explanation: 'Cấu trúc chuẩn Academic Task 1: B (Paraphrase đề bài) → A (Overview khái quát xu hướng chính) → D (Số liệu nhóm dẫn đầu) → C (Số liệu nhóm đối sánh).'
-      }
-    };
-  }
+  const type = String(task.type || 'task2');
+  const title = String(task.title || 'IELTS Writing task');
+  const id = String(task.id || '');
+  const academic1 = type === 'task1-academic';
+  const general1 = type === 'task1-general';
+  const process = /process/i.test(title);
+  const map = /map/i.test(title);
+  const informal = /friend|informal/i.test(id + ' ' + title);
+  const letterPurpose = /apology/i.test(id + ' ' + title) ? 'apologise for [the situation]'
+    : /advice/i.test(id + ' ' + title) ? 'offer my thoughts about [the problem]'
+    : /request/i.test(id + ' ' + title) ? 'ask whether [the requested action] would be possible'
+    : /complaint|formal/i.test(id + ' ' + title) ? 'raise a concern about [the issue]'
+    : 'explain [the purpose of this letter]';
+  const qualityStatus = 'illustrative-unvalidated';
+  const commonCollocations = [
+    { phrase: 'play a significant role in', meaning: 'Đóng vai trò đáng kể trong' },
+    { phrase: 'address the underlying causes of', meaning: 'Giải quyết các nguyên nhân gốc rễ của' },
+    { phrase: 'have a measurable effect on', meaning: 'Có tác động có thể đo lường lên' },
+    { phrase: 'in the long term', meaning: 'Về dài hạn' },
+    { phrase: 'a practical alternative to', meaning: 'Một lựa chọn thay thế khả thi cho' },
+    { phrase: 'outweigh the potential drawbacks of', meaning: 'Vượt trội hơn những bất lợi tiềm tàng của' }
+  ];
+  let topic, instruction, traps, collocations, modelEssay, collocationDrill, cohesionPuzzle;
 
-  if (isTask1General) {
-    return {
-      topic: `General Training Task 1 · ${task.title}`,
-      instruction: 'Cover all three bullet points with consistent register (Trả lời đầy đủ 3 yêu cầu của thư với văn phong nhất quán)',
-      traps: [
-        'Bỏ sót 1 trong 3 bullet points của đề bài hoặc chỉ nhắc thoáng qua một câu.',
-        'Lệch văn phong (Register mismatch): Dùng từ lóng trong thư trang trọng hoặc viết quá cứng nhắc trong thư gửi bạn thân.'
-      ],
-      collocations: [
-        { phrase: 'I am writing to bring to your attention', meaning: 'Tôi viết thư này để thông báo với quý vị về...' },
-        { phrase: 'prompt resolution of this matter', meaning: 'Sự giải quyết nhanh chóng cho vấn đề này' },
-        { phrase: 'substantially disrupted my concentration', meaning: 'Làm ảnh hưởng đáng kể đến sự tập trung của tôi' },
-        { phrase: 'express my sincere gratitude', meaning: 'Bày tỏ lòng biết ơn chân thành' },
-        { phrase: 'propose a workable arrangement', meaning: 'Đề xuất một phương án sắp xếp hợp lý' },
-        { phrase: 'at your earliest convenience', meaning: 'Vào thời điểm thuận tiện sớm nhất của quý vị' }
-      ],
-      modelEssay: {
-        band: 8.5,
-        paragraphs: [
-          { role: 'Opening & Purpose', text: 'Dear Sir or Madam, I am writing to formally report an issue regarding my recent experience and to request a practical resolution at your earliest convenience.' },
-          { role: 'Bullet 1 & 2 (Context & Impact)', text: 'Specifically, the situation differed markedly from what was confirmed at the time of registration. Because this issue directly affected my schedule and daily work, I would appreciate your reviewing the details carefully.' },
-          { role: 'Bullet 3 & Closing (Action Requested)', text: 'To resolve this matter fairly, I kindly request either a full replacement or a transfer to an alternative arrangement. Thank you in advance for your prompt attention. Yours faithfully, Alex Nguyen.' }
-        ]
-      },
-      collocationDrill: {
-        sentence: 'I would appreciate your ______ resolution of this issue so that I can complete the course as planned.',
-        options: ['prompt', 'fastly', 'hurry', 'sudden'],
-        answerIndex: 0,
-        explanation: '“Prompt resolution” hoặc “prompt attention” là cụm collocation chuẩn mực nhất trong thư trang trọng / bán trang trọng.'
-      },
-      cohesionPuzzle: {
-        prompt: 'Sắp xếp 4 phần của bức thư theo trình tự chuẩn General Training Task 1:',
-        items: [
-          { id: 'A', role: 'Purpose', text: 'I am writing to explain the noise problem affecting our Tuesday evening class and to suggest a simple solution.' },
-          { id: 'B', role: 'Impact', text: 'Because the adjacent hall hosts music rehearsals at the same hour, several students struggle to hear the lecturer clearly.' },
-          { id: 'C', role: 'Solution & Sign-off', text: 'Could our group be relocated to a quieter classroom on the second floor from next week? Kind regards, Minh Tran.' },
-          { id: 'D', role: 'Salutation', text: 'Dear Course Manager,' }
-        ],
-        correctOrder: ['D', 'A', 'B', 'C'],
-        explanation: 'D (Lời chào đúng đối tượng) → A (Nêu mục đích viết thư ngay câu đầu) → B (Mô tả vấn đề & hệ quả) → C (Đề xuất hướng giải quyết lịch sự và kết thư).'
-      }
-    };
-  }
-
-  return {
-    topic: `Academic Task 2 · ${task.title}`,
-    instruction: `${task.skillFocus} (Trả lời trực diện câu hỏi, phát triển luận điểm bằng giải thích và ví dụ cụ thể)`,
-    traps: [
-      'Đưa ra luận điểm (Claim) nhưng nhảy sang ý mới mà không giải thích nguyên lý (Why/How).',
-      'Dùng từ nối cơ học ("Firstly, Secondly, Moreover, Furthermore") ở đầu mọi câu văn thay vì liên kết bằng mạch ý.'
-    ],
-    collocations: [
-      { phrase: 'exert a profound influence on', meaning: 'Tạo ra ảnh hưởng sâu sắc tới...' },
-      { phrase: 'weigh the long-term implications', meaning: 'Cân nhắc các hệ quả dài hạn' },
-      { phrase: 'implement targeted policy interventions', meaning: 'Thực thi các biện pháp can thiệp chính sách có trọng tâm' },
-      { phrase: 'foster sustainable socio-economic growth', meaning: 'Thúc đẩy tăng trưởng kinh tế - xã hội bền vững' },
-      { phrase: 'mitigate unintended consequences', meaning: 'Giảm thiểu các hệ lụy ngoài ý muốn' },
-      { phrase: 'strike a pragmatic balance between', meaning: 'Đạt được sự cân bằng thực tế giữa...' }
-    ],
-    modelEssay: {
-      band: 8.5,
-      paragraphs: [
-        { role: 'Introduction', text: `Contemporary policy discussions increasingly centre on ${task.title.toLowerCase()}. While competing priorities exist on both sides of the issue, I maintain that a balanced, evidence-led approach yields the most durable public benefit.` },
-        { role: 'Body Paragraph 1', text: 'From an immediate practical standpoint, targeted investment addresses pressing community needs. When authorities allocate resources transparently and align incentives with citizen behaviour, measurable improvements emerge within a short timeframe.' },
-        { role: 'Body Paragraph 2', text: 'At the same time, long-term resilience depends on safeguarding broader social and environmental foundations. Neglecting these structural factors often generates higher remediation costs in the future, which is why complementary regulations remain essential.' },
-        { role: 'Conclusion', text: 'In conclusion, rather than viewing these priorities as mutually exclusive, policymakers and individuals should combine immediate practical measures with long-term stewardship.' }
-      ]
-    },
-    collocationDrill: {
-      sentence: 'Policymakers must ______ a pragmatic balance between immediate economic demands and long-term sustainability.',
-      options: ['strike', 'hit', 'do', 'take'],
-      answerIndex: 0,
-      explanation: '“Strike a balance between A and B” là cụm idiomatic collocation chuẩn mực trong văn viết học thuật Band 8.0+.'
-    },
-    cohesionPuzzle: {
-      prompt: 'Sắp xếp 4 câu sau thành đoạn lập luận chặt chẽ theo khung PEEL (Point → Explanation → Example → Link):',
+  if (academic1) {
+    topic = title + ' · mô tả dữ liệu / hình ảnh';
+    instruction = 'Summarise the most important features using only information visible in the actual prompt.';
+    traps = [
+      'Không tự bịa số liệu, mốc thời gian, địa danh hoặc giai đoạn không xuất hiện trong đề.',
+      'Overview phải nêu đặc điểm lớn nhất; không liệt kê chi tiết mà thiếu so sánh hoặc cấu trúc.'
+    ];
+    collocations = [
+      { phrase: 'remain broadly stable', meaning: 'Duy trì tương đối ổn định' },
+      { phrase: 'show a gradual increase', meaning: 'Cho thấy mức tăng dần' },
+      { phrase: 'reach a peak of', meaning: 'Đạt đỉnh ở mức' },
+      { phrase: 'account for the largest share', meaning: 'Chiếm tỷ trọng lớn nhất' },
+      { phrase: 'undergo a substantial transformation', meaning: 'Trải qua sự thay đổi đáng kể' },
+      { phrase: 'pass through successive stages', meaning: 'Đi qua các giai đoạn liên tiếp' }
+    ];
+    modelEssay = { qualityStatus, paragraphs: process ? [
+      { role: 'Introduction', text: 'The diagram illustrates how [product or material] is produced through [number] main stages.' },
+      { role: 'Overview', text: 'Overall, the process begins with [initial input] and ends with [final output], passing through [number] stages.' },
+      { role: 'Details · early stages', text: 'At the outset, [describe the first labelled stage]. The material is then [describe the next visible step].' },
+      { role: 'Details · later stages', text: 'Following this, [describe the remaining steps in order], before the process concludes with [final stage].' }
+    ] : map ? [
+      { role: 'Introduction', text: 'The maps compare [place] at [year 1] and [year 2].' },
+      { role: 'Overview', text: 'Overall, the area became [more/less developed], with the main changes involving [features actually shown].' },
+      { role: 'Details · earlier layout', text: 'In the earlier map, [describe the original layout]. By [year 2], [describe confirmed changes].' },
+      { role: 'Details · changed features', text: 'A further change was [feature], which was [added/removed/relocated]. Mention unchanged features only when visible.' }
+    ] : [
+      { role: 'Introduction', text: 'The [chart/graph/table] illustrates [what is measured] across [categories or locations] over [the period shown].' },
+      { role: 'Overview', text: 'Overall, the clearest features are [main pattern] and [important contrast]. Support these observations with the actual visual.' },
+      { role: 'Details · first comparison', text: 'At [starting point], [category] stood at [value]. It then [rose/fell/remained stable] to [value], according to the figures shown.' },
+      { role: 'Details · second comparison', text: 'By contrast, [another category] [describe the observed pattern]. Compare relevant values without inventing missing data.' }
+    ] };
+    collocationDrill = process
+      ? { sentence: 'The diagram illustrates how [a product] is ______ through several stages.', options: ['processed', 'did', 'happened', 'made'], answerIndex: 0, explanation: '“Is processed through several stages” is suitable process-description wording; replace the placeholder with the actual process.' }
+      : map
+        ? { sentence: 'The area underwent a substantial ______ over the period shown.', options: ['transformation', 'transform', 'transformed', 'transforming'], answerIndex: 0, explanation: '“Underwent a substantial transformation” is a natural phrase for mapped change.' }
+        : { sentence: 'The figure for [category] ______ noticeably over the period shown.', options: ['changed', 'did', 'made', 'happened'], answerIndex: 0, explanation: 'Choose wording that fits the actual trend after checking the visual.' };
+    cohesionPuzzle = {
+      prompt: 'Order the functional parts of an Academic Task 1 response: introduction → overview → detail group 1 → detail group 2.',
       items: [
-        { id: 'A', role: 'Example', text: 'For instance, municipalities that pair green spaces with medium-density transit housing have improved both air quality and housing affordability.' },
-        { id: 'B', role: 'Point', text: 'Urban planning performs best when environmental preservation and housing supply are designed as complementary goals.' },
-        { id: 'C', role: 'Link', text: 'Therefore, cities need not sacrifice public parks in order to accommodate growing populations.' },
-        { id: 'D', role: 'Explanation', text: 'Compact vertical development frees up ground-level land for recreational corridors while keeping residents close to public transport.' }
+        { id: 'A', role: 'Detail 1', text: 'Describe a relevant group of values or features supported by the visual.' },
+        { id: 'B', role: 'Introduction', text: 'Paraphrase what the visual shows, including supplied categories and period.' },
+        { id: 'C', role: 'Detail 2', text: 'Describe a second group or remaining features without repeating detail 1.' },
+        { id: 'D', role: 'Overview', text: 'Summarise the main trends, differences or stages without listing every value.' }
       ],
       correctOrder: ['B', 'D', 'A', 'C'],
-      explanation: 'B (Point/Topic Sentence) → D (Explanation giải thích cơ chế quy hoạch) → A (Example dẫn chứng thực tế) → C (Link khẳng định lại luận điểm).'
-    }
-  };
+      explanation: 'Identify the visual, summarise its main features, then add selected supporting detail. Adapt to the actual visual type.'
+    };
+  } else if (general1) {
+    topic = 'General Training Task 1 · ' + title;
+    instruction = 'Address all three bullet points and keep register consistent with recipient and purpose.';
+    traps = [
+      'Bỏ sót bullet point hoặc chỉ nhắc đến mà không giải thích đủ.',
+      'Văn phong phải phù hợp với người nhận; thư bạn bè không nên dùng giọng hành chính cứng nhắc.'
+    ];
+    collocations = informal ? [
+      { phrase: 'catch up with you', meaning: 'Trò chuyện / cập nhật tình hình với bạn' },
+      { phrase: 'give you a hand with', meaning: 'Giúp bạn xử lý việc gì' },
+      { phrase: 'I was delighted to hear', meaning: 'Mình rất vui khi biết tin' },
+      { phrase: 'it would be great if', meaning: 'Sẽ thật tuyệt nếu' },
+      { phrase: 'thanks for letting me know', meaning: 'Cảm ơn bạn đã báo cho mình biết' },
+      { phrase: 'take care and write soon', meaning: 'Giữ gìn sức khỏe và sớm viết thư nhé' }
+    ] : [
+      { phrase: 'I am writing to enquire about', meaning: 'Tôi viết thư để hỏi về' },
+      { phrase: 'bring this matter to your attention', meaning: 'Đưa vấn đề này đến sự chú ý của quý vị' },
+      { phrase: 'provide further information about', meaning: 'Cung cấp thêm thông tin về' },
+      { phrase: 'I would be grateful if', meaning: 'Tôi sẽ rất cảm kích nếu' },
+      { phrase: 'a suitable arrangement', meaning: 'Một phương án sắp xếp phù hợp' },
+      { phrase: 'thank you for your consideration', meaning: 'Cảm ơn quý vị đã xem xét' }
+    ];
+    modelEssay = { qualityStatus, paragraphs: informal ? [
+      { role: 'Greeting & purpose', text: 'Hi [name], I hope you are doing well. I am writing because [clear purpose].' },
+      { role: 'Bullet point 1', text: 'First, [give the information requested in bullet 1, with a relevant detail].' },
+      { role: 'Bullet points 2 & 3', text: 'Also, [address bullet 2]. As for [bullet 3], [give a relevant detail or request].' },
+      { role: 'Friendly close', text: 'Let me know what you think. Take care and write soon, [your name].' }
+    ] : [
+      { role: 'Greeting & purpose', text: 'Dear [recipient], I am writing to ' + letterPurpose + '.' },
+      { role: 'Bullet point 1', text: 'With regard to [bullet 1], [provide relevant facts and a specific detail].' },
+      { role: 'Bullet points 2 & 3', text: 'In addition, [address bullet 2]. I would also like to [address bullet 3 with a reasonable request or explanation].' },
+      { role: 'Formal close', text: 'Thank you for your time and consideration. Yours sincerely, [your name].' }
+    ] };
+    collocationDrill = informal
+      ? { sentence: 'I would be happy to ______ with the event if you need extra help.', options: ['give you a hand', 'do a hand', 'make a help', 'take a support'], answerIndex: 0, explanation: '“Give you a hand” is a natural informal expression. Match register to the recipient.' }
+      : { sentence: 'I would be grateful if you could ______ this matter at your earliest convenience.', options: ['review', 'make', 'do', 'put'], answerIndex: 0, explanation: '“Review this matter” is a natural formal request; ensure it fits the letter purpose.' };
+    cohesionPuzzle = {
+      prompt: 'Order a General Training letter: greeting → purpose → required details → suitable close.',
+      items: [
+        { id: 'A', role: 'Details', text: 'Address the remaining bullet points with specific, relevant information.' },
+        { id: 'B', role: 'Greeting', text: informal ? 'Hi [name],' : 'Dear [recipient],' },
+        { id: 'C', role: 'Purpose', text: 'State the reason for writing near the beginning.' },
+        { id: 'D', role: 'Close', text: informal ? 'Take care and write soon, [name].' : 'Thank you for your consideration. Yours sincerely, [name].' }
+      ],
+      correctOrder: ['B', 'C', 'A', 'D'],
+      explanation: 'Illustrative order: greeting, purpose, required information and an appropriate close.'
+    };
+  } else {
+    topic = 'Academic Task 2 · ' + title;
+    instruction = String(task.skillFocus || 'Answer every part of the prompt') + ' (Trả lời trực diện đề, phát triển luận điểm bằng giải thích và ví dụ liên quan).';
+    traps = [
+      'Đưa ra luận điểm nhưng không giải thích vì sao hoặc bằng cách nào luận điểm đó đúng.',
+      'Dùng ví dụ chung chung hoặc khẳng định tuyệt đối mà không có căn cứ; chọn ví dụ trực tiếp hỗ trợ luận điểm.'
+    ];
+    collocations = commonCollocations;
+    modelEssay = { qualityStatus, paragraphs: [
+      { role: 'Introduction', text: '[Paraphrase the exact question]. My position is that [clear answer], mainly because [reason 1] and [reason 2].' },
+      { role: 'Body paragraph 1', text: 'One important reason is [claim linked to the prompt]. This matters because [explain the mechanism], which can lead to [relevant consequence]. For example, [specific and credible example].' },
+      { role: 'Body paragraph 2', text: 'A further consideration is [second claim or counterargument]. Although [reasonable qualification], [explain why this affects your position].' },
+      { role: 'Conclusion', text: 'In conclusion, [answer the exact question again in different words]. The strongest reasons are [summarise the developed points].' }
+    ] };
+    collocationDrill = {
+      sentence: 'A well-designed response can play a significant role in ______ the underlying causes of a problem.',
+      options: ['addressing', 'address', 'addressed', 'addresses'],
+      answerIndex: 0,
+      explanation: 'After “role in”, use a noun or gerund; “addressing the underlying causes” is grammatically correct.'
+    };
+    cohesionPuzzle = {
+      prompt: 'Order a Task 2 body paragraph using PEEL: Point → Explanation → Example → Link.',
+      items: [
+        { id: 'A', role: 'Example', text: 'For example, [a specific case] demonstrates the mechanism described above.' },
+        { id: 'B', role: 'Point', text: 'One key reason is [a clear claim that answers the prompt].' },
+        { id: 'C', role: 'Link', text: 'Therefore, this evidence supports the paragraph’s main point about [the question].' },
+        { id: 'D', role: 'Explanation', text: 'This is because [explain why or how the claim leads to an outcome].' }
+      ],
+      correctOrder: ['B', 'D', 'A', 'C'],
+      explanation: 'PEEL is a planning scaffold; the actual argument must fit the prompt and use relevant evidence.'
+    };
+  }
+  return { topic, instruction, traps, collocations, modelEssay, collocationDrill, cohesionPuzzle };
 }
 
 export function getTaskAcademyData(task = {}) {
@@ -257,94 +275,67 @@ export function buildSentenceSurgery(issue = {}, taskType = 'task2') {
   const quote = String(issue.quote || '').trim();
   const suggestedFix = String(issue.suggestedFix || '').trim();
   const explanation = String(issue.explanation || '').trim();
-
-  const diagnosis = explanation || (
-    rawCategory === 'lexical'
-      ? 'Từ vựng còn mang tính khẩu ngữ hoặc chung chung (Band 5.5–6.0), thiếu cụm collocation học thuật tự nhiên.'
-      : rawCategory === 'grammar'
-        ? 'Cấu trúc câu còn đơn điệu hoặc có lỗi chia động từ / mệnh đề phụ thuộc làm giảm độ chính xác ngữ pháp.'
-        : rawCategory === 'coherence'
-          ? 'Chuyển ý giữa hai mệnh đề còn đột ngột, thiếu từ nối chỉ quan hệ nguyên nhân - hệ quả rõ ràng.'
-          : 'Luận điểm chưa đi thẳng vào trọng tâm câu hỏi hoặc còn thiếu bằng chứng cụ thể.'
-  );
-
-  const band75 = suggestedFix || (
-    quote
-      ? `Moreover, ${quote.charAt(0).toLowerCase() + quote.slice(1).replace(/\.$/, '')}, which directly shapes long-term outcomes.`
-      : 'Furthermore, targeted policy measures can address the root causes of this issue effectively.'
-  );
-
-  const band85 = rawCategory === 'lexical'
-    ? (suggestedFix
-        ? `${suggestedFix.replace(/\.$/, '')}, thereby fostering sustainable long-term outcomes.`
-        : 'Consequently, implementing evidence-based interventions proves instrumental in mitigating this challenge.')
+  const teachingHint = String(issue.teachingHint || '').trim();
+  const categoryDiagnosis = rawCategory === 'lexical'
+    ? 'Kiểm tra độ chính xác, sắc thái và collocation; từ khó hơn không tự động tốt hơn.'
     : rawCategory === 'grammar'
-      ? (suggestedFix
-          ? `Not only does this approach address immediate constraints, but it also strengthens long-term resilience (${suggestedFix.replace(/\.$/, '')}).`
-          : 'Had authorities prioritised structural reforms earlier, the long-term pressures observed today would have been substantially curtailed.')
-      : taskType === 'task1-academic'
-        ? 'Notably, the upward trajectory in the primary category outpaced all other segments throughout the surveyed period.'
-        : (suggestedFix
-            ? `${suggestedFix.replace(/\.$/, '')}, underscoring the necessity of a balanced, forward-looking framework.`
-            : 'Ultimately, reconciling these competing priorities requires both institutional commitment and informed civic participation.');
-
+      ? 'Kiểm tra cấu trúc câu, sự hòa hợp chủ-vị, mạo từ, thì và dấu câu trong ngữ cảnh.'
+      : rawCategory === 'coherence'
+        ? 'Kiểm tra quan hệ logic giữa các câu và liệu mỗi câu có phát triển đúng luận điểm của đoạn.'
+        : 'Kiểm tra mức độ trực tiếp trả lời yêu cầu của đề và bằng chứng hỗ trợ luận điểm.';
   return {
-    diagnosis,
-    band75,
-    band85
+    diagnosis: explanation || (quote ? 'Đoạn được trích: “' + quote + '”. ' + categoryDiagnosis : categoryDiagnosis),
+    suggestedRevision: suggestedFix,
+    learningNote: teachingHint || (taskType === 'task1-academic'
+      ? 'Chỉ mô tả đặc điểm có thể xác minh trên biểu đồ, bản đồ hoặc sơ đồ của đề.'
+      : 'Tự kiểm tra xem bản sửa có giữ nguyên ý định của bạn và trả lời đúng câu hỏi không.')
   };
 }
 
 export function renderMasteryRadarSvg(criterionScores = []) {
   const byId = new Map((Array.isArray(criterionScores) ? criterionScores : []).map(item => [item.id, item]));
-  const trMean = byId.get('taskResponse')?.mean ?? byId.get('taskAchievement')?.mean ?? null;
-  const ccMean = byId.get('coherence')?.mean ?? null;
-  const lrMean = byId.get('lexical')?.mean ?? null;
-  const graMean = byId.get('grammar')?.mean ?? null;
-
+  const scoreFor = ids => {
+    for (const id of ids) {
+      const item = byId.get(id);
+      if (item && Number.isFinite(item.mean) && Number(item.count) > 0) return item.mean;
+    }
+    return null;
+  };
   const axes = [
-    { label: 'TR / TA', score: Number.isFinite(trMean) ? trMean : 6.0, angle: -Math.PI / 2 },
-    { label: 'Coherence (CC)', score: Number.isFinite(ccMean) ? ccMean : 6.0, angle: 0 },
-    { label: 'Lexical (LR)', score: Number.isFinite(lrMean) ? lrMean : 6.0, angle: Math.PI / 2 },
-    { label: 'Grammar (GRA)', score: Number.isFinite(graMean) ? graMean : 6.0, angle: Math.PI }
+    { label: 'TR / TA', score: scoreFor(['taskResponse', 'taskAchievement']), angle: -Math.PI / 2 },
+    { label: 'Coherence (CC)', score: scoreFor(['coherence']), angle: 0 },
+    { label: 'Lexical (LR)', score: scoreFor(['lexical']), angle: Math.PI / 2 },
+    { label: 'Grammar (GRA)', score: scoreFor(['grammar']), angle: Math.PI }
   ];
-
-  const cx = 140;
-  const cy = 125;
-  const maxR = 82;
+  const cx = 140, cy = 125, maxR = 82;
   const pointAt = (angle, band) => {
     const clamped = Math.max(0, Math.min(9, Number(band) || 0));
-    const r = (clamped / 9) * maxR;
-    const x = (cx + r * Math.cos(angle)).toFixed(1);
-    const y = (cy + r * Math.sin(angle)).toFixed(1);
-    return `${x},${y}`;
+    const radius = (clamped / 9) * maxR;
+    return (cx + radius * Math.cos(angle)).toFixed(1) + ',' + (cy + radius * Math.sin(angle)).toFixed(1);
   };
-
-  const rings = [5, 6, 7, 8, 9].map(band => {
-    const pts = axes.map(axis => pointAt(axis.angle, band)).join(' ');
-    return `<polygon class="radar-grid-ring" points="${pts}" fill="none" stroke="currentColor" stroke-opacity="0.16" stroke-width="1" />`;
-  }).join('');
-
+  const rings = [5, 6, 7, 8, 9].map(band => '<polygon class="radar-grid-ring" points="' +
+    axes.map(axis => pointAt(axis.angle, band)).join(' ') +
+    '" fill="none" stroke="currentColor" stroke-opacity="0.16" stroke-width="1" />').join('');
   const spokes = axes.map(axis => {
-    const end = pointAt(axis.angle, 9);
-    const [ex, ey] = end.split(',');
-    return `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="currentColor" stroke-opacity="0.22" stroke-width="1" stroke-dasharray="3 3" />`;
+    const [x, y] = pointAt(axis.angle, 9).split(',');
+    return '<line x1="' + cx + '" y1="' + cy + '" x2="' + x + '" y2="' + y + '" stroke="currentColor" stroke-opacity="0.22" stroke-width="1" stroke-dasharray="3 3" />';
   }).join('');
-
-  const dataPoints = axes.map(axis => pointAt(axis.angle, axis.score)).join(' ');
-  const dots = axes.map(axis => {
-    const [px, py] = pointAt(axis.angle, axis.score).split(',');
-    return `<circle cx="${px}" cy="${py}" r="4.5" class="radar-vertex-dot" />`;
+  const scoredAxes = axes.filter(axis => axis.score !== null);
+  const dots = scoredAxes.map(axis => {
+    const [x, y] = pointAt(axis.angle, axis.score).split(',');
+    return '<circle cx="' + x + '" cy="' + y + '" r="4.5" class="radar-vertex-dot" />';
   }).join('');
-
+  const polygon = scoredAxes.length === axes.length
+    ? '<polygon class="radar-data-polygon" points="' + axes.map(axis => pointAt(axis.angle, axis.score)).join(' ') + '" />'
+    : '';
   const labels = [
-    `<text x="${cx}" y="24" text-anchor="middle" class="radar-axis-label">${escapeXml(axes[0].label)} (${axes[0].score.toFixed(1)})</text>`,
-    `<text x="${cx + maxR + 12}" y="${cy + 4}" text-anchor="start" class="radar-axis-label">${escapeXml(axes[1].label)} (${axes[1].score.toFixed(1)})</text>`,
-    `<text x="${cx}" y="${cy + maxR + 24}" text-anchor="middle" class="radar-axis-label">${escapeXml(axes[2].label)} (${axes[2].score.toFixed(1)})</text>`,
-    `<text x="${cx - maxR - 12}" y="${cy + 4}" text-anchor="end" class="radar-axis-label">${escapeXml(axes[3].label)} (${axes[3].score.toFixed(1)})</text>`
+    '<text x="' + cx + '" y="24" text-anchor="middle" class="radar-axis-label">TR / TA (' + (axes[0].score === null ? '—' : axes[0].score.toFixed(1)) + ')</text>',
+    '<text x="' + (cx + maxR + 12) + '" y="' + (cy + 4) + '" text-anchor="start" class="radar-axis-label">CC (' + (axes[1].score === null ? '—' : axes[1].score.toFixed(1)) + ')</text>',
+    '<text x="' + cx + '" y="' + (cy + maxR + 24) + '" text-anchor="middle" class="radar-axis-label">LR (' + (axes[2].score === null ? '—' : axes[2].score.toFixed(1)) + ')</text>',
+    '<text x="' + (cx - maxR - 12) + '" y="' + (cy + 4) + '" text-anchor="end" class="radar-axis-label">GRA (' + (axes[3].score === null ? '—' : axes[3].score.toFixed(1)) + ')</text>'
   ].join('');
-
-  return `<svg class="mastery-radar-svg" viewBox="0 0 280 250" role="img" aria-label="Biểu đồ Radar cân bằng 4 tiêu chí IELTS Writing">${rings}${spokes}<polygon class="radar-data-polygon" points="${dataPoints}" />${dots}${labels}</svg>`;
+  return '<svg class="mastery-radar-svg" viewBox="0 0 280 250" role="img" aria-label="Biểu đồ Radar cân bằng 4 tiêu chí IELTS Writing">' +
+    rings + spokes + polygon + dots + labels + '</svg>';
 }
 
 export function evaluateCollocationChoice(drill = {}, choiceIndex = -1) {

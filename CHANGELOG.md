@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.0 — Production hardening and Academy integrity
+
+- Fix Writing Agent server-sent-event framing and use a bounded client parser with protocol-level tests.
+- Remove unverified Band 8.5+ claims from uncalibrated Academy templates and sentence-surgery suggestions.
+- Stop showing default 6.0 personal criterion scores when no eligible assessment exists.
+- Confirm before inserting an outline into a non-empty draft and roll back failed local backup writes.
+- Generate the UI version from package metadata and replace dynamic inline styles with CSP-safe classes.
+- Add browser screenshot evidence for Academy, practice mode, local report, Learning and mobile navigation.
+
 ## 1.6.0 — Adaptive micro-practice journal
 
 - Persist Writing Agent micro-practice answers locally with task, skill, success criteria and feedback state.

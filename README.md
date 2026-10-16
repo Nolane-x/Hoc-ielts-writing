@@ -1,6 +1,13 @@
-# WMR Writing Mentor 1.4.0
+# WMR Writing Mentor 1.7.0
 
 WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking learners. It combines an essay editor, a guided 21-task practice bank, an optional multi-provider AI mentor, formative four-criterion feedback, private learning history and validated backup/restore.
+
+## Highlights in 1.7.0
+
+- Academy templates are marked as illustrative rather than independently verified band-scored answers.
+- Writing Agent event streaming has protocol-level regression coverage.
+- Backup restore uses rollback for failed multi-key local writes.
+- Application version is generated from package metadata; dynamic progress styling is CSP-safe.
 
 ## Highlights in 1.4.0
 

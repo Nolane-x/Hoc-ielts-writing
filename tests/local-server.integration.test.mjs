@@ -1,6 +1,7 @@
 import test, { after } from 'node:test';
 import http from 'node:http';
 import assert from 'node:assert/strict';
+import { consumeSSEStream } from '../web/sse.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -188,9 +189,15 @@ test('writing agent streams tool progress and final result from a configured loc
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-type') || '', /text\/event-stream/i);
   const events = await response.text();
-  assert.match(events, /event: progress/);
-  assert.match(events, /event: tool/);
-  assert.match(events, /event: result/);
+  const parsedEvents = [];
+  await consumeSSEStream(new Response(events, { headers: { 'content-type': 'text/event-stream' } }), item => {
+    assert.doesNotMatch(item.data, /\\\\n/);
+    parsedEvents.push({ event: item.event, payload: JSON.parse(item.data) });
+  });
+  assert.ok(parsedEvents.some(item => item.event === 'progress'));
+  assert.ok(parsedEvents.some(item => item.event === 'tool'));
+  assert.ok(parsedEvents.some(item => item.event === 'result'));
+  assert.ok(parsedEvents.length >= 3, 'SSE frames must be delimited and parsed independently.');
   assert.match(events, /\"estimatedSessionCostUsd\":0/);
   assert.match(events, /\"maximumModelTurns\":10/);
   assert.match(events, /\"maximumToolCalls\":8/);

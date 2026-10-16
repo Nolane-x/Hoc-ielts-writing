@@ -10,7 +10,7 @@ import {
   evaluateCohesionOrder
 } from '../web/academy-studio.mjs';
 
-test('getTaskAcademyData enriches every bundled task with deconstruction, C1/C2 collocations, Band 8.5+ model essay and interactive drills', () => {
+test('every task has context-appropriate study scaffolds without unvalidated band claims', () => {
   for (const task of TASKS) {
     const data = getTaskAcademyData(task);
     assert.ok(data.topic && data.topic.length > 3, `missing topic for ${task.id}`);
@@ -20,7 +20,8 @@ test('getTaskAcademyData enriches every bundled task with deconstruction, C1/C2 
     for (const item of data.collocations) {
       assert.ok(item.phrase && item.meaning, `invalid collocation item for ${task.id}`);
     }
-    assert.ok(data.modelEssay && data.modelEssay.band >= 8.5, `missing Band 8.5+ model essay for ${task.id}`);
+    assert.ok(data.modelEssay && data.modelEssay.qualityStatus === 'illustrative-unvalidated', `missing transparency status for ${task.id}`);
+    assert.equal(Object.hasOwn(data.modelEssay, 'band'), false, `unvalidated band claim for ${task.id}`);
     assert.ok(Array.isArray(data.modelEssay.paragraphs) && data.modelEssay.paragraphs.length >= 3, `model essay needs paragraphs for ${task.id}`);
     assert.ok(data.collocationDrill && Array.isArray(data.collocationDrill.options) && data.collocationDrill.options.length === 4);
     assert.ok(data.cohesionPuzzle && Array.isArray(data.cohesionPuzzle.items) && data.cohesionPuzzle.items.length === 4);
@@ -41,17 +42,21 @@ test('formatOutlineForEditor builds a non-destructive 4-stage outline scaffold',
   assert.match(result, /Existing essay paragraph here\./);
 });
 
-test('buildSentenceSurgery produces 3-tier diagnosis, Band 7.5 upgrade and Band 8.5+ formulation', () => {
+test('sentence surgery remains grounded in supplied assessment rather than inventing band-labelled rewrites', () => {
   const surgery = buildSentenceSurgery({
     category: 'lexical',
     quote: 'Government should do many things to solve traffic problem.',
     suggestedFix: 'Municipal authorities should implement targeted measures to alleviate traffic congestion.',
-    explanation: 'Cụm từ do many things và solve traffic problem còn chung chung ở mức Band 5.5.'
+    teachingHint: 'Explain how the proposed measure reduces congestion.',
+    explanation: 'The wording is vague; explain the mechanism and keep the claim specific.'
   }, 'task2');
 
   assert.ok(surgery.diagnosis.length > 10);
-  assert.ok(surgery.band75.length > 10);
-  assert.ok(surgery.band85.length > 10);
+  assert.equal(surgery.suggestedRevision, 'Municipal authorities should implement targeted measures to alleviate traffic congestion.');
+  assert.match(surgery.learningNote, /Explain how/);
+  const unsupported = buildSentenceSurgery({ category: 'lexical', quote: 'The words.' }, 'task2');
+  assert.equal(unsupported.suggestedRevision, '');
+  assert.doesNotMatch(unsupported.diagnosis, /Band 5\.5|Band 8\.5/);
 });
 
 test('renderMasteryRadarSvg outputs pure mathematical SVG with 4 axes and no external references', () => {
@@ -65,6 +70,9 @@ test('renderMasteryRadarSvg outputs pure mathematical SVG with 4 axes and no ext
   assert.match(svg, /<svg[^>]*class="mastery-radar-svg"/);
   assert.match(svg, /<polygon[^>]*class="radar-data-polygon"/);
   assert.doesNotMatch(svg, /https?:\/\//i);
+  const empty = renderMasteryRadarSvg([]);
+  assert.doesNotMatch(empty, /class="radar-data-polygon"/);
+  assert.match(empty, /TR \/ TA \(—\)/);
 });
 
 test('evaluateCollocationChoice and evaluateCohesionOrder score Socratic Gym interactions accurately', () => {

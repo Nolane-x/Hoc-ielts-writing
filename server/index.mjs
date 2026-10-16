@@ -195,7 +195,7 @@ async function handleWritingAgentStream(req, res, input) {
   const sendEvent = (type, payload) => {
     if (res.writableEnded || res.destroyed) return;
     try {
-      res.write('event: ' + type + '\\ndata: ' + JSON.stringify(payload) + '\\n\\n');
+      res.write('event: ' + type + '\ndata: ' + JSON.stringify(payload) + '\n\n');
     } catch {
       controller.abort();
     }

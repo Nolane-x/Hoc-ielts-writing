@@ -8,6 +8,8 @@ import { buildRevisionComparison } from './revision-analysis.mjs';
 import { buildEssayAnnotations, renderAnnotatedEssayText } from './essay-annotations.mjs';
 import { buildRecurringErrorPatterns, learnerCriterionSummary, eligibleAIRecords } from './error-patterns.mjs';
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
+import { consumeSSEStream } from './sse.mjs';
+import { applyStorageTransaction } from './storage-transaction.mjs';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
 import { PROVIDER_PRESETS, normaliseProviderConfig, requestCompletion, estimateCost } from './providers.mjs';
@@ -83,7 +85,7 @@ function setStatus(selector, message, bad = false) {
   const el = $(selector);
   if (!el) return;
   el.textContent = message;
-  el.style.color = bad ? 'var(--red)' : '';
+  el.classList.toggle('status-error', Boolean(bad));
 }
 function readDraft(taskId) { return localStorage.getItem(DRAFT_PREFIX + taskId) || ''; }
 function countParagraphs(value) {
@@ -100,6 +102,10 @@ function saveDraft(announce = false) {
   if (announce) setToast('Đã lưu bản nháp trên thiết bị.');
 }
 function countWords(value) { return String(value || '').trim().match(/\b[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)?.length || 0; }
+function setProgressBucket(element, percent) {
+  const bucket = Math.max(0, Math.min(100, Math.round(Number(percent) / 5) * 5));
+  for (let value = 0; value <= 100; value += 5) element.classList.toggle('progress-p' + value, value === bucket);
+}
 function updateWordTarget() {
   const type = currentTask?.type || 'task2';
   const target = type === 'task2' ? 250 : 150;
@@ -112,7 +118,7 @@ function updateWordTarget() {
   const fillEl = $('#word-progress-fill');
   if (fillEl) {
     const pct = Math.min(100, Math.round((words / target) * 100));
-    fillEl.style.width = pct + '%';
+    setProgressBucket(fillEl, pct);
     fillEl.classList.toggle('target-reached', words >= target);
   }
   const badgeEl = $('#active-task-badge');
@@ -190,9 +196,9 @@ function showPage(page) {
   if (key === 'report') renderReport(latestReport);
   window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
-function setTheme(mode) {
+function setTheme(mode, persist = true) {
   const selected = ['light', 'dark', 'system'].includes(mode) ? mode : 'system';
-  localStorage.setItem(THEME_KEY, selected);
+  if (persist) localStorage.setItem(THEME_KEY, selected);
   const effective = selected === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : selected;
   document.documentElement.dataset.theme = effective;
   $('#theme-label').textContent = effective === 'dark' ? 'Giao diện sáng' : 'Giao diện tối';
@@ -548,22 +554,22 @@ function renderReport(report, loading = false) {
       (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
       (item.teachingHint ? '<p><strong>Điều cần hiểu:</strong> ' + escapeHtml(item.teachingHint) + '</p>' : '') +
       '<div class="sentence-surgery-card" aria-label="Mổ xẻ câu văn 3 cấp độ">' +
-      '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán điểm nghẽn</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
-      '<div class="surgery-tier tier-band75"><strong>2 · Nâng cấp Band 7.5+</strong>' + escapeHtml(surgery.band75) + '</div>' +
-      '<div class="surgery-tier tier-band85"><strong>3 · Diễn đạt chuẩn Band 8.5+</strong>' + escapeHtml(surgery.band85) + '</div>' +
+      '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
+      '<div class="surgery-tier tier-band75"><strong>2 · Gợi ý sửa từ phản hồi</strong>' + escapeHtml(surgery.suggestedRevision || 'Phản hồi chưa có câu sửa cụ thể. Không nên tự suy đoán bản sửa khi thiếu bằng chứng.') + '</div>' +
+      '<div class="surgery-tier tier-band85"><strong>3 · Ghi chú học tập</strong>' + escapeHtml(surgery.learningNote) + '</div>' +
       '</div>' +
-      '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || surgery.band85 || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
+      '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
   }).join('') : '<p class="history-empty">' + (issues.length ? 'Không có mục nào thuộc nhóm lọc này.' : report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
   const strengthsHtml = strengths.length ? strengths.map(item => '<div class="strength-item">' + (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') + '<p>' + escapeHtml(item.why || '') + '</p></div>').join('') : '<p class="history-empty">Điểm mạnh sẽ xuất hiện khi AI đưa ra nhận xét cụ thể có trích dẫn khớp bài gốc.</p>';
   const prioritiesHtml = priorities.length ? priorities.map((item, index) => '<div class="priority-item"><span class="priority-number">' + (index + 1) + '</span><div><strong>' + escapeHtml(item.title || 'Bước tiếp theo') + '</strong><p>' + escapeHtml(item.action || '') + '</p></div></div>').join('') : '<p class="history-empty">Chưa đủ dữ liệu để chọn ưu tiên.</p>';
   const academy = getTaskAcademyData(currentTask);
   const learnerParagraphs = String(currentRecord?.essay || $('#essay-editor')?.value || '').trim().split(/\r?\n\s*\r?\n+/).filter(Boolean);
   const parallelHtml = academy?.modelEssay?.paragraphs?.length
-    ? '<section class="panel parallel-model-panel"><div class="report-panel-heading"><div><span class="section-kicker">PARALLEL MODEL ESSAY BENCHMARKING</span><h2>Đối sánh song song với Bài mẫu Band ' + academy.modelEssay.band.toFixed(1) + '+</h2><p>So sánh từng đoạn trong bài của bạn với cấu trúc lập luận và từ vựng học thuật của bài mẫu chuẩn Cambridge.</p></div><span class="count-badge">Band ' + academy.modelEssay.band.toFixed(1) + '+</span></div>' +
+    ? '<section class="panel parallel-model-panel"><div class="report-panel-heading"><div><span class="section-kicker">ILLUSTRATIVE WRITING TEMPLATE</span><h2>Đối sánh với mẫu diễn đạt minh họa</h2><p>So sánh cấu trúc từng đoạn với một khung viết tham khảo. Nội dung mẫu chưa được chấm độc lập, không bảo đảm band IELTS và có thể chứa chỗ giữ chỗ cần tự điền theo đề.</p></div><span class="count-badge">Chưa hiệu chuẩn</span></div>' +
       '<div class="parallel-model-grid">' +
       academy.modelEssay.paragraphs.map((modelPara, idx) =>
         '<div class="parallel-pair-card"><span class="pair-role">Đoạn ' + (idx + 1) + ' của bạn · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(learnerParagraphs[idx] || 'Chưa có đoạn tương ứng trong bản nháp.') + '</p></div>' +
-        '<div class="parallel-pair-card"><span class="pair-role">Bài mẫu Band ' + academy.modelEssay.band.toFixed(1) + '+ · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(modelPara.text) + '</p></div>'
+        '<div class="parallel-pair-card"><span class="pair-role">Mẫu diễn đạt minh họa · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(modelPara.text) + '</p></div>'
       ).join('') +
       '</div></section>'
     : '';
@@ -619,7 +625,10 @@ function renderLearning() {
 
   const radarChartEl = $('#mastery-radar-chart');
   if (radarChartEl) {
-    radarChartEl.innerHTML = renderMasteryRadarSvg(criterionScores);
+    const hasCriterionEvidence = criterionScores.some(item => Number.isFinite(item.mean) && item.count > 0);
+    radarChartEl.innerHTML = hasCriterionEvidence
+      ? renderMasteryRadarSvg(criterionScores)
+      : '<p class="radar-empty-note">Chưa có điểm AI hợp lệ để dựng biểu đồ. Hãy hoàn thành một lượt chấm AI có căn cứ; kiểm tra cục bộ không tạo band.</p>';
   }
   const radarLegendEl = $('#mastery-radar-legend');
   if (radarLegendEl) {
@@ -629,7 +638,7 @@ function renderLearning() {
       ['Lexical Resource', scoreById.get('lexical')?.mean ?? null, 'Độ chuẩn xác Collocations C1/C2'],
       ['Grammatical Range & Accuracy', scoreById.get('grammar')?.mean ?? null, 'Độ đa dạng & chuẩn xác cấu trúc câu']
     ].map(([label, val, note]) =>
-      '<div class="radar-legend-card"><span class="mini-label">' + escapeHtml(label) + '</span><strong>' + (Number.isFinite(val) ? val.toFixed(1) : '6.0 (Tham chiếu)') + '</strong><small>' + escapeHtml(note) + '</small></div>'
+      '<div class="radar-legend-card"><span class="mini-label">' + escapeHtml(label) + '</span><strong>' + (Number.isFinite(val) ? val.toFixed(1) : 'Chưa có điểm AI') + '</strong><small>' + escapeHtml(note) + '</small></div>'
     ).join('');
   }
 
@@ -667,7 +676,7 @@ function renderLearning() {
       ? (skill.test.length ? 'Chưa đủ bằng chứng AI' : 'Theo dõi qua bài sửa và đề mới')
       : 'Trung bình các lần ước lượng: ' + mean.toFixed(1) + '/9';
     const resultLabel = skill.test.length ? count + ' kết quả AI' : 'Chưa có chỉ số thành thạo';
-    return '<article class="skill-card"><div class="skill-top"><h3>' + escapeHtml(skill.title) + '</h3><span class="skill-tag">' + escapeHtml(skill.tag) + '</span></div><p>' + escapeHtml(skill.description) + '</p><div class="skill-progress"><span style="width:' + percent + '%"></span></div><div class="skill-bottom"><span>' + escapeHtml(valueLabel) + '</span><span>' + escapeHtml(resultLabel) + '</span></div></article>';
+    return '<article class="skill-card"><div class="skill-top"><h3>' + escapeHtml(skill.title) + '</h3><span class="skill-tag">' + escapeHtml(skill.tag) + '</span></div><p>' + escapeHtml(skill.description) + '</p><div class="skill-progress"><span class="skill-progress-fill progress-p' + Math.round(percent / 5) * 5 + '"></span></div><div class="skill-bottom"><span>' + escapeHtml(valueLabel) + '</span><span>' + escapeHtml(resultLabel) + '</span></div></article>';
   }).join('');
 
   $('#history-list').innerHTML = history.length ? history.slice(0, 12).map(record => '<div class="history-row"><div class="history-icon">▥</div><div><strong>' + escapeHtml(record.taskTitle || 'Bài viết') + '</strong><small>' + escapeHtml(new Date(record.at).toLocaleString()) + ' · ' + (record.source === 'ai' ? 'AI formative' : 'Local check') + '</small></div><span class="history-score">' + (Number.isFinite(record.report?.estimatedTaskBand) ? record.report.estimatedTaskBand.toFixed(1) : '—') + '</span><button class="small-link" type="button" data-open-history="' + escapeHtml(record.id) + '">Mở ↗</button></div>').join('') : '<div class="history-empty">Chưa có bài nào được đánh giá. Hãy nộp bài đầu tiên để bắt đầu hồ sơ kỹ năng.</div>';
@@ -712,8 +721,7 @@ async function loadSettings() {
 function updateProviderStatus() {
   const enabled = Boolean(settings.externalAllowed);
   $('#mode-pill').innerHTML = '<span class="status-dot"></span><span>' + (enabled ? 'Provider opt-in' : 'Offline ready') + '</span>';
-  $('#mode-pill').style.background = enabled ? 'var(--amber-soft)' : '';
-  $('#mode-pill').style.color = enabled ? 'var(--amber)' : '';
+  $('#mode-pill').classList.toggle('provider-active', enabled);
   if (NATIVE && settings.provider === 'ollama' || NATIVE && settings.provider === 'lmstudio') {
     setStatus('#settings-status', 'Lưu ý: Android loopback trỏ tới chính thiết bị Android, không phải máy tính chạy Ollama/LM Studio.', true);
   }
@@ -1060,30 +1068,13 @@ function handleWritingAgentEvent(type, payload) {
   }
 }
 async function consumeWritingAgentStream(response) {
-  if (!response.body || typeof response.body.getReader !== 'function') throw new Error('Trình duyệt không hỗ trợ luồng sự kiện của Agent.');
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  const dispatch = block => {
-    let eventName = 'message';
-    const data = [];
-    for (const line of block.split(/\r?\n/)) {
-      if (line.startsWith('event:')) eventName = line.slice(6).trim();
-      else if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+  await consumeSSEStream(response, ({ event, data }) => {
+    try {
+      handleWritingAgentEvent(event, JSON.parse(data));
+    } catch {
+      addAgentActivity('Một sự kiện Agent không hợp lệ đã bị bỏ qua.', 'notice');
     }
-    if (!data.length) return;
-    try { handleWritingAgentEvent(eventName, JSON.parse(data.join('\n'))); }
-    catch { addAgentActivity('Một sự kiện Agent không hợp lệ đã bị bỏ qua.', 'notice'); }
-  };
-  while (true) {
-    const chunk = await reader.read();
-    buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
-    const blocks = buffer.split(/\r?\n\r?\n/);
-    buffer = blocks.pop() || '';
-    for (const block of blocks) dispatch(block);
-    if (chunk.done) break;
-  }
-  if (buffer.trim()) dispatch(buffer);
+  });
 }
 
 function buildAgentLearningContext() {
@@ -1613,20 +1604,22 @@ async function importBackupFile(file) {
     const revisionCount = Object.values(backup.agentRevisions || {}).reduce((sum, items) => sum + items.length, 0);
     const practiceCount = Array.isArray(backup.agentPracticeAttempts) ? backup.agentPracticeAttempts.length : 0;
     if (!confirm('Khôi phục ' + draftCount + ' bản nháp, ' + backup.history.length + ' báo cáo, ' + artifactCount + ' tài liệu Agent, ' + revisionCount + ' phiên bản và ' + practiceCount + ' lượt luyện? Dữ liệu cục bộ hiện có sẽ được thay thế. Provider, quyền gửi dữ liệu và API key hiện tại sẽ không thay đổi.')) return;
+    const changes = {};
     for (const task of TASKS) {
-      localStorage.setItem(DRAFT_PREFIX + task.id, backup.drafts[task.id] || '');
+      changes[DRAFT_PREFIX + task.id] = backup.drafts[task.id] || '';
       const turns = backup.coachHistories[task.id] || [];
-      if (turns.length) localStorage.setItem(COACH_PREFIX + task.id, JSON.stringify(turns));
-      else localStorage.removeItem(COACH_PREFIX + task.id);
+      changes[COACH_PREFIX + task.id] = turns.length ? JSON.stringify(turns) : null;
       const revisions = backup.agentRevisions?.[task.id] || [];
-      if (revisions.length) localStorage.setItem(agentRevisionKey(task.id), JSON.stringify(revisions));
-      else localStorage.removeItem(agentRevisionKey(task.id));
+      changes[agentRevisionKey(task.id)] = revisions.length ? JSON.stringify(revisions) : null;
     }
-    localStorage.setItem(AGENT_ARTIFACTS_KEY, JSON.stringify(backup.agentArtifacts || []));
-    localStorage.setItem(AGENT_PRACTICE_ATTEMPTS_KEY, JSON.stringify(backup.agentPracticeAttempts || []));
-    history = backup.history;
-    persistHistory();
-    setTheme(backup.theme);
+    changes[AGENT_ARTIFACTS_KEY] = JSON.stringify(backup.agentArtifacts || []);
+    changes[AGENT_PRACTICE_ATTEMPTS_KEY] = JSON.stringify(backup.agentPracticeAttempts || []);
+    changes[HISTORY_KEY] = JSON.stringify(backup.history.slice(0, 30));
+    changes[THEME_KEY] = backup.theme;
+    applyStorageTransaction(localStorage, changes);
+    history = backup.history.slice(0, 30);
+    renderHistoryCount();
+    setTheme(backup.theme, false);
     latestReport = history[0]?.report || null;
     loadCurrentTask();
     renderAgentRevisions();
@@ -1639,7 +1632,9 @@ async function importBackupFile(file) {
     const known = {
       backup_invalid_json: 'JSON không hợp lệ.',
       backup_size_invalid: 'File sao lưu vượt quá giới hạn.',
-      backup_schema_unsupported: 'Phiên bản dữ liệu sao lưu không được hỗ trợ.'
+      backup_schema_unsupported: 'Phiên bản dữ liệu sao lưu không được hỗ trợ.',
+      storage_transaction_failed: 'Không thể khôi phục toàn bộ dữ liệu; WMR đã hoàn tác các khóa đã ghi.',
+      storage_transaction_rollback_failed: 'Khôi phục gặp lỗi bộ nhớ và không thể hoàn tác hoàn toàn. Đừng thoát ứng dụng; hãy xuất dữ liệu hiện có và thử lại trên thiết bị còn đủ dung lượng.'
     };
     setToast('Không thể nhập bản sao lưu: ' + (known[reason] || 'cấu trúc hoặc dữ liệu trong file không hợp lệ.'));
   }
@@ -1691,8 +1686,8 @@ function attachEvents() {
     $('#exam-mode-toggle').setAttribute('aria-pressed', String(active));
     if (active) showPage('workspace');
     setToast(active
-      ? 'Đã bật Chế độ Phòng Thi Máy IDP/BC (Chia 50/50 · Khóa Paste · Chuẩn thi thật).'
-      : 'Đã quay lại Chế độ Editorial Studio.');
+      ? 'Đã bật Chế độ luyện thi trên máy tính (bố cục chia đôi · chặn dán trong ô bài viết).'
+      : 'Đã quay lại chế độ soạn thảo.');
   });
   $('#zen-toggle')?.addEventListener('click', () => {
     const shell = $('#app-shell');
@@ -1725,12 +1720,14 @@ function attachEvents() {
   });
   $('#insert-outline')?.addEventListener('click', () => {
     const editor = $('#essay-editor');
+    const existingDraft = editor.value;
+    if (existingDraft.trim() && !confirm('Chèn khung dàn ý vào đầu bài sẽ thay khung dàn ý WMR cũ (nếu có) và giữ lại phần bài viết còn lại. Bạn xác nhận tiếp tục chứ?')) return;
     editor.value = formatOutlineForEditor({
       intro: $('#outline-intro')?.value || '',
       body1: $('#outline-body1')?.value || '',
       body2: $('#outline-body2')?.value || '',
       conclusion: $('#outline-conclusion')?.value || ''
-    }, editor.value);
+    }, existingDraft);
     editor.focus();
     saveDraft();
     setToast('Đã đưa khung dàn ý 4 đoạn vào trình soạn thảo.');
@@ -1815,7 +1812,7 @@ function attachEvents() {
   $('#essay-editor').addEventListener('paste', event => {
     if ($('#app-shell')?.classList.contains('idp-bc-mode')) {
       event.preventDefault();
-      setToast('Chế độ Phòng Thi Máy IDP/BC khóa dán văn bản ngoài để rèn tốc độ gõ thật. Tắt chế độ thi nếu muốn dán nháp.');
+      setToast('Chế độ luyện thi đang chặn thao tác dán trong ô bài viết. Tắt chế độ này để dán nháp; đây không phải phần mềm thi chính thức.');
     }
   });
   $('#essay-editor').addEventListener('input', () => {
