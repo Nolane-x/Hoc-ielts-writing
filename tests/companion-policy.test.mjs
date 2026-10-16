@@ -62,4 +62,6 @@ test('spoken summary removes URLs, bounds length and avoids speaking empty conte
   assert.equal(buildSpokenSummary('   '), '');
   assert.equal(buildSpokenSummary('A'.repeat(400), 40).length, 40);
   assert.match(buildSpokenSummary('token=abc123 has been redacted'), /đã ẩn thông tin nhạy cảm/);
+  assert.doesNotMatch(buildSpokenSummary('key sk-123456789012345678901234567890'), /sk-123456789012345678901234567890/);
+  assert.doesNotMatch(buildSpokenSummary('password=hunter2'), /hunter2/);
 });
