@@ -157,6 +157,63 @@
               <select id="task-select" aria-describedby="task-goal"></select>
             </div>
 
+            <details class="custom-task-panel" id="custom-task-panel">
+              <summary>＋ Nhập đề riêng hoặc nhờ AI tạo một đề mới</summary>
+              <div class="custom-task-fields">
+                <div class="custom-task-row">
+                  <div class="field">
+                    <label for="custom-task-type">LOẠI BÀI</label>
+                    <select id="custom-task-type">
+                      <option value="task2">Task 2 · Essay</option>
+                      <option value="task1-academic">Academic Task 1</option>
+                      <option value="task1-general">General Training Task 1</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="custom-task-title">TÊN ĐỀ</label>
+                    <input id="custom-task-title" maxlength="120" placeholder="Ví dụ: AI và tư duy độc lập">
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="custom-task-prompt">ĐỀ BÀI CỦA BẠN</label>
+                  <textarea id="custom-task-prompt" rows="4" maxlength="1600" placeholder="Dán hoặc viết đề bài muốn luyện tại đây..."></textarea>
+                </div>
+                <div class="field">
+                  <label for="custom-task-goal">MỤC TIÊU LUYỆN TẬP</label>
+                  <input id="custom-task-goal" maxlength="500" placeholder="Ví dụ: phát triển hai luận điểm và đánh giá phản biện">
+                </div>
+                <div class="custom-task-actions">
+                  <button class="button button-secondary" type="button" id="save-custom-task">Lưu và mở đề riêng</button>
+                  <button class="button button-primary" type="button" id="generate-custom-task">✦ Nhờ AI tạo đề mới</button>
+                </div>
+                <p class="field-help">Đề do AI tạo được gắn nhãn chưa kiểm định. Chỉ nội dung cần cho việc tạo đề mới được gửi; bài luận hiện tại không được đưa vào yêu cầu tạo đề này.</p>
+              </div>
+            </details>
+
+            <section class="live-companion-controls" aria-label="Điều khiển AI đồng hành">
+              <div class="live-companion-control">
+                <label class="toggle-line" for="proactive-review-toggle">
+                  <input id="proactive-review-toggle" type="checkbox">
+                  <span><strong>AI chủ động theo dõi tiến trình viết</strong><small>Chỉ gọi model sau khi bạn bật công tắc và cấp quyền provider.</small></span>
+                </label>
+              </div>
+              <div class="live-companion-control">
+                <label class="toggle-line" for="voice-reminder-toggle">
+                  <input id="voice-reminder-toggle" type="checkbox">
+                  <span><strong>Đọc lời nhắc thành tiếng</strong><small>Dùng giọng nói do trình duyệt/hệ điều hành cung cấp; không ghi âm microphone.</small></span>
+                </label>
+              </div>
+              <div class="field proactive-threshold-field">
+                <label for="proactive-threshold">MỨC THAY ĐỔI TRƯỚC KHI AI KIỂM TRA</label>
+                <select id="proactive-threshold">
+                  <option value="100">Khoảng 100 ký tự mới/thay đổi</option>
+                  <option value="180">Khoảng 180 ký tự mới/thay đổi</option>
+                  <option value="280">Khoảng 280 ký tự mới/thay đổi</option>
+                </select>
+              </div>
+              <p id="companion-status" class="companion-status" role="status" aria-live="polite">Đang tắt. AI không theo dõi tiến trình và không tự gửi bản nháp.</p>
+            </section>
+
             <div class="prompt-card" id="prompt-card">
               <div class="prompt-card-top">
                 <div class="prompt-badges">
@@ -238,6 +295,15 @@
               <span id="editor-hint">Phím tắt: <kbd>Ctrl/Cmd + Enter</kbd> nộp bài chấm sâu · Tự động lưu từng nhịp gõ trên thiết bị</span>
               <span id="word-target" class="word-target-pill">Mục tiêu tham khảo: 250 từ</span>
             </div>
+
+            <section id="live-annotation-panel" class="live-annotation-panel" hidden aria-label="Bản đồ chú thích AI trên bài viết">
+              <div class="live-annotation-heading">
+                <div><span class="section-kicker">LIVE EVIDENCE MAP</span><h3>Chú thích có màu của AI</h3><p>Vùng đánh dấu chỉ dựa trên trích dẫn nguyên văn. Bấm chú thích để chọn đúng đoạn trong trình soạn thảo.</p></div>
+                <button class="quiet-button" id="clear-live-annotations" type="button">Ẩn chú thích</button>
+              </div>
+              <div id="live-annotation-preview" class="live-annotation-preview" aria-label="Bản xem trước có đánh dấu"></div>
+              <div id="live-annotation-list" class="live-annotation-list"></div>
+            </section>
 
             <div class="editor-actions">
               <button class="button button-primary button-lg" id="submit-review" type="button">
