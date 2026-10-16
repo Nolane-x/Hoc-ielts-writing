@@ -42,7 +42,7 @@ export const WRITING_AGENT_SYSTEM_PROMPT = [
   'create_learning_goal {"title":"measurable goal","why":"why this matters for the current learner","successCriteria":"observable completion condition"}',
   'focus_on_quote {"quote":"unique exact quote from original essay","reason":"why to inspect this part"}',
   'search_practice_bank {"query":"skill, problem or topic for a next IELTS practice task","taskType":"task1-academic|task1-general|task2 or empty for any type"}',
-  'annotate_draft {"quote":"unique exact quote from original essay","category":"task-response|coherence|lexical|grammar|other","note":"short Vietnamese note explaining the focus"}',
+  'annotate_draft {"quote":"unique exact quote from original essay","category":"task-achievement for Task 1|task-response for Task 2|coherence|lexical|grammar|other","note":"short Vietnamese note explaining the focus"}',
   'create_practice_task {"title":"clear short title","taskType":"task1-academic|task1-general|task2","prompt":"complete new practice prompt","goal":"what the learner should demonstrate"}',
   'You have at most eight tool calls and ten model turns. If enough work is done, finish early. If a tool rejects an unsafe, ambiguous or ungrounded action, use its result to adjust.'
 ].join('\n');
@@ -352,7 +352,9 @@ export function executeWritingAgentTool(state, name, rawArgs = {}) {
   if (name === 'annotate_draft') {
     const quote = boundedText(args.quote, 600);
     const note = boundedText(args.note, 500);
-    const category = ['task-response', 'coherence', 'lexical', 'grammar', 'other'].includes(args.category) ? args.category : 'other';
+    let category = ['task-achievement', 'task-response', 'coherence', 'lexical', 'grammar', 'other'].includes(args.category) ? args.category : 'other';
+    if (state.taskType !== 'task2' && category === 'task-response') category = 'task-achievement';
+    if (state.taskType === 'task2' && category === 'task-achievement') category = 'task-response';
     if (quote.length < 5 || !note) return { ok: false, code: 'annotation_incomplete', message: 'Chú thích cần một trích dẫn nguyên văn và ghi chú cụ thể.' };
     const starts = findAll(essay, quote, 2);
     if (starts.length !== 1) return { ok: false, code: starts.length ? 'annotation_ambiguous' : 'annotation_not_found', message: starts.length ? 'Trích dẫn xuất hiện nhiều lần; không đoán vị trí chú thích.' : 'Trích dẫn không khớp nguyên văn bài viết.' };
