@@ -250,8 +250,6 @@ test('disconnecting during task generation aborts the in-flight provider fetch',
     body: JSON.stringify({ taskType: 'task2', topic: 'Synthetic cancellation test', learnerIdea: 'No personal essay.' })
   }).catch(error => error);
   let modelPayload;
-  const startupTimer = setTimeout(() => {}, 0);
-  clearTimeout(startupTimer);
   const started = await Promise.race([
     upstreamStarted.then(payload => { modelPayload = payload; return true; }),
     new Promise(resolve => setTimeout(() => resolve(false), 5000))
