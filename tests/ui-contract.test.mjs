@@ -279,6 +279,16 @@ test('proactive review never reuses a change timer or baseline across task switc
     'Revoking provider permission must request cancellation of an active automatic review.');
 });
 
+test('custom task navigation preserves the current draft and refuses task changes during AI work', () => {
+  for (const snippet of [
+    'if (agentBusy || coachBusy || submitting)',
+    'if (currentTask?.id !== taskId) saveDraft();',
+    'Không mở đề mới vì chưa lưu được bản nháp hiện tại',
+    'Không xóa đề vì chưa lưu được bản nháp đang mở',
+    'Không lưu được bản nháp hiện tại; đề mới chưa được lưu hoặc mở.'
+  ]) assert.ok(app.includes(snippet), 'missing draft-preservation invariant: ' + snippet);
+});
+
 test('saved custom-task deletion requires confirmation and rolls related device data back on failure', () => {
   for (const id of ['custom-task-manager', 'custom-task-count']) {
     assert.ok(html.includes('id="' + id + '"'), 'missing custom task manager mount #' + id);
