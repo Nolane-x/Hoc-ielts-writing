@@ -211,6 +211,25 @@ test('writing agent streams tool progress and final result from a configured loc
 });
 
 
+test('AI task generation route fails closed while provider consent is disabled', async t => {
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  await fetch(base + '/api/settings', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({ provider: 'ollama', baseUrl: 'http://127.0.0.1:11434/v1', model: 'blocked-task-model', externalAllowed: false })
+  });
+  const response = await fetch(base + '/api/tasks/generate', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({ taskType: 'task2', topic: 'AI', learnerIdea: 'A practice question.' })
+  });
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /Bật quyền gửi provider/);
+});
+
 test('AI task generation uses a dedicated strict-schema route and excludes the current essay from provider context', async t => {
   const modelRequests = [];
   const providerServer = http.createServer(async (req, res) => {
