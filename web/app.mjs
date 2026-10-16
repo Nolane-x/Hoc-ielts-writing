@@ -483,7 +483,7 @@ async function generateCustomTaskWithAI() {
       ], question.length, { maxOutputTokens: 1000, timeoutMs: 45000 });
       answer = result.text;
     } else {
-      const result = await postJson('/api/coach', { taskType: type, taskPrompt: '', essay: '', message: question, history: [] });
+      const result = await postJson('/api/tasks/generate', { taskType: type, topic, learnerIdea: learnerHint });
       if (result.aiStatus !== 'ai-complete' || !result.answer) throw new Error(result.message || 'Provider chưa trả về kết quả AI.');
       answer = result.answer;
     }
