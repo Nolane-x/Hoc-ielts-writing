@@ -4307,6 +4307,7 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   -webkit-box-decoration-break: clone;
 }
 .live-mark-task-response { background: rgba(59, 130, 246, .2); outline: 1px solid rgba(59, 130, 246, .45); }
+.live-mark-task-achievement { background: rgba(14, 165, 233, .2); outline: 1px solid rgba(14, 165, 233, .45); }
 .live-mark-coherence { background: rgba(139, 92, 246, .2); outline: 1px solid rgba(139, 92, 246, .42); }
 .live-mark-lexical { background: rgba(16, 185, 129, .2); outline: 1px solid rgba(16, 185, 129, .45); }
 .live-mark-grammar { background: rgba(244, 114, 182, .22); outline: 1px solid rgba(219, 39, 119, .42); }
@@ -4321,6 +4322,7 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   background: var(--surface, #fff);
 }
 .live-mark-border-task-response { --annotation-color: #3b82f6; }
+.live-mark-border-task-achievement { --annotation-color: #0ea5e9; }
 .live-mark-border-coherence { --annotation-color: #8b5cf6; }
 .live-mark-border-lexical { --annotation-color: #10b981; }
 .live-mark-border-grammar { --annotation-color: #db2777; }
