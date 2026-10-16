@@ -258,6 +258,15 @@ test('AI-created prompts remain drafts until explicit save/open and stay labelle
 });
 
 
+test('proactive review never reuses a change timer or baseline across task switches', () => {
+  assert.ok(app.includes("function loadCurrentTask() {\n  clearTimeout(proactiveTimer);\n  proactiveTimer = 0;"),
+    'Switching/reloading a task must cancel a timer created for a different draft.');
+  assert.ok(app.includes('lastAgentSnapshotDraft = readDraft(currentTask.id);'),
+    'Each task must establish its own local draft baseline.');
+  assert.ok(app.includes('if (!settings.externalAllowed && agentSessionProactive)'),
+    'Revoking provider permission must request cancellation of an active automatic review.');
+});
+
 test('saved custom-task deletion requires confirmation and rolls related device data back on failure', () => {
   for (const id of ['custom-task-manager', 'custom-task-count']) {
     assert.ok(html.includes('id="' + id + '"'), 'missing custom task manager mount #' + id);
