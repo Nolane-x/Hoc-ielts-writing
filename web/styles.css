@@ -3838,10 +3838,16 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 }
 .app-shell.idp-bc-mode .editor-telemetry {
   grid-column: 2;
+  grid-row: 3;
   align-self: start;
+  position: relative;
+  z-index: 1;
 }
 .app-shell.idp-bc-mode .canvas-paper-frame {
   grid-column: 2;
+  grid-row: 3;
+  margin-top: 46px;
+  min-width: 0;
 }
 .app-shell.idp-bc-mode .editor-column textarea {
   font-family: Arial, "Segoe UI", Verdana, sans-serif;
