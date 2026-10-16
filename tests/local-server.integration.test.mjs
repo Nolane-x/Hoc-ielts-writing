@@ -211,6 +211,62 @@ test('writing agent streams tool progress and final result from a configured loc
 });
 
 
+test('disconnecting during task generation aborts the in-flight provider fetch', async t => {
+  let resolveUpstreamStarted;
+  const upstreamStarted = new Promise(resolve => { resolveUpstreamStarted = resolve; });
+  let resolveUpstreamClosed;
+  const upstreamClosed = new Promise(resolve => { resolveUpstreamClosed = resolve; });
+  const providerServer = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    resolveUpstreamStarted(JSON.parse(body));
+    res.on('close', () => resolveUpstreamClosed());
+    // Intentionally leave the upstream response pending until the local client aborts.
+  });
+  await new Promise((resolve, reject) => { providerServer.once('error', reject); providerServer.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => providerServer.close(resolve)); });
+
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const providerBase = 'http://127.0.0.1:' + providerServer.address().port + '/v1';
+  const saved = await fetch(base + '/api/settings', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({
+      provider: 'ollama', baseUrl: providerBase, model: 'wmr-cancel-test-model',
+      externalAllowed: true, dailyBudgetUsd: 1, maxCallUsd: 1,
+      maxDailyCalls: 4, maxOutputTokens: 900
+    })
+  });
+  assert.equal(saved.status, 200);
+
+  const controller = new AbortController();
+  const responsePromise = fetch(base + '/api/tasks/generate', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    signal: controller.signal,
+    body: JSON.stringify({ taskType: 'task2', topic: 'Synthetic cancellation test', learnerIdea: 'No personal essay.' })
+  }).catch(error => error);
+  let modelPayload;
+  const startupTimer = setTimeout(() => {}, 0);
+  clearTimeout(startupTimer);
+  const started = await Promise.race([
+    upstreamStarted.then(payload => { modelPayload = payload; return true; }),
+    new Promise(resolve => setTimeout(() => resolve(false), 5000))
+  ]);
+  assert.equal(started, true, 'The model request should have reached the controlled test provider.');
+  assert.ok(modelPayload.messages.some(message => message.role === 'system' && message.content.includes('You generate one original IELTS Writing practice prompt')));
+
+  controller.abort();
+  await responsePromise;
+  const closed = await Promise.race([
+    upstreamClosed.then(() => true),
+    new Promise(resolve => setTimeout(() => resolve(false), 5000))
+  ]);
+  assert.equal(closed, true, 'Closing the local client response should abort the upstream model response.');
+});
 test('AI task generation route fails closed while provider consent is disabled', async t => {
   const server = createWmrServer();
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
