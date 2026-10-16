@@ -85,8 +85,8 @@ export function isSafeCustomTaskType(value) {
 
 export function parseGeneratedPracticeTask(raw, expectedTaskType) {
   if (!TASK_TYPES.has(expectedTaskType)) throw new Error('generated_task_type_invalid');
-  const source = typeof raw === 'string' ? raw.trim().slice(0, 12000).replace(/^\\uFEFF/, '') : '';
-  const unfenced = source.replace(/^\\s*```(?:json)?\\s*/i, '').replace(/\\s*```\\s*$/, '');
+  const source = typeof raw === 'string' ? raw.trim().slice(0, 12000).replace(/^\uFEFF/, '') : '';
+  const unfenced = source.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
   const start = unfenced.indexOf('{');
   const end = unfenced.lastIndexOf('}');
   if (start < 0 || end <= start) throw new Error('generated_task_json_missing');
