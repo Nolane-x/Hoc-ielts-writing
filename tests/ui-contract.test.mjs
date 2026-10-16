@@ -245,14 +245,14 @@ test('proactive Writing Companion requires explicit opt-in and exposes user-cont
     'changes[CUSTOM_TASKS_KEY]',
     'changes[EXAM_NOTES_PREFIX + id]'
   ]) assert.ok(app.includes(marker), 'missing implementation marker: ' + marker);
-  assert.doesNotMatch(app, /getUserMedia|getDisplayMedia|navigator\\.mediaDevices/);
-  assert.match(css, /\\.app-shell\\.idp-bc-mode \\.custom-task-panel/);
+  assert.doesNotMatch(app, /getUserMedia|getDisplayMedia|navigator\.mediaDevices/);
+  assert.match(css, /\.app-shell\.idp-bc-mode \.custom-task-panel/);
 });
 
 test('AI-created prompts remain drafts until explicit save/open and stay labelled unverified', () => {
-  assert.match(app, /provenance: generatedTaskDraft \\? 'ai-generated-unverified' : 'learner-supplied'/);
+  assert.match(app, /provenance: generatedTaskDraft \? 'ai-generated-unverified' : 'learner-supplied'/);
   assert.match(app, /Đề AI tạo chưa được kiểm định độc lập/);
-  assert.match(app, /persistCustomTask\\(task, true\\)/);
-  assert.match(app, /if \\(!settings\\.externalAllowed\\)/);
-  assert.match(app, /essay: '', message: question, history: \\[\\]/);
+  assert.match(app, /persistCustomTask\(task, true\)/);
+  assert.match(app, /if \(!settings\.externalAllowed\)/);
+  assert.match(app, /essay: '', message: question, history: \[\]/);
 });
