@@ -301,6 +301,16 @@ function renderCustomTaskManager() {
 function openCustomTask(taskId) {
   const task = customTasks.find(item => item.id === taskId);
   if (!task) return false;
+  if (agentBusy || coachBusy || submitting) {
+    setToast('Hãy đợi hoặc hủy phiên AI hiện tại trước khi chuyển đề.');
+    return false;
+  }
+  try {
+    if (currentTask?.id !== taskId) saveDraft();
+  } catch {
+    setToast('Không mở đề mới vì chưa lưu được bản nháp hiện tại. Hãy xuất sao lưu hoặc giải phóng bộ nhớ rồi thử lại.');
+    return false;
+  }
   renderTaskOptions(task.id);
   showPage('workspace');
   setToast('Đã mở đề riêng: ' + task.title);
@@ -309,14 +319,20 @@ function openCustomTask(taskId) {
 function deleteCustomTask(taskId) {
   const task = customTasks.find(item => item.id === taskId);
   if (!task) return false;
-  if ((agentBusy && agentResultTaskId === taskId) || ((coachBusy || submitting) && currentTask?.id === taskId)) {
-    setToast('Hãy hủy hoặc đợi phiên AI của đề này kết thúc trước khi xóa đề.');
+  if (agentBusy || coachBusy || submitting) {
+    setToast('Hãy hủy hoặc đợi mọi phiên AI hiện tại kết thúc trước khi xóa đề.');
     return false;
   }
   const approved = confirm(
     'Xóa đề riêng "' + task.title + '" khỏi ngân hàng trên thiết bị này? Bản nháp, ghi chú, hội thoại Mentor, phiên bản sửa, báo cáo, tài liệu Agent và lượt luyện gắn với riêng đề này cũng sẽ bị xóa. Không thể hoàn tác.'
   );
   if (!approved) return false;
+  try {
+    if (currentTask?.id !== taskId) saveDraft();
+  } catch {
+    setToast('Không xóa đề vì chưa lưu được bản nháp đang mở. Hãy xuất sao lưu hoặc giải phóng bộ nhớ rồi thử lại.');
+    return false;
+  }
   const nextCustomTasks = customTasks.filter(item => item.id !== taskId);
   const nextHistory = history.filter(item => item.taskId !== taskId).slice(0, 30);
   const nextArtifacts = agentSavedArtifacts().filter(item => item.taskId !== taskId);
@@ -379,6 +395,17 @@ function persistCustomTask(rawTask, openTask = true) {
   if (customTasks.length >= 30) {
     setToast('Đã đạt giới hạn 30 đề tùy chỉnh trên thiết bị. Hãy xóa một đề cũ trước khi thêm đề mới.');
     return false;
+  }
+  if (openTask) {
+    if (agentBusy || coachBusy || submitting) {
+      setToast('Hãy đợi hoặc hủy phiên AI hiện tại trước khi mở đề riêng mới.');
+      return false;
+    }
+    try { saveDraft(); }
+    catch {
+      setToast('Không lưu được bản nháp hiện tại; đề mới chưa được lưu hoặc mở.');
+      return false;
+    }
   }
   const task = { ...rawTask, id: createCustomTaskId() };
   const next = normaliseCustomTasks([...customTasks, task], TASKS);
