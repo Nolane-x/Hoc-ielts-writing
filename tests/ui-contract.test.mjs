@@ -256,3 +256,24 @@ test('AI-created prompts remain drafts until explicit save/open and stay labelle
   assert.match(app, /if \(!settings\.externalAllowed\)/);
   assert.match(app, /essay: '', message: question, history: \[\]/);
 });
+
+
+test('saved custom-task deletion requires confirmation and rolls related device data back on failure', () => {
+  for (const id of ['custom-task-manager', 'custom-task-count']) {
+    assert.ok(html.includes('id="' + id + '"'), 'missing custom task manager mount #' + id);
+  }
+  for (const marker of [
+    'function renderCustomTaskManager()',
+    'function openCustomTask(taskId)',
+    'function deleteCustomTask(taskId)',
+    'const approved = confirm(',
+    'applyStorageTransaction(localStorage, changes)',
+    '[DRAFT_PREFIX + taskId]: null',
+    '[COACH_PREFIX + taskId]: null',
+    '[EXAM_NOTES_PREFIX + taskId]: null',
+    '[agentRevisionKey(taskId)]: null',
+    'agentPracticeAttempts().filter(item => item.taskId !== taskId)',
+    'agentSavedArtifacts().filter(item => item.taskId !== taskId)'
+  ]) assert.ok(app.includes(marker), 'missing delete safety marker: ' + marker);
+  assert.match(app, /if (!proactive) \$\('#agent-task-input'\)\.value = message/);
+});
