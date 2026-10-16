@@ -626,7 +626,9 @@ function renderLearning() {
   const radarChartEl = $('#mastery-radar-chart');
   if (radarChartEl) {
     const hasCriterionEvidence = criterionScores.some(item => Number.isFinite(item.mean) && item.count > 0);
-    radarChartEl.innerHTML = (hasCriterionEvidence ? '' : '<p class="radar-empty-note">Chưa có điểm AI hợp lệ để dựng biểu đồ. Hãy hoàn thành một lượt chấm AI có căn cứ; kiểm tra cục bộ không tạo band.</p>') + renderMasteryRadarSvg(criterionScores);
+    radarChartEl.innerHTML = hasCriterionEvidence
+      ? renderMasteryRadarSvg(criterionScores)
+      : '<p class="radar-empty-note">Chưa có điểm AI hợp lệ để dựng biểu đồ. Hãy hoàn thành một lượt chấm AI có căn cứ; kiểm tra cục bộ không tạo band.</p>';
   }
   const radarLegendEl = $('#mastery-radar-legend');
   if (radarLegendEl) {
