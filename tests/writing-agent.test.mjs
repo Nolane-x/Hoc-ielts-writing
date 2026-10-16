@@ -301,7 +301,8 @@ test('agent annotations require exact unique quotes and create bounded anchored 
   assert.equal(ok.ok, true);
   assert.equal(ok.annotation.start, essay.indexOf(ok.annotation.quote));
   assert.equal(state.annotations.length, 1);
-  assert.equal(executeWritingAgentTool(state, 'annotate_draft', {
+  const duplicateState = createWritingAgentState({ essay: essay + ' public transport matters.', message: 'Find repeated text.' });
+  assert.equal(executeWritingAgentTool(duplicateState, 'annotate_draft', {
     quote: 'public transport',
     category: 'lexical',
     note: 'Repeated phrase.'
