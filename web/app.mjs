@@ -360,9 +360,25 @@ function deleteCustomTask(taskId) {
   return true;
 }
 function createCustomTaskId() {
-  return 'custom-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+  const randomId = typeof globalThis.crypto?.randomUUID === 'function'
+    ? globalThis.crypto.randomUUID().replace(/-/g, '').toLowerCase()
+    : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  let id = 'custom-' + Date.now().toString(36) + '-' + randomId.slice(0, 16);
+  let attempts = 0;
+  while (tasks.some(task => task.id === id) && attempts < 8) {
+    const suffix = typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID().replace(/-/g, '').toLowerCase()
+      : Math.random().toString(36).slice(2, 14);
+    id = 'custom-' + Date.now().toString(36) + '-' + suffix.slice(0, 16);
+    attempts++;
+  }
+  return id;
 }
 function persistCustomTask(rawTask, openTask = true) {
+  if (customTasks.length >= 30) {
+    setToast('Đã đạt giới hạn 30 đề tùy chỉnh trên thiết bị. Hãy xóa một đề cũ trước khi thêm đề mới.');
+    return false;
+  }
   const task = { ...rawTask, id: createCustomTaskId() };
   const next = normaliseCustomTasks([...customTasks, task], TASKS);
   const saved = next.find(item => item.id === task.id);
