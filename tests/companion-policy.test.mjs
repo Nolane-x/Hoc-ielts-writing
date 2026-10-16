@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
   normaliseCustomTasks,
   evaluateProactiveReview,
-  buildSpokenSummary
+  buildSpokenSummary,
+  parseGeneratedPracticeTask
 } from '../web/companion-policy.mjs';
 
 const baseTasks = [{ id: 'task2-opinion' }];
@@ -79,4 +80,23 @@ test('custom task bank has a hard maximum and accepts only unique namespaced IDs
   assert.equal(reservedResult.length, 30);
   assert.equal(reservedResult[0].id, 'custom-example-task-01',
     'A reserved identifier must be rejected rather than consuming a bank slot.');
+});
+
+
+test('generated practice prompts are parsed strictly, bounded and pinned to the requested task type', () => {
+  const json = JSON.stringify({
+    title: 'Technology and independent learning',
+    prompt: 'Some people believe artificial intelligence improves independent learning, while others think it reduces critical thinking. Discuss both views and give your opinion.',
+    goal: 'Evaluate both views and support a clear position with developed reasons.',
+    taskType: 'task1-academic',
+    arbitraryCapability: 'must be ignored'
+  });
+  const parsed = parseGeneratedPracticeTask('﻿```json\n' + json + '\n```', 'task2');
+  assert.equal(parsed.taskType, 'task2');
+  assert.equal(parsed.provenance, 'ai-generated-unverified');
+  assert.equal(parsed.prompt.length < 1600, true);
+  assert.equal(Object.hasOwn(parsed, 'arbitraryCapability'), false);
+  assert.throws(() => parseGeneratedPracticeTask(json, 'shell'), /generated_task_type_invalid/);
+  assert.throws(() => parseGeneratedPracticeTask('{ malformed', 'task2'), /generated_task_json_invalid/);
+  assert.throws(() => parseGeneratedPracticeTask(JSON.stringify({ title: 'Tiny', prompt: 'Question?', goal: 'Goal.' }), 'task2'), /generated_task_fields_invalid/);
 });
