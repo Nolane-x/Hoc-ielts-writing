@@ -56,6 +56,9 @@ test('visual smoke includes screenshots for Academy, practice mode and learner e
   assert.match(visualWorkflow, /name: wmr-ui-screenshots/);
   assert.match(smokeScript, /01b-academy-idea-lab-desktop\.png/);
   assert.match(smokeScript, /01c-exam-practice-desktop\.png/);
+  assert.match(smokeScript, /08-exam-practice-mobile\.png/);
+  assert.match(smokeScript, /practiceGeometry\.promptTop/);
+  assert.match(smokeScript, /mobilePractice\.documentWidth/);
   assert.match(smokeScript, /radar-empty-note/);
   assert.match(smokeScript, /visual-smoke-manifest\.json/);
 });
