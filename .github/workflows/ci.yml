@@ -33,6 +33,6 @@ jobs:
           ! grep -Eo '<script[^>]+src="https?://|<link[^>]+href="https?://' dist/index.html
       - name: Verify CSP-safe dynamic styling and generated version
         run: |
-          ! grep -En '\\.style\\.(color|background|width)|style="width:' web/app.mjs
+          ! grep -En '\.style\.(color|background|width)|style="width:' web/app.mjs
           ! grep -F '__APP_VERSION__' dist/index.html
           node -e "const p=require('./package.json');const h=require('fs').readFileSync('dist/index.html','utf8');if(!h.includes('WMR Editorial Studio · v'+p.version))process.exit(1)"
