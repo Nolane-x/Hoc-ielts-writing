@@ -383,3 +383,24 @@ test('agent capability allowlist remains workspace-only under hostile essay and 
   assert.deepEqual(state.annotations, []);
   assert.deepEqual(state.practiceTasks, []);
 });
+
+
+test('agent annotations normalize Task 1 and Task 2 rubric categories separately', () => {
+  const task1State = createWritingAgentState({ taskType: 'task1-academic', taskPrompt: 'Describe the chart.', essay, message: 'Annotate the response.' });
+  const task1 = executeWritingAgentTool(task1State, 'annotate_draft', {
+    quote: 'This policy could reduce traffic',
+    category: 'task-response',
+    note: 'Task 1 must use the Task Achievement criterion.'
+  });
+  assert.equal(task1.ok, true);
+  assert.equal(task1.annotation.category, 'task-achievement');
+
+  const task2State = createWritingAgentState({ taskType: 'task2', taskPrompt: 'Discuss both views.', essay, message: 'Annotate the response.' });
+  const task2 = executeWritingAgentTool(task2State, 'annotate_draft', {
+    quote: 'This policy could reduce traffic',
+    category: 'task-achievement',
+    note: 'Task 2 must use the Task Response criterion.'
+  });
+  assert.equal(task2.ok, true);
+  assert.equal(task2.annotation.category, 'task-response');
+});
