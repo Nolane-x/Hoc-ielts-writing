@@ -343,6 +343,45 @@ test('agent can draft an unverified new practice task without silently persistin
     prompt: 'Question?',
     goal: 'A clear goal.'
   }).code, 'practice_task_incomplete');
+  for (const index of [2, 3]) {
+    const extra = executeWritingAgentTool(state, 'create_practice_task', {
+      title: 'Practice task ' + index,
+      taskType: 'task2',
+      prompt: 'This original practice question includes enough detail for the learner to develop a clear response. Number ' + index + '.',
+      goal: 'Develop a position and support it with reasons.'
+    });
+    assert.equal(extra.ok, true);
+  }
+  assert.equal(state.practiceTasks.length, 3);
+  assert.equal(executeWritingAgentTool(state, 'create_practice_task', {
+    title: 'Beyond limit',
+    taskType: 'task2',
+    prompt: 'This original practice question includes enough detail for the learner to develop a clear response.',
+    goal: 'Develop a position and support it with reasons.'
+  }).code, 'practice_task_limit');
+});
+
+
+
+test('agent annotations stop at the per-session cap even when every quote is unique', () => {
+  const sentenceList = Array.from({ length: 11 }, (_, index) => 'Unique phrase ' + index + ' describes a distinct supporting idea.');
+  const longEssay = sentenceList.join(' ');
+  const state = createWritingAgentState({ taskType: 'task2', essay: longEssay, message: 'Annotate the unique phrases.' });
+  for (let index = 0; index < 10; index++) {
+    const quote = sentenceList[index];
+    const result = executeWritingAgentTool(state, 'annotate_draft', {
+      quote,
+      category: 'coherence',
+      note: 'Check the relationship between the idea and supporting explanation.'
+    });
+    assert.equal(result.ok, true);
+  }
+  assert.equal(state.annotations.length, 10);
+  assert.equal(executeWritingAgentTool(state, 'annotate_draft', {
+    quote: sentenceList[10],
+    category: 'other',
+    note: 'Eleventh annotation must be rejected.'
+  }).code, 'annotation_limit');
 });
 
 test('agent snapshot includes scratchpad notes as untrusted task context', async () => {
