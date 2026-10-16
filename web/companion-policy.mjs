@@ -68,7 +68,9 @@ export function buildSpokenSummary(value, maxLength = 320) {
   const clean = String(value || '')
     .replace(/https?:\/\/\S+/giu, ' ')
     .replace(/\b(?:https?:|www\.)\S+/giu, ' ')
-    .replace(/\b(?:api[_ -]?key|secret|token)\b[^\s]*/giu, '[đã ẩn thông tin nhạy cảm]')
+    .replace(/\b(?:sk-[A-Za-z0-9_-]{16,}|AIza[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{20,})\b/giu, '[đã ẩn thông tin nhạy cảm]')
+    .replace(/\b(?:api[_ -]?key|secret|token|password)\s*(?:[:=]\s*)\S+/giu, '[đã ẩn thông tin nhạy cảm]')
+    .replace(/\b(?:api[_ -]?key|secret|token|password)\b/giu, '[đã ẩn thông tin nhạy cảm]')
     .replace(/[*_#>|{}]/gu, ' ')
     .replace(/\s+/gu, ' ')
     .trim();
