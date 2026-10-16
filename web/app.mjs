@@ -58,6 +58,7 @@ let companionPrefs = { proactiveReview: false, voiceReminders: false, minChanged
 let proactiveTimer = 0;
 let lastAgentSnapshotDraft = '';
 let liveAnnotationVisible = true;
+let generatedTaskDraft = false;
 let savingTimer = 0;
 let toastTimer = 0;
 let submitting = false;
@@ -329,9 +330,10 @@ function saveCustomTaskFromForm() {
     estimatedMinutes: type === 'task2' ? 40 : 20,
     skillFocus: 'Luyện theo đề riêng',
     tips: ['Đọc kỹ mọi phần yêu cầu.', 'Phát triển luận điểm bằng giải thích và ví dụ.', 'Kiểm tra độ chính xác trước khi nộp.'],
-    provenance: 'learner-supplied'
+    provenance: generatedTaskDraft ? 'ai-generated-unverified' : 'learner-supplied'
   });
   if (ok) {
+    generatedTaskDraft = false;
     $('#custom-task-title').value = '';
     $('#custom-task-prompt').value = '';
     $('#custom-task-goal').value = '';
@@ -393,6 +395,7 @@ async function generateCustomTaskWithAI() {
     $('#custom-task-title').value = generated.title;
     $('#custom-task-prompt').value = generated.prompt;
     $('#custom-task-goal').value = generated.goal;
+    generatedTaskDraft = true;
     setCompanionStatus('AI đã tạo đề nháp. Hãy đọc lại nội dung trước khi bấm Lưu và mở đề.', false);
     setToast('Đã tạo đề nháp chưa kiểm định. Xem lại nội dung rồi tự chọn lưu.');
     $('#custom-task-prompt').focus();
@@ -1312,6 +1315,7 @@ function handleWritingAgentEvent(type, payload) {
     addAgentActivity(payload.message || 'Tool completed', payload.status === 'rejected' ? 'rejected' : payload.status === 'complete' ? 'complete' : 'running', payload.name);
   } else if (type === 'result') {
     agentResult = payload;
+    if (Array.isArray(payload.annotations) && payload.annotations.length) liveAnnotationVisible = true;
     agentAppliedPatches = new Set();
     agentResult.savedArtifacts = false;
     renderAgentResult(agentResult);
@@ -2207,6 +2211,9 @@ function attachEvents() {
   });
   $('#save-custom-task')?.addEventListener('click', saveCustomTaskFromForm);
   $('#generate-custom-task')?.addEventListener('click', generateCustomTaskWithAI);
+  ['#custom-task-title', '#custom-task-prompt', '#custom-task-goal'].forEach(selector => {
+    $(selector)?.addEventListener('input', () => { generatedTaskDraft = false; });
+  });
   $('#live-annotation-list')?.addEventListener('click', event => {
     const button = event.target.closest('[data-live-annotation]');
     if (!button || currentTask?.id !== agentResultTaskId) return;
