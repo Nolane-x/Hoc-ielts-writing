@@ -288,7 +288,7 @@ async function handle(req, res) {
       activeApiKey = '';
       return json(res, 200, { ok: true, hasApiKey: false });
     }
-    const input = { taskType: body.taskType, taskPrompt: String(body.taskPrompt || '').slice(0, 5000), essay: String(body.essay || '').slice(0, 20000), message: String(body.message || '').slice(0, 4000), history: normaliseCoachHistory(body.history), learningContext: normaliseAgentLearningContext(body.learningContext), sessionId: String(body.sessionId || '').slice(0, 80) };
+    const input = { taskType: body.taskType, taskPrompt: String(body.taskPrompt || '').slice(0, 5000), essay: String(body.essay || '').slice(0, 20000), message: String(body.message || '').slice(0, 4000), scratchpadNotes: String(body.scratchpadNotes || '').slice(0, 2000), history: normaliseCoachHistory(body.history), learningContext: normaliseAgentLearningContext(body.learningContext), sessionId: String(body.sessionId || '').slice(0, 80) };
     if (url.pathname === '/api/assessment') {
       if (!input.essay.trim()) throw httpError(400, 'Write a draft before submitting it for review.');
       if (!body.sendToProvider) return json(res, 200, { report: createLocalReport(input), aiStatus: 'offline-by-choice', message: 'Chưa gửi bài viết tới AI bên ngoài.' });
