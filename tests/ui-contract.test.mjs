@@ -275,5 +275,6 @@ test('saved custom-task deletion requires confirmation and rolls related device 
     'agentPracticeAttempts().filter(item => item.taskId !== taskId)',
     'agentSavedArtifacts().filter(item => item.taskId !== taskId)'
   ]) assert.ok(app.includes(marker), 'missing delete safety marker: ' + marker);
-  assert.match(app, /if (!proactive) \$\('#agent-task-input'\)\.value = message/);
+  assert.ok(app.includes("if (!proactive) $('#agent-task-input').value = message;"),
+    'Automatic review must not replace the learner-authored Agent objective.');
 });
