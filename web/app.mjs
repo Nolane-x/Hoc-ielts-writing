@@ -12,6 +12,14 @@ import { TASKS } from './tasks.mjs';
 import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
 import { PROVIDER_PRESETS, normaliseProviderConfig, requestCompletion, estimateCost } from './providers.mjs';
 import { runWritingAgentSession, estimateWritingAgentSessionCost, WRITING_AGENT_MAX_MODEL_TURNS, WRITING_AGENT_MAX_TOOL_CALLS } from './writing-agent.mjs';
+import {
+  getTaskAcademyData,
+  formatOutlineForEditor,
+  buildSentenceSurgery,
+  renderMasteryRadarSvg,
+  evaluateCollocationChoice,
+  evaluateCohesionOrder
+} from './academy-studio.mjs';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -56,6 +64,9 @@ let agentSessionId = '';
 let agentCancelRequested = false;
 let examTimerHandle = 0;
 let examSecondsRemaining = 40 * 60;
+let promptHighlights = [];
+let activeReportFilter = 'all';
+let cohesionSelectedOrder = [];
 
 function safeParse(value, fallback) { try { return JSON.parse(value); } catch { return fallback; } }
 function escapeHtml(value) {
@@ -119,7 +130,11 @@ function renderExamTimer() {
   const display = $('#timer-display');
   if (display) display.textContent = formatTimer(examSecondsRemaining);
   const host = $('#exam-timer');
-  if (host) host.classList.toggle('timer-running', Boolean(examTimerHandle));
+  if (host) {
+    host.classList.toggle('timer-running', Boolean(examTimerHandle));
+    host.classList.toggle('timer-warning', examSecondsRemaining > 60 && examSecondsRemaining <= 300);
+    host.classList.toggle('timer-critical', examSecondsRemaining > 0 && examSecondsRemaining <= 60);
+  }
   const btn = $('#timer-toggle');
   if (btn) btn.textContent = examTimerHandle ? 'Tạm dừng' : 'Bắt đầu';
 }
@@ -139,6 +154,8 @@ function toggleExamTimer() {
   examTimerHandle = setInterval(() => {
     examSecondsRemaining = Math.max(0, examSecondsRemaining - 1);
     renderExamTimer();
+    if (examSecondsRemaining === 300) setToast('Còn 5 phút! Hãy hoàn thiện đoạn kết và kiểm tra lại số từ.');
+    if (examSecondsRemaining === 60) setToast('Còn 1 phút cuối! Hãy rà soát lỗi chính tả và dấu câu.');
     if (examSecondsRemaining === 0) {
       clearInterval(examTimerHandle);
       examTimerHandle = 0;
@@ -149,7 +166,7 @@ function toggleExamTimer() {
   renderExamTimer();
 }
 function setCopilotTab(mode = 'all') {
-  const selected = ['all', 'agent', 'mentor'].includes(mode) ? mode : 'all';
+  const selected = ['all', 'agent', 'mentor', 'gym'].includes(mode) ? mode : 'all';
   $$('[data-copilot-tab]').forEach(btn => {
     const active = btn.dataset.copilotTab === selected;
     btn.classList.toggle('active', active);
@@ -157,8 +174,10 @@ function setCopilotTab(mode = 'all') {
   });
   const agentEl = $('#agent-workspace');
   const mentorEl = $('#coach-panel');
-  if (agentEl) agentEl.hidden = selected === 'mentor';
-  if (mentorEl) mentorEl.hidden = selected === 'agent';
+  const gymEl = $('#socratic-gym-panel');
+  if (agentEl) agentEl.hidden = selected !== 'all' && selected !== 'agent';
+  if (mentorEl) mentorEl.hidden = selected !== 'all' && selected !== 'mentor';
+  if (gymEl) gymEl.hidden = selected !== 'all' && selected !== 'gym';
 }
 function showPage(page) {
   const key = ['workspace', 'learn', 'report', 'settings'].includes(page) ? page : 'workspace';
@@ -194,14 +213,85 @@ function renderTaskOptions() {
   $('#task-select').value = currentTask.id;
   loadCurrentTask();
 }
+function renderPromptWithHighlights(rawPrompt) {
+  const promptEl = $('#task-prompt');
+  if (!promptEl) return;
+  let html = escapeHtml(rawPrompt || '');
+  for (const phrase of promptHighlights) {
+    const escapedPhrase = escapeHtml(phrase);
+    if (escapedPhrase && html.includes(escapedPhrase)) {
+      html = html.replace(escapedPhrase, '<mark class="exam-mark">' + escapedPhrase + '</mark>');
+    }
+  }
+  promptEl.innerHTML = html;
+}
 function renderTaskDetails(task) {
-  $('#task-prompt').textContent = task.prompt;
+  renderPromptWithHighlights(task.prompt);
   $('#task-goal').textContent = task.goal;
   $('#task-meta').textContent = task.difficulty + ' · ~' + task.estimatedMinutes + ' phút · Trọng tâm: ' + task.skillFocus;
 }
+function renderIdeaLab(task) {
+  const academy = getTaskAcademyData(task);
+  const deconstructEl = $('#task-deconstruct-view');
+  if (deconstructEl) {
+    deconstructEl.innerHTML =
+      '<div class="deconstruct-card"><span>🏷️ CHỦ ĐỀ TRỌNG TÂM</span><strong>' + escapeHtml(academy.topic) + '</strong></div>' +
+      '<div class="deconstruct-card"><span>🎯 YÊU CẦU CỐT LÕI</span><strong>' + escapeHtml(academy.instruction) + '</strong></div>' +
+      '<div class="deconstruct-card"><span>⚠️ BẪY ĐỀ THI CẦN TRÁNH</span><ul>' + academy.traps.map(t => '<li>' + escapeHtml(t) + '</li>').join('') + '</ul></div>';
+  }
+  const lexEl = $('#topic-lexical-bank');
+  if (lexEl) {
+    lexEl.innerHTML = academy.collocations.map(item =>
+      '<button type="button" class="lexical-chip" data-insert-collocation="' + escapeHtml(item.phrase) + '">' +
+      '<strong>+ ' + escapeHtml(item.phrase) + '</strong>' +
+      '<small>' + escapeHtml(item.meaning) + '</small>' +
+      '</button>'
+    ).join('');
+  }
+}
+function renderSocraticGym(task) {
+  const academy = getTaskAcademyData(task);
+  const collocBox = $('#gym-collocation-drill');
+  if (collocBox && academy.collocationDrill) {
+    const drill = academy.collocationDrill;
+    collocBox.innerHTML =
+      '<span class="mini-label">BÀI TẬP 1 · COLLOCATION MATCHER C1/C2</span>' +
+      '<h3>Chọn từ học thuật chuẩn xác nhất cho ngữ cảnh đề bài</h3>' +
+      '<p class="gym-sentence">' + escapeHtml(drill.sentence) + '</p>' +
+      '<div class="gym-options-grid">' +
+      drill.options.map((opt, idx) =>
+        '<button type="button" class="gym-option-btn" data-gym-collocation="' + idx + '">' + escapeHtml(opt) + '</button>'
+      ).join('') +
+      '</div>' +
+      '<div id="gym-collocation-feedback" class="gym-feedback" hidden></div>';
+  }
+  const puzzleBox = $('#gym-cohesion-puzzle');
+  if (puzzleBox && academy.cohesionPuzzle) {
+    const puzzle = academy.cohesionPuzzle;
+    const orderBadges = new Map(cohesionSelectedOrder.map((id, i) => [id, i + 1]));
+    puzzleBox.innerHTML =
+      '<div class="panel-heading"><div><span class="mini-label">BÀI TẬP 2 · COHESION LOGIC PUZZLE</span><h3>Sắp xếp chuỗi lập luận mạch lạc</h3></div>' +
+      '<button type="button" class="text-button" id="reset-cohesion-puzzle">Đặt lại ↺</button></div>' +
+      '<p class="coach-intro">' + escapeHtml(puzzle.prompt) + '</p>' +
+      '<div class="puzzle-list">' +
+      puzzle.items.map(item => {
+        const stepNum = orderBadges.get(item.id);
+        return '<button type="button" class="puzzle-item-btn" data-puzzle-step="' + escapeHtml(item.id) + '">' +
+          '<span class="puzzle-badge">' + (stepNum ? stepNum : item.id) + '</span>' +
+          '<span>' + escapeHtml(item.text) + '</span>' +
+          '</button>';
+      }).join('') +
+      '</div>' +
+      '<div id="gym-puzzle-feedback" class="gym-feedback" hidden></div>';
+  }
+}
 function loadCurrentTask() {
   currentTask = TASKS.find(x => x.id === $('#task-select').value) || TASKS[0];
+  promptHighlights = [];
+  cohesionSelectedOrder = [];
   renderTaskDetails(currentTask);
+  renderIdeaLab(currentTask);
+  renderSocraticGym(currentTask);
   $('#essay-editor').value = readDraft(currentTask.id);
   $('#autosave-label').textContent = 'Bản nháp cục bộ';
   $('#word-count').textContent = String(countWords($('#essay-editor').value));
@@ -431,14 +521,52 @@ function renderReport(report, loading = false) {
       (item?.evidence?.length ? '<div class="criterion-evidence"><strong>BẰNG CHỨNG TRONG BÀI</strong>' + item.evidence.map(x => '<div class="quote-box">' + escapeHtml(x) + '</div>').join('') + '</div>' : '') +
       '</article>';
   }).join('');
-  const issuesHtml = issues.length ? issues.map((item, index) => '<article class="issue-item" id="report-issue-' + index + '" tabindex="-1"><div class="issue-top"><span class="severity ' + escapeHtml(item.severity || 'medium') + '">' + escapeHtml(item.severity || 'medium') + '</span><span class="count-badge">' + escapeHtml(issueCategoryLabel(item.category, report.taskType)) + '</span></div><h3>' + escapeHtml(item.title || 'Điểm cần xem xét') + '</h3>' +
-    (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') +
-    '<p>' + escapeHtml(item.explanation || '') + '</p>' +
-    (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
-    (item.teachingHint ? '<p><strong>Điều cần hiểu:</strong> ' + escapeHtml(item.teachingHint) + '</p>' : '') +
-    '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || item.explanation || '') + '">Sao chép gợi ý</button></div></article>').join('') : '<p class="history-empty">' + (report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
+  const filteredIssues = issues.map((item, index) => ({ item, index })).filter(({ item }) => {
+    if (activeReportFilter === 'all') return true;
+    const cat = String(item.category || 'other');
+    if (activeReportFilter === 'task') return ['task-response', 'task-achievement', 'data-accuracy', 'register'].includes(cat);
+    return cat === activeReportFilter;
+  });
+  const filterBarHtml = issues.length
+    ? '<div class="report-filter-bar" role="tablist" aria-label="Lọc lỗi theo tiêu chí">' +
+      [
+        ['all', 'Tất cả (' + issues.length + ')'],
+        ['task', report.taskType === 'task2' ? 'Task Response' : 'Task Achievement'],
+        ['coherence', 'Mạch lạc (CC)'],
+        ['lexical', 'Từ vựng (LR)'],
+        ['grammar', 'Ngữ pháp (GRA)']
+      ].map(([key, label]) =>
+        '<button type="button" class="filter-chip' + (activeReportFilter === key ? ' active' : '') + '" data-report-filter="' + key + '">' + escapeHtml(label) + '</button>'
+      ).join('') +
+      '</div>'
+    : '';
+  const issuesHtml = filteredIssues.length ? filteredIssues.map(({ item, index }) => {
+    const surgery = buildSentenceSurgery(item, report.taskType);
+    return '<article class="issue-item" id="report-issue-' + index + '" tabindex="-1"><div class="issue-top"><span class="severity ' + escapeHtml(item.severity || 'medium') + '">' + escapeHtml(item.severity || 'medium') + '</span><span class="count-badge">' + escapeHtml(issueCategoryLabel(item.category, report.taskType)) + '</span></div><h3>' + escapeHtml(item.title || 'Điểm cần xem xét') + '</h3>' +
+      (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') +
+      '<p>' + escapeHtml(item.explanation || '') + '</p>' +
+      (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
+      (item.teachingHint ? '<p><strong>Điều cần hiểu:</strong> ' + escapeHtml(item.teachingHint) + '</p>' : '') +
+      '<div class="sentence-surgery-card" aria-label="Mổ xẻ câu văn 3 cấp độ">' +
+      '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán điểm nghẽn</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
+      '<div class="surgery-tier tier-band75"><strong>2 · Nâng cấp Band 7.5+</strong>' + escapeHtml(surgery.band75) + '</div>' +
+      '<div class="surgery-tier tier-band85"><strong>3 · Diễn đạt chuẩn Band 8.5+</strong>' + escapeHtml(surgery.band85) + '</div>' +
+      '</div>' +
+      '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || surgery.band85 || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
+  }).join('') : '<p class="history-empty">' + (issues.length ? 'Không có mục nào thuộc nhóm lọc này.' : report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
   const strengthsHtml = strengths.length ? strengths.map(item => '<div class="strength-item">' + (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') + '<p>' + escapeHtml(item.why || '') + '</p></div>').join('') : '<p class="history-empty">Điểm mạnh sẽ xuất hiện khi AI đưa ra nhận xét cụ thể có trích dẫn khớp bài gốc.</p>';
   const prioritiesHtml = priorities.length ? priorities.map((item, index) => '<div class="priority-item"><span class="priority-number">' + (index + 1) + '</span><div><strong>' + escapeHtml(item.title || 'Bước tiếp theo') + '</strong><p>' + escapeHtml(item.action || '') + '</p></div></div>').join('') : '<p class="history-empty">Chưa đủ dữ liệu để chọn ưu tiên.</p>';
+  const academy = getTaskAcademyData(currentTask);
+  const learnerParagraphs = String(currentRecord?.essay || $('#essay-editor')?.value || '').trim().split(/\r?\n\s*\r?\n+/).filter(Boolean);
+  const parallelHtml = academy?.modelEssay?.paragraphs?.length
+    ? '<section class="panel parallel-model-panel"><div class="report-panel-heading"><div><span class="section-kicker">PARALLEL MODEL ESSAY BENCHMARKING</span><h2>Đối sánh song song với Bài mẫu Band ' + academy.modelEssay.band.toFixed(1) + '+</h2><p>So sánh từng đoạn trong bài của bạn với cấu trúc lập luận và từ vựng học thuật của bài mẫu chuẩn Cambridge.</p></div><span class="count-badge">Band ' + academy.modelEssay.band.toFixed(1) + '+</span></div>' +
+      '<div class="parallel-model-grid">' +
+      academy.modelEssay.paragraphs.map((modelPara, idx) =>
+        '<div class="parallel-pair-card"><span class="pair-role">Đoạn ' + (idx + 1) + ' của bạn · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(learnerParagraphs[idx] || 'Chưa có đoạn tương ứng trong bản nháp.') + '</p></div>' +
+        '<div class="parallel-pair-card"><span class="pair-role">Bài mẫu Band ' + academy.modelEssay.band.toFixed(1) + '+ · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(modelPara.text) + '</p></div>'
+      ).join('') +
+      '</div></section>'
+    : '';
   container.innerHTML = (loading ? '<div class="report-loading" role="status"><span></span>Đang kiểm tra bài viết và tạo báo cáo. Kết quả cục bộ hiển thị trước; chưa có band AI cho tới khi đánh giá hoàn tất.</div>' : '') +
     '<section class="report-summary"><div><span class="section-kicker">' + escapeHtml(report.taskType || 'IELTS Writing') + ' / ASSESSMENT</span><h2>' + escapeHtml(report.scoreLabel || 'Báo cáo bài viết') + '</h2><p>' + escapeHtml(report.summary || '') + '</p><span class="report-status">' + reportStatus + ' · ' + escapeHtml(report.wordCount ?? countWords($('#essay-editor').value)) + ' từ</span>' +
     (scoreRationale ? '<p class="report-score-note">' + escapeHtml(scoreRationale) + '</p>' : '') +
@@ -446,13 +574,14 @@ function renderReport(report, loading = false) {
     '</div><div class="report-band"><strong>' + score + '</strong><span>' + (Number.isFinite(report.estimatedTaskBand) ? 'Band ước lượng cho bài này' : 'Chưa đủ căn cứ cho band') + '</span></div></section>' +
     '<div class="report-criteria">' + criteriaHtml + '</div>' +
     annotatedEssayHtml +
+    parallelHtml +
     (revision ? '<section class="panel revision-panel"><div class="report-panel-heading"><div><span class="section-kicker">REVISION TRACKING</span><h2>So sánh với bản trước của cùng đề</h2></div><span class="count-badge">Lần sửa</span></div>' +
       '<div class="revision-metrics"><div><span>Band ước lượng</span><strong>' + (revision.previousBand === null ? '—' : revision.previousBand.toFixed(1)) + ' → ' + (revision.currentBand === null ? '—' : revision.currentBand.toFixed(1)) + '</strong><small>' + (revision.bandDelta === null ? 'Chưa đủ căn cứ so sánh band' : 'Thay đổi ' + (revision.bandDelta > 0 ? '+' : '') + revision.bandDelta.toFixed(1)) + '</small></div>' +
       '<div><span>Số từ</span><strong>' + revision.previousWords + ' → ' + revision.currentWords + '</strong><small>' + (revision.wordDelta > 0 ? '+' : '') + revision.wordDelta + ' từ</small></div>' +
       '<div><span>Mục AI ghi nhận</span><strong>' + revision.issueCountBefore + ' → ' + revision.issueCountAfter + '</strong><small>' + (revision.issueDelta < 0 ? Math.abs(revision.issueDelta) + ' mục ít hơn' : revision.issueDelta > 0 ? revision.issueDelta + ' mục nhiều hơn' : 'Số mục không đổi') + '</small></div></div>' +
       (revision.criteria.length ? '<div class="revision-criteria">' + revision.criteria.map(item => '<div class="revision-criterion"><span>' + escapeHtml(item.label) + '</span><strong>' + item.before.toFixed(1) + ' → ' + item.after.toFixed(1) + '</strong><small class="' + (item.delta > 0 ? 'delta-up' : item.delta < 0 ? 'delta-down' : 'delta-flat') + '">' + (item.delta > 0 ? '+' : '') + item.delta.toFixed(1) + '</small></div>').join('') + '</div>' : '') +
       '<p class="revision-caveat">Đây là so sánh hai báo cáo AI trên cùng đề, không phải phép đo chắc chắn về tiến bộ. Model có thể dao động giữa các lượt; hãy kiểm tra giải thích và sửa đổi thực tế, không chỉ nhìn band.</p></section>' : '') +
-    '<div class="report-split"><div><section class="panel report-panel"><div class="report-panel-heading"><h2>Những điểm cần xử lý</h2><span class="count-badge">' + issues.length + ' mục</span></div><div class="issue-list">' + issuesHtml + '</div></section><section class="panel report-panel"><div class="report-panel-heading"><h2>Điểm làm tốt</h2><span class="count-badge">' + strengths.length + ' mục</span></div>' + strengthsHtml + '</section></div>' +
+    '<div class="report-split"><div><section class="panel report-panel"><div class="report-panel-heading"><h2>Những điểm cần xử lý</h2><span class="count-badge">' + issues.length + ' mục</span></div>' + filterBarHtml + '<div class="issue-list">' + issuesHtml + '</div></section><section class="panel report-panel"><div class="report-panel-heading"><h2>Điểm làm tốt</h2><span class="count-badge">' + strengths.length + ' mục</span></div>' + strengthsHtml + '</section></div>' +
     '<div><section class="panel report-panel"><div class="report-panel-heading"><h2>Ưu tiên tiếp theo</h2><span class="count-badge">Kế hoạch</span></div>' + prioritiesHtml + '</section><section class="panel report-panel"><div class="report-panel-heading"><h2>Thông tin về độ tin cậy</h2></div><div class="report-note"><strong>Đây không phải điểm IELTS chính thức.</strong><br>Band từ AI chưa được hiệu chuẩn trên tập bài viết có điểm tham chiếu độc lập. Kiểm tra cục bộ không chấm band.</div>' +
     (uncertainties.length ? '<div class="uncertainty-box"><strong>Điều còn chưa chắc:</strong><ul>' + uncertainties.map(x => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '') +
     '<div class="report-note">Trích dẫn chỉ được giữ nếu khớp với văn bản đã nộp; điều này không tự chứng minh rằng mọi lời giải thích đều đúng.</div><div class="issue-actions"><button type="button" id="revise-current">Quay lại sửa bài</button><button type="button" id="export-current-report">Xuất JSON</button></div></section></div></div>';
@@ -487,6 +616,22 @@ function renderLearning() {
   const scoreById = new Map(criterionScores.map(item => [item.id, item]));
   const recurring = buildRecurringErrorPatterns(history);
   const aiRecords = eligibleAIRecords(history);
+
+  const radarChartEl = $('#mastery-radar-chart');
+  if (radarChartEl) {
+    radarChartEl.innerHTML = renderMasteryRadarSvg(criterionScores);
+  }
+  const radarLegendEl = $('#mastery-radar-legend');
+  if (radarLegendEl) {
+    radarLegendEl.innerHTML = [
+      ['Task Response / Achievement', scoreById.get('taskResponse')?.mean ?? scoreById.get('taskAchievement')?.mean ?? null, 'Đáp ứng đúng trọng tâm câu hỏi'],
+      ['Coherence & Cohesion', scoreById.get('coherence')?.mean ?? null, 'Mạch lập luận & liên kết đoạn'],
+      ['Lexical Resource', scoreById.get('lexical')?.mean ?? null, 'Độ chuẩn xác Collocations C1/C2'],
+      ['Grammatical Range & Accuracy', scoreById.get('grammar')?.mean ?? null, 'Độ đa dạng & chuẩn xác cấu trúc câu']
+    ].map(([label, val, note]) =>
+      '<div class="radar-legend-card"><span class="mini-label">' + escapeHtml(label) + '</span><strong>' + (Number.isFinite(val) ? val.toFixed(1) : '6.0 (Tham chiếu)') + '</strong><small>' + escapeHtml(note) + '</small></div>'
+    ).join('');
+  }
 
   $('#learn-metrics').innerHTML = [
     ['Bài đã đánh giá', history.length, 'Lịch sử cục bộ trên thiết bị'],
@@ -1539,12 +1684,118 @@ function attachEvents() {
   $('#mobile-menu').addEventListener('click', () => $('#sidebar').classList.toggle('mobile-open'));
   $('#timer-toggle')?.addEventListener('click', toggleExamTimer);
   $('#timer-reset')?.addEventListener('click', () => resetExamTimer());
+  $('#exam-mode-toggle')?.addEventListener('click', () => {
+    const shell = $('#app-shell');
+    if (!shell) return;
+    const active = shell.classList.toggle('idp-bc-mode');
+    $('#exam-mode-toggle').setAttribute('aria-pressed', String(active));
+    if (active) showPage('workspace');
+    setToast(active
+      ? 'Đã bật Chế độ Phòng Thi Máy IDP/BC (Chia 50/50 · Khóa Paste · Chuẩn thi thật).'
+      : 'Đã quay lại Chế độ Editorial Studio.');
+  });
   $('#zen-toggle')?.addEventListener('click', () => {
     const shell = $('#app-shell');
     if (!shell) return;
     const active = shell.classList.toggle('zen-mode');
     $('#zen-toggle').setAttribute('aria-pressed', String(active));
     setToast(active ? 'Đã bật Chế độ Tập trung (Zen Mode).' : 'Đã thoát Chế độ Tập trung.');
+  });
+  $('#toggle-idea-lab')?.addEventListener('click', () => {
+    const lab = $('#idea-lab');
+    if (!lab) return;
+    const nextHidden = !lab.hidden;
+    lab.hidden = nextHidden;
+    $('#toggle-idea-lab').setAttribute('aria-expanded', String(!nextHidden));
+    $('#toggle-idea-lab').textContent = nextHidden ? '✦ Mở Idea & Outline Lab' : '✦ Đóng Idea & Outline Lab';
+  });
+  $('#topic-lexical-bank')?.addEventListener('click', event => {
+    const chip = event.target.closest('[data-insert-collocation]');
+    if (!chip) return;
+    const phrase = chip.dataset.insertCollocation || '';
+    if (!phrase) return;
+    const editor = $('#essay-editor');
+    const start = Number.isInteger(editor.selectionStart) ? editor.selectionStart : editor.value.length;
+    const end = Number.isInteger(editor.selectionEnd) ? editor.selectionEnd : editor.value.length;
+    const prefix = start > 0 && !/\s$/.test(editor.value.slice(0, start)) ? ' ' : '';
+    editor.value = editor.value.slice(0, start) + prefix + phrase + editor.value.slice(end);
+    editor.focus();
+    saveDraft();
+    setToast('Đã chèn cụm C1/C2 vào bài: ' + phrase);
+  });
+  $('#insert-outline')?.addEventListener('click', () => {
+    const editor = $('#essay-editor');
+    editor.value = formatOutlineForEditor({
+      intro: $('#outline-intro')?.value || '',
+      body1: $('#outline-body1')?.value || '',
+      body2: $('#outline-body2')?.value || '',
+      conclusion: $('#outline-conclusion')?.value || ''
+    }, editor.value);
+    editor.focus();
+    saveDraft();
+    setToast('Đã đưa khung dàn ý 4 đoạn vào trình soạn thảo.');
+  });
+  $('#highlight-prompt-selection')?.addEventListener('click', () => {
+    const selection = window.getSelection?.()?.toString().trim() || '';
+    if (selection.length >= 3 && currentTask.prompt.includes(selection)) {
+      if (!promptHighlights.includes(selection)) promptHighlights.push(selection);
+      renderPromptWithHighlights(currentTask.prompt);
+      setToast('Đã tô sáng từ khóa trên đề bài.');
+      return;
+    }
+    const fallback = currentTask.prompt.split(/[.,;]/)[0]?.trim() || '';
+    if (fallback && !promptHighlights.includes(fallback)) {
+      promptHighlights.push(fallback);
+      renderPromptWithHighlights(currentTask.prompt);
+      setToast('Đã tô sáng mệnh đề trọng tâm của đề bài.');
+    }
+  });
+  $('#clear-prompt-highlights')?.addEventListener('click', () => {
+    promptHighlights = [];
+    renderPromptWithHighlights(currentTask.prompt);
+    setToast('Đã xóa các vùng tô sáng trên đề bài.');
+  });
+  $('#socratic-gym-panel')?.addEventListener('click', event => {
+    const academy = getTaskAcademyData(currentTask);
+    const collocBtn = event.target.closest('[data-gym-collocation]');
+    if (collocBtn && academy.collocationDrill) {
+      const idx = Number(collocBtn.dataset.gymCollocation);
+      const res = evaluateCollocationChoice(academy.collocationDrill, idx);
+      $$('#gym-collocation-drill [data-gym-collocation]').forEach(btn => {
+        btn.classList.remove('is-correct', 'is-wrong');
+      });
+      collocBtn.classList.add(res.correct ? 'is-correct' : 'is-wrong');
+      const fb = $('#gym-collocation-feedback');
+      if (fb) {
+        fb.hidden = false;
+        fb.innerHTML = '<strong>' + (res.correct ? '✓ Chính xác!' : '✕ Chưa chuẩn ngữ cảnh học thuật.') + '</strong> ' + escapeHtml(res.explanation);
+      }
+      return;
+    }
+    if (event.target.closest('#reset-cohesion-puzzle')) {
+      cohesionSelectedOrder = [];
+      renderSocraticGym(currentTask);
+      return;
+    }
+    const puzzleBtn = event.target.closest('[data-puzzle-step]');
+    if (puzzleBtn && academy.cohesionPuzzle) {
+      const stepId = puzzleBtn.dataset.puzzleStep;
+      if (!cohesionSelectedOrder.includes(stepId)) {
+        cohesionSelectedOrder.push(stepId);
+      }
+      renderSocraticGym(currentTask);
+      if (cohesionSelectedOrder.length === academy.cohesionPuzzle.items.length) {
+        const res = evaluateCohesionOrder(academy.cohesionPuzzle, cohesionSelectedOrder);
+        const fb = $('#gym-puzzle-feedback');
+        if (fb) {
+          fb.hidden = false;
+          fb.innerHTML = '<strong>' + (res.correct ? '✓ Chuỗi lập luận hoàn hảo (' + res.score + '/' + res.total + ')!' : 'Đạt ' + res.score + '/' + res.total + ' vị trí đúng.') + '</strong> ' + escapeHtml(res.explanation);
+        }
+      }
+    }
+  });
+  $('#print-report')?.addEventListener('click', () => {
+    window.print?.();
   });
   $('#toggle-prompt')?.addEventListener('click', () => {
     const card = $('#prompt-card');
@@ -1561,6 +1812,12 @@ function attachEvents() {
     else setToast('Đã điền mục tiêu Agent. Hãy nhập bài nháp rồi bấm Chạy Agent.');
   }));
   $('#task-select').addEventListener('change', () => { saveDraft(); loadCurrentTask(); });
+  $('#essay-editor').addEventListener('paste', event => {
+    if ($('#app-shell')?.classList.contains('idp-bc-mode')) {
+      event.preventDefault();
+      setToast('Chế độ Phòng Thi Máy IDP/BC khóa dán văn bản ngoài để rèn tốc độ gõ thật. Tắt chế độ thi nếu muốn dán nháp.');
+    }
+  });
   $('#essay-editor').addEventListener('input', () => {
     $('#word-count').textContent = String(countWords($('#essay-editor').value));
     updateWordTarget();
@@ -1645,6 +1902,12 @@ function attachEvents() {
   $('#theme-toggle').addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
   $$('[data-theme-choice]').forEach(el => el.addEventListener('click', () => setTheme(el.dataset.themeChoice)));
   $('#report-content').addEventListener('click', async event => {
+    const filterChip = event.target.closest('[data-report-filter]');
+    if (filterChip) {
+      activeReportFilter = filterChip.dataset.reportFilter || 'all';
+      renderReport(latestReport);
+      return;
+    }
     const annotation = event.target.closest('[data-annotation-issue]');
     if (annotation) {
       const index = Number(annotation.dataset.annotationIssue);

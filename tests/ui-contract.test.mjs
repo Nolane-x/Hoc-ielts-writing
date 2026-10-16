@@ -197,3 +197,27 @@ test('Editorial Studio exposes exam timer, zen mode, word progress gauge, co-pil
   assert.match(css, /\.agent-workspace-panel\.is-running/);
 });
 
+
+test('Full-Cycle IELTS Academy WMR 2.0 exposes Idea Lab, IDP/BC Simulator, Socratic Gym, Radar SVG and Print Dossier', () => {
+  for (const id of [
+    'idea-lab', 'task-deconstruct-view', 'topic-lexical-bank', 'outline-builder', 'insert-outline',
+    'exam-mode-toggle', 'highlight-prompt-selection', 'clear-prompt-highlights', 'exam-notes-input',
+    'socratic-gym-panel', 'gym-collocation-drill', 'gym-cohesion-puzzle',
+    'mastery-radar-panel', 'mastery-radar-chart', 'print-report'
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing WMR 2.0 control #' + id);
+  }
+  assert.match(html, /data-copilot-tab="gym"/);
+  assert.match(css, /\.idp-bc-mode/);
+  assert.match(css, /\.timer-warning/);
+  assert.match(css, /\.timer-critical/);
+  assert.match(css, /\.sentence-surgery-card/);
+  assert.match(css, /\.parallel-model-grid/);
+  assert.match(css, /\.mastery-radar-svg/);
+  assert.match(css, /@media print/);
+  assert.match(app, /renderMasteryRadarSvg\(/);
+  assert.match(app, /buildSentenceSurgery\(/);
+  assert.match(app, /evaluateCollocationChoice\(/);
+  assert.match(app, /evaluateCohesionOrder\(/);
+});
+

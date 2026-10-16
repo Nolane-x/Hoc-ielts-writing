@@ -95,6 +95,10 @@
         </div>
 
         <div class="topbar-actions">
+          <button class="zen-pill exam-sim-pill" id="exam-mode-toggle" type="button" aria-pressed="false" title="Mô phỏng 100% giao diện phòng thi máy IDP / British Council">
+            <span aria-hidden="true">▣</span>
+            <span>Phòng thi IDP/BC</span>
+          </button>
           <button class="zen-pill" id="zen-toggle" type="button" aria-pressed="false" title="Chế độ tập trung tối đa (Zen Focus Mode)">
             <span aria-hidden="true">⤢</span>
             <span>Zen Mode</span>
@@ -142,6 +146,7 @@
                 <h2>Bản thảo IELTS của bạn</h2>
               </div>
               <div class="editor-top-actions">
+                <button class="quiet-button" id="toggle-idea-lab" type="button" aria-expanded="false">✦ Mở Idea &amp; Outline Lab</button>
                 <button class="quiet-button" id="toggle-prompt" type="button" aria-expanded="true">Thu gọn đề</button>
                 <button class="quiet-button" id="save-draft" type="button">Lưu nháp <span>↗</span></button>
               </div>
@@ -158,11 +163,56 @@
                   <span class="prompt-label">OFFICIAL TASK PROMPT</span>
                   <div class="prompt-meta" id="task-meta"></div>
                 </div>
-                <button class="text-button" id="copy-prompt" type="button">Sao chép đề ⎘</button>
+                <div class="prompt-actions-bar">
+                  <button class="text-button" id="highlight-prompt-selection" type="button" title="Bôi đen từ khóa trong đề rồi bấm để tô sáng vàng">🖍 Highlight từ khóa</button>
+                  <button class="text-button" id="clear-prompt-highlights" type="button" title="Xóa các vùng tô sáng trên đề">Xóa highlight</button>
+                  <button class="text-button" id="copy-prompt" type="button">Sao chép đề ⎘</button>
+                </div>
               </div>
               <p id="task-prompt" class="prompt-body-text"></p>
               <div class="prompt-goal" id="task-goal"></div>
+              <div class="exam-notes-bar">
+                <label for="exam-notes-input">GHI CHÚ NHÁP TRÊN ĐỀ (EXAM SCRATCHPAD)</label>
+                <input id="exam-notes-input" type="text" maxlength="280" placeholder="Ghi nhanh số liệu chính, từ đồng nghĩa hoặc cấu trúc câu dự định dùng...">
+              </div>
             </div>
+
+            <!-- STAGE 1: PRE-WRITING & ACADEMIC IDEA LAB -->
+            <section class="idea-lab-panel" id="idea-lab" hidden aria-label="Khoang phân tích đề, từ vựng C1/C2 và dựng dàn ý">
+              <div class="idea-lab-head">
+                <div>
+                  <span class="section-kicker">STAGE 01 · PRE-WRITING &amp; ACADEMIC IDEA LAB</span>
+                  <h3>Phân tích đề · Vốn từ C1/C2 · Khung dàn ý 4 đoạn</h3>
+                </div>
+                <span class="count-badge">Chuẩn tư duy Band 8.0+</span>
+              </div>
+              <div id="task-deconstruct-view" class="deconstruct-grid"></div>
+              <div class="lexical-bank-wrap">
+                <span class="mini-label">CỤM COLLOCATIONS C1/C2 THEO CHỦ ĐỀ (BẤM ĐỂ CHÈN VÀO BÀI)</span>
+                <div id="topic-lexical-bank" class="lexical-chip-grid"></div>
+              </div>
+              <div class="outline-builder-grid" id="outline-builder">
+                <div class="field">
+                  <label for="outline-intro">1. MỞ BÀI (PARAPHRASE + THESIS)</label>
+                  <input id="outline-intro" type="text" maxlength="240" placeholder="Nêu rõ lập trường hoặc xu hướng tổng quan...">
+                </div>
+                <div class="field">
+                  <label for="outline-body1">2. THÂN BÀI 1 (LUẬN ĐIỂM 1 + VÍ DỤ)</label>
+                  <input id="outline-body1" type="text" maxlength="240" placeholder="Topic sentence 1 → Giải thích cơ chế → Ví dụ...">
+                </div>
+                <div class="field">
+                  <label for="outline-body2">3. THÂN BÀI 2 (LUẬN ĐIỂM 2 / ĐỐI SÁNH)</label>
+                  <input id="outline-body2" type="text" maxlength="240" placeholder="Topic sentence 2 → Phản biện / Số liệu nhóm 2...">
+                </div>
+                <div class="field">
+                  <label for="outline-conclusion">4. KẾT BÀI (TÓM LƯỢC &amp; KHẲNG ĐỊNH)</label>
+                  <input id="outline-conclusion" type="text" maxlength="240" placeholder="Khẳng định lại quan điểm không lặp từ...">
+                </div>
+              </div>
+              <div class="idea-lab-actions">
+                <button class="button button-secondary" id="insert-outline" type="button">Đưa khung dàn ý vào trình soạn thảo ↘</button>
+              </div>
+            </section>
 
             <div class="editor-telemetry">
               <div class="editor-meta">
@@ -218,17 +268,20 @@
             </section>
           </section>
 
-          <!-- RIGHT COLUMN: INTEGRATED AI CO-PILOT DOCK (AGENT + MENTOR) -->
+          <!-- RIGHT COLUMN: INTEGRATED AI CO-PILOT DOCK (AGENT + MENTOR + GYM) -->
           <aside class="coach-column copilot-dock" aria-label="Trợ lý AI Agent và Writing Mentor">
             <div class="copilot-switcher" role="tablist" aria-label="Chế độ hiển thị trợ lý AI">
               <button class="copilot-tab active" type="button" data-copilot-tab="all" role="tab" aria-selected="true">
-                <span>⚡ Studio Toàn Diện</span>
+                <span>⚡ Toàn diện</span>
               </button>
               <button class="copilot-tab" type="button" data-copilot-tab="agent" role="tab" aria-selected="false">
-                <span>◎ Writing Agent</span>
+                <span>◎ Agent</span>
               </button>
               <button class="copilot-tab" type="button" data-copilot-tab="mentor" role="tab" aria-selected="false">
-                <span>✦ Socratic Mentor</span>
+                <span>✦ Mentor</span>
+              </button>
+              <button class="copilot-tab" type="button" data-copilot-tab="gym" role="tab" aria-selected="false">
+                <span>🏋️ Socratic Gym</span>
               </button>
             </div>
 
@@ -368,6 +421,20 @@
               </div>
             </section>
 
+            <!-- SECTION C: INTERACTIVE SOCRATIC GYM (COLLOCATION MATCHER & COHESION PUZZLE) -->
+            <section class="panel socratic-gym-panel" id="socratic-gym-panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="section-kicker">04 / INTERACTIVE SOCRATIC GYM</span>
+                  <h2>Phòng tập Phản xạ Học thuật</h2>
+                </div>
+                <span class="count-badge">100% Offline</span>
+              </div>
+              <p class="coach-intro">Rèn phản xạ chọn cụm Collocations C1/C2 và sắp xếp mạch lập luận (Cohesion Logic Puzzle) gắn liền với đề hiện tại.</p>
+              <div id="gym-collocation-drill" class="gym-drill-box"></div>
+              <div id="gym-cohesion-puzzle" class="gym-drill-box"></div>
+            </section>
+
             <section class="tip-card">
               <div class="tip-spark" aria-hidden="true">✦</div>
               <div>
@@ -388,6 +455,21 @@
         </div>
 
         <div class="learn-metrics" id="learn-metrics"></div>
+
+        <!-- NATIVE SVG RADAR MASTERY PANEL -->
+        <section class="panel mastery-radar-panel" id="mastery-radar-panel" aria-label="Biểu đồ Radar cân bằng 4 tiêu chí IELTS">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">4-AXIS CRITERIA BALANCE · PURE NATIVE SVG</span>
+              <h2>Biểu đồ Radar cân bằng 4 tiêu chí IELTS</h2>
+            </div>
+            <span class="count-badge">Band 5.0 – 9.0</span>
+          </div>
+          <div class="radar-layout">
+            <div id="mastery-radar-chart" class="radar-chart-shell"></div>
+            <div id="mastery-radar-legend" class="radar-legend-shell"></div>
+          </div>
+        </section>
 
         <section id="study-plan" class="study-plan-region" aria-label="Lộ trình học thích ứng"></section>
 
@@ -423,7 +505,10 @@
             <h1 id="report-title">Hồ sơ thẩm định bài viết</h1>
             <p>Phân tích chuyên sâu 4 tiêu chí kèm định vị trích dẫn nguyên văn. Điểm ước lượng phục vụ mục đích rèn luyện học thuật, không thay thế kỳ thi chính thức.</p>
           </div>
-          <button class="button button-secondary" id="export-report" type="button">Xuất báo cáo JSON ↗</button>
+          <div class="report-top-actions">
+            <button class="button button-secondary" id="print-report" type="button">In / Xuất Hồ sơ PDF 🖨</button>
+            <button class="button button-secondary" id="export-report" type="button">Xuất báo cáo JSON ↗</button>
+          </div>
         </div>
 
         <div id="report-content" class="report-content">
