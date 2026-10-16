@@ -359,6 +359,8 @@ export function createWmrServer() {
     const host = String(process.env.HOST || '127.0.0.1').replace(/^\[|\]$/g, '');
     if (!LOOPBACK.has(host)) { res.writeHead(500); res.end('WMR must remain loopback-only.'); return; }
     Promise.resolve(handle(req, res)).catch(error => {
+      // A cancelled client may have destroyed the socket while the provider request was unwinding.
+      if (res.destroyed || res.writableEnded) return;
       if (res.headersSent) { res.destroy(); return; }
       json(res, error.status || 500, { error: error.message || 'Internal server error.' });
     });
