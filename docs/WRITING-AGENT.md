@@ -2,7 +2,7 @@
 
 ## What the agent can do
 
-WMR's Writing Agent is a bounded multi-step agent that can call named workspace tools instead of only producing a chat answer. It can inspect word/paragraph structure, find exact phrases in a draft, propose targeted edits, create an outline with blanks for the learner, create a focused micro-exercise, define a measurable learning goal, and select a unique quote for focused review.
+WMR's Writing Agent is a bounded multi-step agent that can call named workspace tools instead of only producing a chat answer. It can inspect word/paragraph structure, find exact phrases in a draft, propose targeted edits, annotate unique exact quotes, create an outline with blanks for the learner, create a focused micro-exercise, define a measurable learning goal, select a unique quote for focused review, search the bundled local task bank, and draft a new practice task. New tasks stay unverified and are not saved until the learner explicitly chooses to save/open them.
 
 The allowlist lives in `web/writing-agent.mjs`. It is not chosen by model output and cannot be expanded by the model. Unknown tools are rejected. The agent loop currently allows at most ten model turns and eight tool calls per session; normal sessions finish earlier. Its per-turn output budget is bounded. The tool set also searches the bundled local IELTS task bank to suggest transfer practice without a network call. Tool output and prior assistant messages are data, not policy.
 
@@ -12,7 +12,7 @@ For web/Electron, the app posts the task type, prompt snapshot, essay snapshot, 
 
 - `progress`: session or reasoning-phase status
 - `tool`: tool started, completed or rejected
-- `result`: structured final message, patches, outline, exercise, goal, focus quote and usage counters
+- `result`: structured final message, patches, anchored annotations, generated practice tasks, outline, exercise, goal, focus quote and usage counters
 - `error`: a sanitized session failure notice
 
 The response uses no-store headers. The browser sends an AbortController signal; closing the response aborts the run. Each model request also has a timeout. Cancellation cannot guarantee that a remote provider never received an already-dispatched request; usage estimates are reserved before the session to avoid treating uncertain requests as free.
@@ -25,7 +25,7 @@ The agent is allowed to suggest patches without asking before every inspection o
 
 The UI shows source text beside the replacement. A learner can apply one patch or all current non-overlapping patches. Before applying, the app revalidates all anchors against the *current* editor, checks overlaps again, confirms the resulting length, and saves a local pre-edit snapshot. Stale, repeated or missing anchors are rejected rather than guessed. Revisions are capped at five per task and can be restored; restoring over a different current draft asks for confirmation and saves the current content first.
 
-The app also displays outlines, micro-exercises, success criteria, goals and quote-focus notes. Learners choose when to save these items to the local artifact library. Each exercise has a response field which can be submitted to Mentor for formative feedback. Up to 100 bounded micro-practice attempts, including the learner's answer and verified returned feedback, are stored on this device and included in validated local backups alongside artifacts and the last five draft revisions per task. Provider setup messages are never counted as teaching feedback. The journal reports activity counts only, not band scores or mastery. The adaptive Learning page also surfaces a cross-task overview of recent attempts and feedback coverage, with links to reopen the associated task; it does not infer semantic improvement from attempt counts alone. Credentials and provider settings are not imported from a backup.
+The app also displays outlines, micro-exercises, success criteria, goals, quote-focus notes and an evidence map that colour-codes exact quote annotations in a read-only preview. Clicking an annotation selects the corresponding text in the editor; the preview is rebuilt against the current draft, and stale or ambiguous anchors are not highlighted. Learners choose when to save these items to the local artifact library. Each exercise has a response field which can be submitted to Mentor for formative feedback. Up to 100 bounded micro-practice attempts, including the learner's answer and verified returned feedback, are stored on this device and included in validated local backups alongside artifacts and the last five draft revisions per task. Provider setup messages are never counted as teaching feedback. The journal reports activity counts only, not band scores or mastery. The adaptive Learning page also surfaces a cross-task overview of recent attempts and feedback coverage, with links to reopen the associated task; it does not infer semantic improvement from attempt counts alone. Credentials and provider settings are not imported from a backup.
 
 ## Permission and safety boundary
 
@@ -42,7 +42,11 @@ If the model returns unstructured text or malformed tool calls, the agent falls 
 ## Production acceptance checklist
 
 The following are checked in CI via unit and local integration tests:
-- Tool allowlist rejects undeclared capabilities.
+- Tool allowlist rejects undeclared capabilities; exact-quote annotation and custom-task creation are validated and bounded.
+- Proactive review is opt-in, requires the explicit provider-permission setting, triggers only after an idle interval and sufficient changed text, and has a cooldown plus existing provider budget/call caps.
+- Speech reminders use local browser/system speech synthesis only; WMR does not request or record microphone input.
+- Custom-task and scratchpad backup fields are length/type/identifier validated; API keys and provider settings remain excluded from import.
+- Task generation sends a dedicated prompt with an empty essay context; generated prompts remain marked unverified.
 - Edit anchors must be exact and unique; overlapping patches are rejected.
 - Live draft is unchanged while proposals are generated.
 - Tool and model-turn budgets are enforced.
