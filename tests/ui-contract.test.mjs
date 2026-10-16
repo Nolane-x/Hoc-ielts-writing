@@ -47,13 +47,13 @@ test('assessment uses a locked submitted snapshot and backup restore passes thro
   assert.match(app, /const snapshot = \{ task: \{ \.\.\.currentTask \}, essay \}/);
   assert.match(app, /editor\.readOnly = true/);
   assert.match(app, /reportStamp\(report, 'ai', snapshot\)/);
-  assert.match(app, /parseLocalBackup\\(await file\\.text\\(\\), tasks\\.map\\(task => task\\.id\\)\\)/);
+  assert.match(app, /parseLocalBackup\(await file\.text\(\), tasks\.map\(task => task\.id\)\)/);
   assert.match(app, /localStorage\.removeItem\(COACH_PREFIX \+ task\.id\)/);
 });
 
 
 test('adaptive recommendations remain connected to concrete task selection and learning data', () => {
-  assert.match(app, /buildStudyPlan\\(history, tasks\\)/);
+  assert.match(app, /buildStudyPlan\(history, tasks\)/);
   assert.match(app, /data-start-task=/);
   assert.match(app, /\$\('#study-plan'\)\.addEventListener\('click'/);
   assert.match(app, /setToast\('Đã mở đề luyện theo lộ trình:/);
@@ -124,7 +124,7 @@ test('Writing Agent task-bank suggestions are rendered from local results and re
   assert.match(app, /const practiceMatches = Array\.isArray\(result\.practiceMatches\)/);
   assert.match(app, /data-agent-start-task=/);
   assert.match(app, /function openAgentPracticeTask\(taskId\)/);
-  assert.match(app, /tasks\\.find\\(item => item\\.id === taskId\\)/);
+  assert.match(app, /tasks\.find\(item => item\.id === taskId\)/);
   assert.match(app, /hasStructuredOutput/);
   assert.match(app, /Không áp dụng sửa đổi vì WMR chưa thể lưu bản trước để hoàn tác/);
   assert.match(app, /Không thể khôi phục vì chưa lưu được nội dung editor hiện tại/);
