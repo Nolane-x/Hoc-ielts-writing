@@ -52,6 +52,8 @@ try {
   await page.locator('#custom-task-panel > summary').click();
   await page.locator('#custom-task-title').fill('Smoke-test custom task');
   await page.locator('#custom-task-prompt').fill('Some people support this change while others disagree. Discuss both views and give your own opinion.');
+  await page.locator('#custom-task-panel').scrollIntoViewIfNeeded();
+  await capture(page, '01d-custom-task-builder-desktop.png');
   let coachRequests = 0;
   page.on('request', request => { if (request.url().endsWith('/api/coach')) coachRequests++; });
   await page.locator('#generate-custom-task').click();
