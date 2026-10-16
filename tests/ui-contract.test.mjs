@@ -246,6 +246,8 @@ test('proactive Writing Companion requires explicit opt-in and exposes user-cont
     'changes[EXAM_NOTES_PREFIX + id]'
   ]) assert.ok(app.includes(marker), 'missing implementation marker: ' + marker);
   assert.doesNotMatch(app, /getUserMedia|getDisplayMedia|navigator\.mediaDevices/);
+  assert.match(html, /ghi chú riêng của đề hiện tại/);
+  assert.match(html, /Tắt quyền provider sẽ yêu cầu dừng lượt tự động đang chạy/);
   assert.match(css, /\.app-shell\.idp-bc-mode \.custom-task-panel/);
 });
 
