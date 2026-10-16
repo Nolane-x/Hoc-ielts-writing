@@ -557,7 +557,7 @@ function renderReport(report, loading = false) {
       '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
       '<div class="surgery-tier tier-band75"><strong>2 · Gợi ý sửa từ phản hồi</strong>' + escapeHtml(surgery.suggestedRevision || 'Phản hồi chưa có câu sửa cụ thể. Không nên tự suy đoán bản sửa khi thiếu bằng chứng.') + '</div>' +
       '<div class="surgery-tier tier-band85"><strong>3 · Ghi chú học tập</strong>' + escapeHtml(surgery.learningNote) + '</div>' +
-      '</div> +
+      '</div>' +
       '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
   }).join('') : '<p class="history-empty">' + (issues.length ? 'Không có mục nào thuộc nhóm lọc này.' : report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
   const strengthsHtml = strengths.length ? strengths.map(item => '<div class="strength-item">' + (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') + '<p>' + escapeHtml(item.why || '') + '</p></div>').join('') : '<p class="history-empty">Điểm mạnh sẽ xuất hiện khi AI đưa ra nhận xét cụ thể có trích dẫn khớp bài gốc.</p>';
@@ -572,6 +572,7 @@ function renderReport(report, loading = false) {
         '<div class="parallel-pair-card"><span class="pair-role">Mẫu diễn đạt minh họa · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(modelPara.text) + '</p></div>'
       ).join('') +
       '</div></section>'
+    : '';
   container.innerHTML = (loading ? '<div class="report-loading" role="status"><span></span>Đang kiểm tra bài viết và tạo báo cáo. Kết quả cục bộ hiển thị trước; chưa có band AI cho tới khi đánh giá hoàn tất.</div>' : '') +
     '<section class="report-summary"><div><span class="section-kicker">' + escapeHtml(report.taskType || 'IELTS Writing') + ' / ASSESSMENT</span><h2>' + escapeHtml(report.scoreLabel || 'Báo cáo bài viết') + '</h2><p>' + escapeHtml(report.summary || '') + '</p><span class="report-status">' + reportStatus + ' · ' + escapeHtml(report.wordCount ?? countWords($('#essay-editor').value)) + ' từ</span>' +
     (scoreRationale ? '<p class="report-score-note">' + escapeHtml(scoreRationale) + '</p>' : '') +
