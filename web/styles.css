@@ -3548,6 +3548,17 @@ a {
   .zen-pill {
     display: none;
   }
+  /* Keep practice mode reachable on phones; the icon retains an explicit accessible name. */
+  .exam-sim-pill {
+    display: inline-flex;
+    min-width: 36px;
+    min-height: 36px;
+    justify-content: center;
+    padding: 8px 10px;
+  }
+  .exam-sim-pill span:nth-child(2) {
+    display: none;
+  }
   .page-view {
     padding: 20px 14px;
   }
