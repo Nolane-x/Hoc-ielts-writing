@@ -55,6 +55,16 @@ try {
 
   await page.locator('#exam-mode-toggle').click();
   await page.locator('#app-shell.idp-bc-mode').waitFor({ state: 'visible', timeout: 5000 });
+  const practiceGeometry = await page.evaluate(() => {
+    const prompt = document.querySelector('#prompt-card')?.getBoundingClientRect();
+    const editor = document.querySelector('.canvas-paper-frame')?.getBoundingClientRect();
+    return prompt && editor ? { promptTop: prompt.top, editorTop: editor.top, promptRight: prompt.right, editorLeft: editor.left } : null;
+  });
+  assert.ok(practiceGeometry, 'Practice mode must expose both prompt and writing canvas.');
+  assert.ok(Math.abs(practiceGeometry.promptTop - practiceGeometry.editorTop) <= 80,
+    `Prompt and editor should align in two columns; got ${JSON.stringify(practiceGeometry)}`);
+  assert.ok(practiceGeometry.editorLeft > practiceGeometry.promptRight - 10,
+    `Prompt and editor should remain side by side; got ${JSON.stringify(practiceGeometry)}`);
   await capture(page, '01c-exam-practice-desktop.png');
   await page.locator('#exam-mode-toggle').click();
 
