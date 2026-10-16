@@ -277,6 +277,8 @@ test('saved custom-task deletion requires confirmation and rolls related device 
     'function renderCustomTaskManager()',
     'function openCustomTask(taskId)',
     'function deleteCustomTask(taskId)',
+    'if (customTasks.length >= 30)',
+    'globalThis.crypto?.randomUUID',
     'const approved = confirm(',
     'applyStorageTransaction(localStorage, changes)',
     '[DRAFT_PREFIX + taskId]: null',
