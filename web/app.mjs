@@ -10,6 +10,7 @@ import { buildRecurringErrorPatterns, learnerCriterionSummary, eligibleAIRecords
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { consumeSSEStream } from './sse.mjs';
 import { applyStorageTransaction } from './storage-transaction.mjs';
+import { normaliseCustomTasks, evaluateProactiveReview, buildSpokenSummary } from './companion-policy.mjs';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
 import { PROVIDER_PRESETS, normaliseProviderConfig, requestCompletion, estimateCost } from './providers.mjs';
@@ -35,6 +36,11 @@ const USAGE_KEY = 'wmr-usage-v1';
 const AGENT_ARTIFACTS_KEY = 'wmr-agent-artifacts-v1';
 const AGENT_PRACTICE_ATTEMPTS_KEY = 'wmr-agent-practice-attempts-v1';
 const AGENT_REVISION_PREFIX = 'wmr-agent-revisions-v1:';
+const CUSTOM_TASKS_KEY = 'wmr-custom-tasks-v1';
+const COMPANION_PREFS_KEY = 'wmr-live-companion-v1';
+const EXAM_NOTES_PREFIX = 'wmr-exam-notes-v1:';
+const PROACTIVE_IDLE_MS = 25000;
+const PROACTIVE_COOLDOWN_MS = 120000;
 const KEY_NAME = 'provider-api-key';
 const DEFAULT_SETTINGS = {
   provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: '',
@@ -45,8 +51,13 @@ let settings = { ...DEFAULT_SETTINGS };
 let activeKey = '';
 let latestReport = null;
 let history = [];
+let customTasks = [];
 let tasks = TASKS;
 let currentTask = TASKS[0];
+let companionPrefs = { proactiveReview: false, voiceReminders: false, minChangedCharacters: 100, lastProactiveAt: 0 };
+let proactiveTimer = 0;
+let lastAgentSnapshotDraft = '';
+let liveAnnotationVisible = true;
 let savingTimer = 0;
 let toastTimer = 0;
 let submitting = false;
@@ -71,6 +82,63 @@ let activeReportFilter = 'all';
 let cohesionSelectedOrder = [];
 
 function safeParse(value, fallback) { try { return JSON.parse(value); } catch { return fallback; } }
+function saveCompanionPrefs() {
+  try { localStorage.setItem(COMPANION_PREFS_KEY, JSON.stringify(companionPrefs)); } catch {}
+}
+function loadCompanionPrefs() {
+  const raw = safeParse(localStorage.getItem(COMPANION_PREFS_KEY), {});
+  companionPrefs = {
+    proactiveReview: raw?.proactiveReview === true,
+    voiceReminders: raw?.voiceReminders === true,
+    minChangedCharacters: [100, 180, 280].includes(Number(raw?.minChangedCharacters)) ? Number(raw.minChangedCharacters) : 100,
+    lastProactiveAt: Number.isFinite(Number(raw?.lastProactiveAt)) ? Math.max(0, Number(raw.lastProactiveAt)) : 0
+  };
+}
+function loadCustomTasks() {
+  customTasks = normaliseCustomTasks(safeParse(localStorage.getItem(CUSTOM_TASKS_KEY), []), TASKS);
+  tasks = [...TASKS, ...customTasks];
+}
+function setCompanionStatus(message, bad = false) {
+  const host = $('#companion-status');
+  if (!host) return;
+  host.textContent = message;
+  host.classList.toggle('is-error', Boolean(bad));
+}
+function speakReminder(value) {
+  if (!companionPrefs.voiceReminders) return false;
+  const synth = globalThis.speechSynthesis;
+  const Utterance = globalThis.SpeechSynthesisUtterance;
+  const text = buildSpokenSummary(value, 320);
+  if (!text || !synth || typeof Utterance !== 'function') {
+    setCompanionStatus('Giọng nói chưa được trình duyệt/hệ điều hành hỗ trợ; lời nhắc vẫn hiển thị trên màn hình.');
+    return false;
+  }
+  try {
+    synth.cancel();
+    const utterance = new Utterance(text);
+    utterance.lang = 'vi-VN';
+    utterance.rate = 0.98;
+    utterance.pitch = 1;
+    synth.speak(utterance);
+    return true;
+  } catch {
+    setCompanionStatus('Không thể phát giọng nói trên môi trường hiện tại; lời nhắc vẫn hiển thị.');
+    return false;
+  }
+}
+function setCompanionControlsFromPrefs() {
+  if ($('#proactive-review-toggle')) $('#proactive-review-toggle').checked = companionPrefs.proactiveReview;
+  if ($('#voice-reminder-toggle')) $('#voice-reminder-toggle').checked = companionPrefs.voiceReminders;
+  if ($('#proactive-threshold')) $('#proactive-threshold').value = String(companionPrefs.minChangedCharacters);
+  if (companionPrefs.proactiveReview) {
+    setCompanionStatus(settings.externalAllowed
+      ? 'Đang bật: sau khoảng 25 giây không gõ và đủ nội dung thay đổi, AI có thể kiểm tra. Mỗi lần tự kiểm tra cách nhau ít nhất 2 phút, theo ngân sách provider.'
+      : 'Đã bật theo dõi cục bộ nhưng quyền provider đang tắt. AI chưa tự gửi bài; hãy bật quyền riêng trong Settings để cho phép.');
+  } else {
+    setCompanionStatus('Đang tắt. AI không theo dõi tiến trình và không tự gửi bản nháp.');
+  }
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch]);
 }
