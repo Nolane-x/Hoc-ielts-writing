@@ -97,6 +97,6 @@ test('generated practice prompts are parsed strictly, bounded and pinned to the 
   assert.equal(parsed.prompt.length < 1600, true);
   assert.equal(Object.hasOwn(parsed, 'arbitraryCapability'), false);
   assert.throws(() => parseGeneratedPracticeTask(json, 'shell'), /generated_task_type_invalid/);
-  assert.throws(() => parseGeneratedPracticeTask('{ malformed', 'task2'), /generated_task_json_invalid/);
+  assert.throws(() => parseGeneratedPracticeTask('{ malformed }', 'task2'), /generated_task_json_invalid/);
   assert.throws(() => parseGeneratedPracticeTask(JSON.stringify({ title: 'Tiny', prompt: 'Question?', goal: 'Goal.' }), 'task2'), /generated_task_fields_invalid/);
 });
