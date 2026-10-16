@@ -152,7 +152,7 @@ async function runConfiguredAI(kind, input) {
             { role: 'user', content: 'Current task: ' + String(input.taskPrompt || '').slice(0, 5000) + '\nLearner question: ' + String(input.message || '').slice(0, 4000) + '\nCurrent essay context: ' + String(input.essay || '').slice(0, 12000) }
           ];
     const outputLimit = kind === 'task-generation' ? Math.min(settings.maxOutputTokens, 1000) : settings.maxOutputTokens;
-    const result = await requestCompletion({ config: provider, messages, maxOutputTokens: outputLimit, timeoutMs: 45000 });
+    const result = await requestCompletion({ config: provider, messages, maxOutputTokens: outputLimit, timeoutMs: 45000, signal: input.signal });
     const report = kind === 'assessment' ? normaliseAssessment(result.text, input) : null;
     const generatedTask = kind === 'task-generation' ? parseGeneratedPracticeTask(result.text, input.taskType) : null;
     const answer = kind === 'task-generation' ? JSON.stringify(generatedTask) : result.text;
@@ -311,7 +311,17 @@ async function handle(req, res) {
         message: 'Topic preference: ' + topic + '\\nAdditional learner idea: ' + learnerIdea,
         history: []
       };
-      return json(res, 200, await runConfiguredAI('task-generation', input));
+      const generationController = new AbortController();
+      const abortOnDisconnect = () => {
+        if (!res.writableEnded) generationController.abort();
+      };
+      res.on('close', abortOnDisconnect);
+      input.signal = generationController.signal;
+      try {
+        return json(res, 200, await runConfiguredAI('task-generation', input));
+      } finally {
+        res.off('close', abortOnDisconnect);
+      }
     }
     const input = { taskType: body.taskType, taskPrompt: String(body.taskPrompt || '').slice(0, 5000), essay: String(body.essay || '').slice(0, 20000), message: String(body.message || '').slice(0, 4000), scratchpadNotes: String(body.scratchpadNotes || '').slice(0, 2000), history: normaliseCoachHistory(body.history), learningContext: normaliseAgentLearningContext(body.learningContext), sessionId: String(body.sessionId || '').slice(0, 80) };
     if (url.pathname === '/api/assessment') {
