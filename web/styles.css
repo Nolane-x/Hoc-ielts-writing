@@ -4142,3 +4142,32 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   }
 }
 
+
+
+/* CSP-safe dynamic states use classes, never inline style attributes. */
+.status-error { color: var(--red) !important; }
+.mode-pill.provider-active { background: var(--amber-soft); color: var(--amber); }
+.word-progress-fill { width: 100%; transform-origin: left center; }
+.skill-progress-fill { width: 100%; transform-origin: left center; }
+.radar-empty-note { grid-column: 1 / -1; color: var(--muted); font-size: 12px; line-height: 1.55; margin: 0 0 8px; }
+.word-progress-fill.progress-p0, .skill-progress-fill.progress-p0 { transform: scaleX(0); }
+.word-progress-fill.progress-p5, .skill-progress-fill.progress-p5 { transform: scaleX(0.05); }
+.word-progress-fill.progress-p10, .skill-progress-fill.progress-p10 { transform: scaleX(0.1); }
+.word-progress-fill.progress-p15, .skill-progress-fill.progress-p15 { transform: scaleX(0.15); }
+.word-progress-fill.progress-p20, .skill-progress-fill.progress-p20 { transform: scaleX(0.2); }
+.word-progress-fill.progress-p25, .skill-progress-fill.progress-p25 { transform: scaleX(0.25); }
+.word-progress-fill.progress-p30, .skill-progress-fill.progress-p30 { transform: scaleX(0.3); }
+.word-progress-fill.progress-p35, .skill-progress-fill.progress-p35 { transform: scaleX(0.35); }
+.word-progress-fill.progress-p40, .skill-progress-fill.progress-p40 { transform: scaleX(0.4); }
+.word-progress-fill.progress-p45, .skill-progress-fill.progress-p45 { transform: scaleX(0.45); }
+.word-progress-fill.progress-p50, .skill-progress-fill.progress-p50 { transform: scaleX(0.5); }
+.word-progress-fill.progress-p55, .skill-progress-fill.progress-p55 { transform: scaleX(0.55); }
+.word-progress-fill.progress-p60, .skill-progress-fill.progress-p60 { transform: scaleX(0.6); }
+.word-progress-fill.progress-p65, .skill-progress-fill.progress-p65 { transform: scaleX(0.65); }
+.word-progress-fill.progress-p70, .skill-progress-fill.progress-p70 { transform: scaleX(0.7); }
+.word-progress-fill.progress-p75, .skill-progress-fill.progress-p75 { transform: scaleX(0.75); }
+.word-progress-fill.progress-p80, .skill-progress-fill.progress-p80 { transform: scaleX(0.8); }
+.word-progress-fill.progress-p85, .skill-progress-fill.progress-p85 { transform: scaleX(0.85); }
+.word-progress-fill.progress-p90, .skill-progress-fill.progress-p90 { transform: scaleX(0.9); }
+.word-progress-fill.progress-p95, .skill-progress-fill.progress-p95 { transform: scaleX(0.95); }
+.word-progress-fill.progress-p100, .skill-progress-fill.progress-p100 { transform: scaleX(1); }
