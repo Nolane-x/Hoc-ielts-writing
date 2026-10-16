@@ -10,7 +10,7 @@ import { buildRecurringErrorPatterns, learnerCriterionSummary, eligibleAIRecords
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { consumeSSEStream } from './sse.mjs';
 import { applyStorageTransaction } from './storage-transaction.mjs';
-import { normaliseCustomTasks, evaluateProactiveReview, buildSpokenSummary } from './companion-policy.mjs';
+import { normaliseCustomTasks, evaluateProactiveReview, buildSpokenSummary, parseGeneratedPracticeTask } from './companion-policy.mjs';
 import { TASKS } from './tasks.mjs';
 import { CRITERIA, getCriterionDefinitions, createLocalReport, buildAssessmentMessages, normaliseAssessment } from './assessment.mjs';
 import { PROVIDER_PRESETS, normaliseProviderConfig, requestCompletion, estimateCost } from './providers.mjs';
@@ -437,17 +437,20 @@ function saveCustomTaskFromForm() {
   }
   return ok;
 }
-function parseGeneratedTaskResponse(raw) {
-  const text = String(raw || '').trim().replace(/^\uFEFF/, '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start < 0 || end <= start) throw new Error('AI chưa trả về JSON hợp lệ. Hãy thử tạo đề lại.');
-  const parsed = JSON.parse(text.slice(start, end + 1));
-  const title = typeof parsed.title === 'string' ? parsed.title.trim().slice(0, 120) : '';
-  const prompt = typeof parsed.prompt === 'string' ? parsed.prompt.trim().slice(0, 1600) : '';
-  const goal = typeof parsed.goal === 'string' ? parsed.goal.trim().slice(0, 500) : '';
-  if (title.length < 3 || prompt.length < 40 || !goal) throw new Error('Đề AI tạo chưa đủ rõ; không tự lưu đề không hợp lệ.');
-  return { title, prompt, goal };
+function parseGeneratedTaskResponse(raw, expectedTaskType) {
+  const messages = {
+    generated_task_type_invalid: 'Loại đề được chọn không hợp lệ.',
+    generated_task_json_missing: 'AI chưa trả về một đối tượng JSON cho đề mới.',
+    generated_task_json_invalid: 'Đầu ra AI không phải JSON hợp lệ. Hãy thử tạo đề lại.',
+    generated_task_shape_invalid: 'Đầu ra AI không có cấu trúc đề bài hợp lệ.',
+    generated_task_fields_invalid: 'Đề AI tạo chưa đủ rõ; không tự lưu đề không hợp lệ.'
+  };
+  try {
+    const generated = parseGeneratedPracticeTask(raw, expectedTaskType);
+    return { title: generated.title, prompt: generated.prompt, goal: generated.goal };
+  } catch (error) {
+    throw new Error(messages[error?.message] || 'Không thể xác minh đề AI tạo. Hãy thử lại hoặc nhập đề thủ công.');
+  }
 }
 async function generateCustomTaskWithAI() {
   if (coachBusy || submitting || agentBusy) {
@@ -490,7 +493,7 @@ async function generateCustomTaskWithAI() {
       if (result.aiStatus !== 'ai-complete' || !result.answer) throw new Error(result.message || 'Provider chưa trả về kết quả AI.');
       answer = result.answer;
     }
-    const generated = parseGeneratedTaskResponse(answer);
+    const generated = parseGeneratedTaskResponse(answer, type);
     $('#custom-task-title').value = generated.title;
     $('#custom-task-prompt').value = generated.prompt;
     $('#custom-task-goal').value = generated.goal;
