@@ -59,6 +59,7 @@ let proactiveTimer = 0;
 let lastAgentSnapshotDraft = '';
 let liveAnnotationVisible = true;
 let generatedTaskDraft = false;
+let agentSessionProactive = false;
 let savingTimer = 0;
 let toastTimer = 0;
 let submitting = false;
@@ -987,7 +988,12 @@ async function saveSettings(event) {
     setStatus('#settings-status', 'Đã lưu cài đặt. ' + (settings.externalAllowed ? 'Provider chỉ được gọi khi bạn chủ động nộp bài hoặc gửi câu hỏi.' : 'Chế độ offline đang bật; không gửi nội dung ra ngoài.'));
     fillSettingsForm(); updateProviderStatus();
     setCompanionControlsFromPrefs();
-    if (companionPrefs.proactiveReview && settings.externalAllowed) scheduleProactiveReview(PROACTIVE_IDLE_MS);
+    if (!settings.externalAllowed && agentSessionProactive) {
+      setCompanionStatus('Quyền gửi provider đã tắt; đang yêu cầu hủy lượt Agent tự động hiện tại.');
+      cancelWritingAgent();
+    } else if (companionPrefs.proactiveReview && settings.externalAllowed) {
+      scheduleProactiveReview(PROACTIVE_IDLE_MS);
+    }
     setToast('Cài đặt đã được lưu.');
   } catch (error) { setStatus('#settings-status', 'Không lưu được cài đặt: ' + error.message, true); }
 }
@@ -1467,6 +1473,7 @@ async function runWritingAgent({ proactive = false } = {}) {
     setCompanionStatus('AI đang rà soát bản nháp. Nó sẽ không tự áp dụng thay đổi; bạn có thể hủy phiên hoặc duyệt từng đề xuất.');
   }
   agentBusy = true;
+  agentSessionProactive = proactive;
   agentResultTaskId = taskSnapshot.id;
   agentResultTaskTitle = taskSnapshot.title;
   agentResult = null;
@@ -1539,6 +1546,7 @@ async function runWritingAgent({ proactive = false } = {}) {
     $('#cancel-writing-agent').disabled = false;
     agentCancelRequested = false;
     agentSessionId = '';
+    agentSessionProactive = false;
     if (companionPrefs.proactiveReview) scheduleProactiveReview(PROACTIVE_IDLE_MS);
   }
 }
@@ -2186,6 +2194,10 @@ function attachEvents() {
     if (!companionPrefs.proactiveReview) {
       clearTimeout(proactiveTimer);
       proactiveTimer = 0;
+      if (agentSessionProactive) {
+        setCompanionStatus('Đang tắt theo dõi và yêu cầu hủy lượt Agent tự động hiện tại.');
+        cancelWritingAgent();
+      }
     }
     setCompanionControlsFromPrefs();
     if (companionPrefs.proactiveReview) {
