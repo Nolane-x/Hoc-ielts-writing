@@ -81,3 +81,26 @@ export function buildSpokenSummary(value, maxLength = 320) {
 export function isSafeCustomTaskType(value) {
   return TASK_TYPES.has(value) && BASE_ID.test(value);
 }
+
+
+export function parseGeneratedPracticeTask(raw, expectedTaskType) {
+  if (!TASK_TYPES.has(expectedTaskType)) throw new Error('generated_task_type_invalid');
+  const source = typeof raw === 'string' ? raw.trim().slice(0, 12000).replace(/^\\uFEFF/, '') : '';
+  const unfenced = source.replace(/^\\s*```(?:json)?\\s*/i, '').replace(/\\s*```\\s*$/, '');
+  const start = unfenced.indexOf('{');
+  const end = unfenced.lastIndexOf('}');
+  if (start < 0 || end <= start) throw new Error('generated_task_json_missing');
+  let parsed;
+  try { parsed = JSON.parse(unfenced.slice(start, end + 1)); }
+  catch { throw new Error('generated_task_json_invalid'); }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('generated_task_shape_invalid');
+  const title = bounded(parsed.title, 120);
+  const prompt = bounded(parsed.prompt, 1600);
+  const goal = bounded(parsed.goal, 500);
+  if (title.length < 3 || prompt.length < 40 || !goal) throw new Error('generated_task_fields_invalid');
+  return {
+    title, prompt, goal,
+    taskType: expectedTaskType,
+    provenance: 'ai-generated-unverified'
+  };
+}
