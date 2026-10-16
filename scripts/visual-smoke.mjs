@@ -119,6 +119,26 @@ try {
   await mobilePage.locator('#learn-title').waitFor({ state: 'visible', timeout: 10000 });
   assert.equal(await mobilePage.locator('#sidebar.mobile-open').count(), 0, 'Selecting a mobile page should close the navigation drawer.');
 
+  await mobilePage.locator('button.nav-item[data-page="workspace"]').click();
+  await mobilePage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 10000 });
+  await mobilePage.locator('#exam-mode-toggle').click();
+  const mobilePractice = await mobilePage.evaluate(() => {
+    const prompt = document.querySelector('#prompt-card')?.getBoundingClientRect();
+    const editor = document.querySelector('.canvas-paper-frame')?.getBoundingClientRect();
+    return {
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      promptTop: prompt?.top,
+      editorTop: editor?.top
+    };
+  });
+  viewportChecks.push({ viewport: '390x844-practice', ...mobilePractice });
+  assert.ok(mobilePractice.documentWidth <= mobilePractice.viewportWidth + 8,
+    `Mobile practice mode has horizontal overflow: ${JSON.stringify(mobilePractice)}`);
+  assert.ok(mobilePractice.editorTop > mobilePractice.promptTop,
+    `Practice mode should stack prompt before editor on narrow screens: ${JSON.stringify(mobilePractice)}`);
+  await capture(mobilePage, '08-exam-practice-mobile.png');
+
   assert.deepEqual(browserErrors, [], 'Browser console/runtime errors were detected.');
   await writeFile(path.join(outputDir, 'visual-smoke-manifest.json'), JSON.stringify({
     status: 'passed', version, baseUrl, browser: 'Chromium (Playwright)', screenshots, viewportChecks, browserErrors
