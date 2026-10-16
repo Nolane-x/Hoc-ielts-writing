@@ -554,25 +554,24 @@ function renderReport(report, loading = false) {
       (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
       (item.teachingHint ? '<p><strong>Điều cần hiểu:</strong> ' + escapeHtml(item.teachingHint) + '</p>' : '') +
       '<div class="sentence-surgery-card" aria-label="Mổ xẻ câu văn 3 cấp độ">' +
-      '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán điểm nghẽn</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
-      '<div class="surgery-tier tier-band75"><strong>2 · Nâng cấp Band 7.5+</strong>' + escapeHtml(surgery.band75) + '</div>' +
-      '<div class="surgery-tier tier-band85"><strong>3 · Diễn đạt chuẩn Band 8.5+</strong>' + escapeHtml(surgery.band85) + '</div>' +
-      '</div>' +
-      '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || surgery.band85 || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
+      '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
+      '<div class="surgery-tier tier-band75"><strong>2 · Gợi ý sửa từ phản hồi</strong>' + escapeHtml(surgery.suggestedRevision || 'Phản hồi chưa có câu sửa cụ thể. Không nên tự suy đoán bản sửa khi thiếu bằng chứng.') + '</div>' +
+      '<div class="surgery-tier tier-band85"><strong>3 · Ghi chú học tập</strong>' + escapeHtml(surgery.learningNote) + '</div>' +
+      '</div> +
+      '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
   }).join('') : '<p class="history-empty">' + (issues.length ? 'Không có mục nào thuộc nhóm lọc này.' : report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
   const strengthsHtml = strengths.length ? strengths.map(item => '<div class="strength-item">' + (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') + '<p>' + escapeHtml(item.why || '') + '</p></div>').join('') : '<p class="history-empty">Điểm mạnh sẽ xuất hiện khi AI đưa ra nhận xét cụ thể có trích dẫn khớp bài gốc.</p>';
   const prioritiesHtml = priorities.length ? priorities.map((item, index) => '<div class="priority-item"><span class="priority-number">' + (index + 1) + '</span><div><strong>' + escapeHtml(item.title || 'Bước tiếp theo') + '</strong><p>' + escapeHtml(item.action || '') + '</p></div></div>').join('') : '<p class="history-empty">Chưa đủ dữ liệu để chọn ưu tiên.</p>';
   const academy = getTaskAcademyData(currentTask);
   const learnerParagraphs = String(currentRecord?.essay || $('#essay-editor')?.value || '').trim().split(/\r?\n\s*\r?\n+/).filter(Boolean);
   const parallelHtml = academy?.modelEssay?.paragraphs?.length
-    ? '<section class="panel parallel-model-panel"><div class="report-panel-heading"><div><span class="section-kicker">PARALLEL MODEL ESSAY BENCHMARKING</span><h2>Đối sánh song song với Bài mẫu Band ' + academy.modelEssay.band.toFixed(1) + '+</h2><p>So sánh từng đoạn trong bài của bạn với cấu trúc lập luận và từ vựng học thuật của bài mẫu chuẩn Cambridge.</p></div><span class="count-badge">Band ' + academy.modelEssay.band.toFixed(1) + '+</span></div>' +
+    ? '<section class="panel parallel-model-panel"><div class="report-panel-heading"><div><span class="section-kicker">ILLUSTRATIVE WRITING TEMPLATE</span><h2>Đối sánh với mẫu diễn đạt minh họa</h2><p>So sánh cấu trúc từng đoạn với một khung viết tham khảo. Nội dung mẫu chưa được chấm độc lập, không bảo đảm band IELTS và có thể chứa chỗ giữ chỗ cần tự điền theo đề.</p></div><span class="count-badge">Chưa hiệu chuẩn</span></div>' +
       '<div class="parallel-model-grid">' +
       academy.modelEssay.paragraphs.map((modelPara, idx) =>
         '<div class="parallel-pair-card"><span class="pair-role">Đoạn ' + (idx + 1) + ' của bạn · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(learnerParagraphs[idx] || 'Chưa có đoạn tương ứng trong bản nháp.') + '</p></div>' +
-        '<div class="parallel-pair-card"><span class="pair-role">Bài mẫu Band ' + academy.modelEssay.band.toFixed(1) + '+ · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(modelPara.text) + '</p></div>'
+        '<div class="parallel-pair-card"><span class="pair-role">Mẫu diễn đạt minh họa · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(modelPara.text) + '</p></div>'
       ).join('') +
       '</div></section>'
-    : '';
   container.innerHTML = (loading ? '<div class="report-loading" role="status"><span></span>Đang kiểm tra bài viết và tạo báo cáo. Kết quả cục bộ hiển thị trước; chưa có band AI cho tới khi đánh giá hoàn tất.</div>' : '') +
     '<section class="report-summary"><div><span class="section-kicker">' + escapeHtml(report.taskType || 'IELTS Writing') + ' / ASSESSMENT</span><h2>' + escapeHtml(report.scoreLabel || 'Báo cáo bài viết') + '</h2><p>' + escapeHtml(report.summary || '') + '</p><span class="report-status">' + reportStatus + ' · ' + escapeHtml(report.wordCount ?? countWords($('#essay-editor').value)) + ' từ</span>' +
     (scoreRationale ? '<p class="report-score-note">' + escapeHtml(scoreRationale) + '</p>' : '') +
@@ -625,7 +624,8 @@ function renderLearning() {
 
   const radarChartEl = $('#mastery-radar-chart');
   if (radarChartEl) {
-    radarChartEl.innerHTML = renderMasteryRadarSvg(criterionScores);
+    const hasCriterionEvidence = criterionScores.some(item => Number.isFinite(item.mean) && item.count > 0);
+    radarChartEl.innerHTML = (hasCriterionEvidence ? '' : '<p class="radar-empty-note">Chưa có điểm AI hợp lệ để dựng biểu đồ. Hãy hoàn thành một lượt chấm AI có căn cứ; kiểm tra cục bộ không tạo band.</p>') + renderMasteryRadarSvg(criterionScores);
   }
   const radarLegendEl = $('#mastery-radar-legend');
   if (radarLegendEl) {
@@ -635,7 +635,7 @@ function renderLearning() {
       ['Lexical Resource', scoreById.get('lexical')?.mean ?? null, 'Độ chuẩn xác Collocations C1/C2'],
       ['Grammatical Range & Accuracy', scoreById.get('grammar')?.mean ?? null, 'Độ đa dạng & chuẩn xác cấu trúc câu']
     ].map(([label, val, note]) =>
-      '<div class="radar-legend-card"><span class="mini-label">' + escapeHtml(label) + '</span><strong>' + (Number.isFinite(val) ? val.toFixed(1) : '6.0 (Tham chiếu)') + '</strong><small>' + escapeHtml(note) + '</small></div>'
+      '<div class="radar-legend-card"><span class="mini-label">' + escapeHtml(label) + '</span><strong>' + (Number.isFinite(val) ? val.toFixed(1) : 'Chưa có điểm AI') + '</strong><small>' + escapeHtml(note) + '</small></div>'
     ).join('');
   }
 
