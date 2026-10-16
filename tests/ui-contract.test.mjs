@@ -258,6 +258,11 @@ test('AI-created prompts remain drafts until explicit save/open and stay labelle
   assert.match(app, /if \(!settings\.externalAllowed\)/);
   assert.match(app, /postJson\('\/api\/tasks\/generate', \{ taskType: type, topic, learnerIdea: learnerHint \}\)/);
   assert.doesNotMatch(app, /postJson\('\/api\/tasks\/generate', \{[^}]*essay:/);
+  assert.ok(app.includes('let taskGenerationController = null;'));
+  assert.ok(app.includes('taskGenerationController.abort();'));
+  assert.ok(app.includes("signal: controller.signal }),"));
+  assert.ok(app.includes("$('#custom-task-type')?.addEventListener('change', () => {"));
+  assert.ok(app.includes("parseGeneratedTaskResponse(answer, type)"));
 });
 
 
