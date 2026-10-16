@@ -222,3 +222,37 @@ test('Full-Cycle IELTS Academy WMR 2.0 exposes Idea Lab, IDP/BC Simulator, Socra
   assert.match(app, /evaluateCohesionOrder\(/);
 });
 
+
+
+test('proactive Writing Companion requires explicit opt-in and exposes user-controlled task, annotation and voice flows', () => {
+  for (const id of [
+    'custom-task-panel', 'custom-task-type', 'custom-task-title', 'custom-task-prompt',
+    'custom-task-goal', 'save-custom-task', 'generate-custom-task',
+    'proactive-review-toggle', 'voice-reminder-toggle', 'proactive-threshold',
+    'companion-status', 'live-annotation-panel', 'live-annotation-preview',
+    'live-annotation-list', 'clear-live-annotations', 'exam-notes-input'
+  ]) assert.ok(html.includes('id="' + id + '"'), 'missing companion control #' + id);
+  for (const marker of [
+    'async function generateCustomTaskWithAI()',
+    'if (!settings.externalAllowed)',
+    'evaluateProactiveReview({',
+    'PROACTIVE_COOLDOWN_MS',
+    'scratchpadNotes:',
+    'function renderLiveAnnotationPreview(',
+    'data-live-annotation=',
+    'applyAgentPatches(',
+    'globalThis.speechSynthesis',
+    'changes[CUSTOM_TASKS_KEY]',
+    'changes[EXAM_NOTES_PREFIX + id]'
+  ]) assert.ok(app.includes(marker), 'missing implementation marker: ' + marker);
+  assert.doesNotMatch(app, /getUserMedia|getDisplayMedia|navigator\\.mediaDevices/);
+  assert.match(css, /\\.app-shell\\.idp-bc-mode \\.custom-task-panel/);
+});
+
+test('AI-created prompts remain drafts until explicit save/open and stay labelled unverified', () => {
+  assert.match(app, /provenance: generatedTaskDraft \\? 'ai-generated-unverified' : 'learner-supplied'/);
+  assert.match(app, /Đề AI tạo chưa được kiểm định độc lập/);
+  assert.match(app, /persistCustomTask\\(task, true\\)/);
+  assert.match(app, /if \\(!settings\\.externalAllowed\\)/);
+  assert.match(app, /essay: '', message: question, history: \\[\\]/);
+});
