@@ -59,6 +59,7 @@ let proactiveTimer = 0;
 let lastAgentSnapshotDraft = '';
 let liveAnnotationVisible = true;
 let generatedTaskDraft = false;
+let taskGenerationController = null;
 let agentSessionProactive = false;
 let savingTimer = 0;
 let toastTimer = 0;
@@ -469,6 +470,8 @@ async function generateCustomTaskWithAI() {
     'The prompt is an unvalidated practice task, not an official IELTS question. Return JSON object only.'
   ].join('\n');
   const button = $('#generate-custom-task');
+  const controller = new AbortController();
+  taskGenerationController = controller;
   button.disabled = true;
   const priorLabel = button.textContent;
   button.textContent = 'Đang tạo đề…';
@@ -480,10 +483,10 @@ async function generateCustomTaskWithAI() {
       const result = await nativeCompletion([
         { role: 'system', content: system },
         { role: 'user', content: question }
-      ], question.length, { maxOutputTokens: 1000, timeoutMs: 45000 });
+      ], question.length, { maxOutputTokens: 1000, timeoutMs: 45000, signal: controller.signal });
       answer = result.text;
     } else {
-      const result = await postJson('/api/tasks/generate', { taskType: type, topic, learnerIdea: learnerHint });
+      const result = await postJson('/api/tasks/generate', { taskType: type, topic, learnerIdea: learnerHint }, { signal: controller.signal });
       if (result.aiStatus !== 'ai-complete' || !result.answer) throw new Error(result.message || 'Provider chưa trả về kết quả AI.');
       answer = result.answer;
     }
@@ -496,9 +499,15 @@ async function generateCustomTaskWithAI() {
     setToast('Đã tạo đề nháp chưa kiểm định. Xem lại nội dung rồi tự chọn lưu.');
     $('#custom-task-prompt').focus();
   } catch (error) {
-    setCompanionStatus('Không tạo được đề: ' + String(error?.message || 'Lỗi provider'), true);
-    setToast('Tạo đề thất bại: ' + String(error?.message || 'Lỗi provider'));
+    if (controller.signal.aborted || error?.name === 'AbortError') {
+      setCompanionStatus('Yêu cầu tạo đề đã bị hủy. Không tự lưu đề hoặc áp dụng kết quả.', true);
+      setToast('Đã hủy yêu cầu tạo đề AI.');
+    } else {
+      setCompanionStatus('Không tạo được đề: ' + String(error?.message || 'Lỗi provider'), true);
+      setToast('Tạo đề thất bại: ' + String(error?.message || 'Lỗi provider'));
+    }
   } finally {
+    if (taskGenerationController === controller) taskGenerationController = null;
     button.disabled = false;
     button.textContent = priorLabel;
   }
@@ -647,10 +656,12 @@ function localReview() {
   renderReport(report);
   showPage('report');
 }
-async function postJson(url, data) {
+async function postJson(url, data, options = {}) {
   const response = await fetch(url, {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    credentials: 'omit', cache: 'no-store', redirect: 'error', body: JSON.stringify(data)
+    credentials: 'omit', cache: 'no-store', redirect: 'error',
+    ...(options.signal ? { signal: options.signal } : {}),
+    body: JSON.stringify(data)
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || 'Request failed (' + response.status + ').');
@@ -1064,6 +1075,10 @@ async function saveSettings(event) {
   }
   if (proposed.externalAllowed && !normal.localEndpoint && !(proposed.inputUsdPerMillion > 0 && proposed.outputUsdPerMillion > 0)) {
     setStatus('#settings-status', 'Nhập giá input/output theo bảng giá provider hiện hành trước khi bật request tính phí.', true); return;
+  }
+  if (!proposed.externalAllowed && taskGenerationController) {
+    taskGenerationController.abort();
+    setCompanionStatus('Đã tắt quyền gửi provider; đang hủy yêu cầu tạo đề AI nếu còn hoạt động.');
   }
   settings = { ...DEFAULT_SETTINGS, ...proposed };
   delete settings.apiKey;
@@ -2321,6 +2336,14 @@ function attachEvents() {
   });
   $('#save-custom-task')?.addEventListener('click', saveCustomTaskFromForm);
   $('#generate-custom-task')?.addEventListener('click', generateCustomTaskWithAI);
+  $('#custom-task-type')?.addEventListener('change', () => {
+    if (!generatedTaskDraft) return;
+    generatedTaskDraft = false;
+    $('#custom-task-title').value = '';
+    $('#custom-task-prompt').value = '';
+    $('#custom-task-goal').value = '';
+    setToast('Đã đổi loại Task; bản đề AI trước đó đã được xóa khỏi biểu mẫu để tránh nhầm loại. Hãy tạo lại hoặc nhập đề mới.');
+  });
   $('#custom-task-manager')?.addEventListener('click', event => {
     const openButton = event.target.closest('[data-open-custom-task]');
     if (openButton) { openCustomTask(openButton.dataset.openCustomTask); return; }
