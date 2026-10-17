@@ -101,9 +101,18 @@ try {
   await page.locator('[data-speech-read="prompt"]').click();
   await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
   latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
-  const visiblePrompt = (await page.locator('#task-prompt').innerText()).trim();
+  const visiblePrompt = (await page.locator('#task-prompt').innerText()).replace(/\\s+/g, ' ').trim();
   assert.ok(latestSpeech.text.includes(visiblePrompt.slice(0, Math.min(30, visiblePrompt.length))),
     'Prompt reading should include the visible IELTS task.');
+
+  const originalAgentMarkup = await page.locator('#agent-result').innerHTML();
+  await page.locator('#agent-result').evaluate(element => { element.textContent = 'Mock feedback: develop your main reason with one specific example.'; });
+  await page.locator('[data-speech-read="feedback"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  assert.ok(latestSpeech.text.includes('Mock feedback'), 'Feedback reading should read the visible Agent feedback.');
+  await page.locator('#agent-result').evaluate((element, markup) => { element.innerHTML = markup; }, originalAgentMarkup);
+
   await page.locator('#speech-reader-stop').click();
   await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'stopped');
   await page.locator('#speech-reader-panel').scrollIntoViewIfNeeded();
