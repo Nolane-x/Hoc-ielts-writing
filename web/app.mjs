@@ -144,7 +144,7 @@ function setStatus(selector, message, bad = false) {
   const el = $(selector);
   if (!el) return;
   el.textContent = message;
-  el.style.color = bad ? 'var(--red)' : '';
+  el.classList.toggle('status-error', bad);
 }
 function readDraft(taskId) { return localStorage.getItem(DRAFT_PREFIX + taskId) || ''; }
 function countParagraphs(value) {
@@ -161,6 +161,13 @@ function saveDraft(announce = false) {
   if (announce) setToast('Đã lưu bản nháp trên thiết bị.');
 }
 function countWords(value) { return String(value || '').trim().match(/\b[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)?.length || 0; }
+
+function setProgressClass(element, percent) {
+  const step = Math.max(0, Math.min(100, Math.round(Number(percent || 0) / 5) * 5));
+  for (let value = 0; value <= 100; value += 5) {
+    element.classList.toggle('progress-p' + value, value === step);
+  }
+}
 function updateWordTarget() {
   const type = currentTask?.type || 'task2';
   const target = type === 'task2' ? 250 : 150;
@@ -173,7 +180,7 @@ function updateWordTarget() {
   const fillEl = $('#word-progress-fill');
   if (fillEl) {
     const pct = Math.min(100, Math.round((words / target) * 100));
-    fillEl.style.width = pct + '%';
+    setProgressClass(fillEl, pct);
     fillEl.classList.toggle('target-reached', words >= target);
   }
   const badgeEl = $('#active-task-badge');
@@ -727,11 +734,12 @@ function renderLearning() {
     const mean = summary?.mean ?? null;
     const count = summary?.count ?? 0;
     const percent = mean === null ? 0 : Math.max(0, Math.min(100, mean / 9 * 100));
+    const progressStep = Math.round(percent / 5) * 5;
     const valueLabel = mean === null
       ? (skill.test.length ? 'Chưa đủ bằng chứng AI' : 'Theo dõi qua bài sửa và đề mới')
       : 'Trung bình các lần ước lượng: ' + mean.toFixed(1) + '/9';
     const resultLabel = skill.test.length ? count + ' kết quả AI' : 'Chưa có chỉ số thành thạo';
-    return '<article class="skill-card"><div class="skill-top"><h3>' + escapeHtml(skill.title) + '</h3><span class="skill-tag">' + escapeHtml(skill.tag) + '</span></div><p>' + escapeHtml(skill.description) + '</p><div class="skill-progress"><span style="width:' + percent + '%"></span></div><div class="skill-bottom"><span>' + escapeHtml(valueLabel) + '</span><span>' + escapeHtml(resultLabel) + '</span></div></article>';
+    return '<article class="skill-card"><div class="skill-top"><h3>' + escapeHtml(skill.title) + '</h3><span class="skill-tag">' + escapeHtml(skill.tag) + '</span></div><p>' + escapeHtml(skill.description) + '</p><div class="skill-progress"><span class="skill-progress-fill progress-fill progress-p' + progressStep + '"></span></div><div class="skill-bottom"><span>' + escapeHtml(valueLabel) + '</span><span>' + escapeHtml(resultLabel) + '</span></div></article>';
   }).join('');
 
   $('#history-list').innerHTML = history.length ? history.slice(0, 12).map(record => '<div class="history-row"><div class="history-icon">▥</div><div><strong>' + escapeHtml(record.taskTitle || 'Bài viết') + '</strong><small>' + escapeHtml(new Date(record.at).toLocaleString()) + ' · ' + (record.source === 'ai' ? 'AI formative' : 'Local check') + '</small></div><span class="history-score">' + (Number.isFinite(record.report?.estimatedTaskBand) ? record.report.estimatedTaskBand.toFixed(1) : '—') + '</span><button class="small-link" type="button" data-open-history="' + escapeHtml(record.id) + '">Mở ↗</button></div>').join('') : '<div class="history-empty">Chưa có bài nào được đánh giá. Hãy nộp bài đầu tiên để bắt đầu hồ sơ kỹ năng.</div>';
@@ -776,8 +784,7 @@ async function loadSettings() {
 function updateProviderStatus() {
   const enabled = Boolean(settings.externalAllowed);
   $('#mode-pill').innerHTML = '<span class="status-dot"></span><span>' + (enabled ? 'Provider opt-in' : 'Offline ready') + '</span>';
-  $('#mode-pill').style.background = enabled ? 'var(--amber-soft)' : '';
-  $('#mode-pill').style.color = enabled ? 'var(--amber)' : '';
+  $('#mode-pill').classList.toggle('provider-active', enabled);
   if (NATIVE && settings.provider === 'ollama' || NATIVE && settings.provider === 'lmstudio') {
     setStatus('#settings-status', 'Lưu ý: Android loopback trỏ tới chính thiết bị Android, không phải máy tính chạy Ollama/LM Studio.', true);
   }
