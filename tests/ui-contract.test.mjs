@@ -34,6 +34,27 @@ test('writer, submission status, settings and import controls are present in the
   assert.match(html, /id="import-file"[^>]*accept="\.json,application\/json"/);
 });
 
+test('read-aloud studio exposes accessible local playback controls and is wired to the speech reader', () => {
+  for (const id of [
+    'speech-reader-panel', 'speech-reader-title', 'speech-reader-language',
+    'speech-reader-rate', 'speech-reader-pause', 'speech-reader-resume',
+    'speech-reader-stop', 'speech-reader-status'
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing read-aloud control #' + id);
+  }
+  for (const mode of ['essay', 'prompt', 'selection', 'feedback']) {
+    assert.match(html, new RegExp('data-speech-read="' + mode + '"'));
+  }
+  assert.match(html, /id="speech-reader-status"[^>]*role="status"[^>]*aria-live="polite"/);
+  assert.match(html, /No microphone|không ghi âm microphone/i);
+  assert.match(html, /giọng hệ thống có thể dùng dịch vụ trực tuyến/i);
+  assert.match(app, /import \{ createSpeechReader \} from '\.\/speech-reader\.mjs'/);
+  assert.match(app, /speechReader\.speak\(readAloudTextForMode\(mode\), \{ language, rate \}\)/);
+  assert.match(app, /\$\('#speech-reader-pause'\)\?\.addEventListener\('click'/);
+  assert.match(css, /\.speech-reader-panel/);
+  assert.match(css, /@media \(max-width: 650px\)/);
+});
+
 test('production source uses local assets only and has motion/contrast adaptations', () => {
   assert.doesNotMatch(html, /<script[^>]+src=["']https?:\/\//i);
   assert.doesNotMatch(html, /<link[^>]+href=["']https?:\/\//i);
@@ -47,13 +68,13 @@ test('assessment uses a locked submitted snapshot and backup restore passes thro
   assert.match(app, /const snapshot = \{ task: \{ \.\.\.currentTask \}, essay \}/);
   assert.match(app, /editor\.readOnly = true/);
   assert.match(app, /reportStamp\(report, 'ai', snapshot\)/);
-  assert.match(app, /parseLocalBackup\(await file\.text\(\), TASKS\.map\(task => task\.id\)\)/);
+  assert.match(app, /parseLocalBackup\(await file\.text\(\), tasks\.map\(task => task\.id\)\)/);
   assert.match(app, /localStorage\.removeItem\(COACH_PREFIX \+ task\.id\)/);
 });
 
 
 test('adaptive recommendations remain connected to concrete task selection and learning data', () => {
-  assert.match(app, /buildStudyPlan\(history, TASKS\)/);
+  assert.match(app, /buildStudyPlan\(history, tasks\)/);
   assert.match(app, /data-start-task=/);
   assert.match(app, /\$\('#study-plan'\)\.addEventListener\('click'/);
   assert.match(app, /setToast\('Đã mở đề luyện theo lộ trình:/);
@@ -124,7 +145,7 @@ test('Writing Agent task-bank suggestions are rendered from local results and re
   assert.match(app, /const practiceMatches = Array\.isArray\(result\.practiceMatches\)/);
   assert.match(app, /data-agent-start-task=/);
   assert.match(app, /function openAgentPracticeTask\(taskId\)/);
-  assert.match(app, /TASKS\.find\(item => item\.id === taskId\)/);
+  assert.match(app, /tasks\.find\(item => item\.id === taskId\)/);
   assert.match(app, /hasStructuredOutput/);
   assert.match(app, /Không áp dụng sửa đổi vì WMR chưa thể lưu bản trước để hoàn tác/);
   assert.match(app, /Không thể khôi phục vì chưa lưu được nội dung editor hiện tại/);
@@ -167,6 +188,7 @@ test('micro-practice answers persist locally and the practice journal clearly di
   assert.match(app, /createAgentPracticeAttempt\(/);
   assert.match(app, /agentPracticeAttempts: agentPracticeAttempts\(\)/);
   assert.match(app, /changes\[AGENT_PRACTICE_ATTEMPTS_KEY\] = JSON\.stringify\(backup\.agentPracticeAttempts \|\| \[\]\)/);
+  assert.match(app, /applyStorageTransaction\(localStorage, changes\)/);
   assert.match(app, /feedbackSource: response\?\.source === 'configuration-message'/);
   assert.match(app, /không phải band hay bằng chứng đã thành thạo/i);
   assert.match(app, /Đã xóa lượt luyện khỏi nhật ký cục bộ/);
@@ -223,6 +245,97 @@ test('Full-Cycle IELTS Academy WMR 2.0 exposes Idea Lab, IDP/BC Simulator, Socra
 
 
 
+test('proactive Writing Companion requires explicit opt-in and exposes user-controlled task, annotation and voice flows', () => {
+  for (const id of [
+    'custom-task-panel', 'custom-task-type', 'custom-task-title', 'custom-task-prompt',
+    'custom-task-goal', 'save-custom-task', 'generate-custom-task',
+    'proactive-review-toggle', 'voice-reminder-toggle', 'proactive-threshold',
+    'companion-status', 'live-annotation-panel', 'live-annotation-preview',
+    'live-annotation-list', 'clear-live-annotations', 'exam-notes-input'
+  ]) assert.ok(html.includes('id="' + id + '"'), 'missing companion control #' + id);
+  for (const marker of [
+    'async function generateCustomTaskWithAI()',
+    'if (!settings.externalAllowed)',
+    'evaluateProactiveReview({',
+    'PROACTIVE_COOLDOWN_MS',
+    'scratchpadNotes:',
+    'function renderLiveAnnotationPreview(',
+    'data-live-annotation=',
+    'applyAgentPatches(',
+    'globalThis.speechSynthesis',
+    'changes[CUSTOM_TASKS_KEY]',
+    'changes[EXAM_NOTES_PREFIX + id]'
+  ]) assert.ok(app.includes(marker), 'missing implementation marker: ' + marker);
+  assert.doesNotMatch(app, /getUserMedia|getDisplayMedia|navigator\.mediaDevices/);
+  assert.match(html, /ghi chú riêng của đề hiện tại/);
+  assert.match(html, /Tắt quyền provider sẽ yêu cầu dừng lượt tự động đang chạy/);
+  assert.match(css, /\.app-shell\.idp-bc-mode \.custom-task-panel/);
+});
+
+test('AI-created prompts remain drafts until explicit save/open and stay labelled unverified', () => {
+  assert.match(app, /provenance: generatedTaskDraft \? 'ai-generated-unverified' : 'learner-supplied'/);
+  assert.match(app, /Đề AI tạo chưa được kiểm định độc lập/);
+  assert.match(app, /persistCustomTask\(task, true\)/);
+  assert.match(app, /if \(!settings\.externalAllowed\)/);
+  assert.ok(app.includes("postJson('/api/tasks/generate', { taskType: type, topic, learnerIdea: learnerHint }, { signal: controller.signal })"),
+    'Generation must use the dedicated data-minimized endpoint and pass an abort signal.');
+  assert.doesNotMatch(app, /postJson\('\/api\/tasks\/generate', \{[^}]*essay:/);
+  assert.ok(app.includes('let taskGenerationController = null;'));
+  assert.ok(app.includes('taskGenerationController.abort();'));
+  assert.ok(app.includes("timeoutMs: 45000, signal: controller.signal });"),
+    'Native provider calls must receive the abort signal.');
+  assert.ok(app.includes("{ signal: controller.signal });"),
+    'Web requests must receive the abort signal.');
+  assert.ok(app.includes("$('#custom-task-type')?.addEventListener('change', () => {"));
+  assert.ok(app.includes("parseGeneratedTaskResponse(answer, type)"));
+});
+
+
+test('proactive review never reuses a change timer or baseline across task switches', () => {
+  assert.ok(app.includes("function loadCurrentTask() {\n  clearTimeout(proactiveTimer);\n  proactiveTimer = 0;"),
+    'Switching/reloading a task must cancel a timer created for a different draft.');
+  assert.ok(app.includes('lastAgentSnapshotDraft = readDraft(currentTask.id);'),
+    'Each task must establish its own local draft baseline.');
+  assert.ok(app.includes('if (!settings.externalAllowed && agentSessionProactive)'),
+    'Revoking provider permission must request cancellation of an active automatic review.');
+});
+
+test('custom task navigation preserves the current draft and refuses task changes during AI work', () => {
+  for (const snippet of [
+    'if (agentBusy || coachBusy || submitting)',
+    'if (currentTask?.id !== taskId) saveDraft();',
+    'Không mở đề mới vì chưa lưu được bản nháp hiện tại',
+    'Không xóa đề vì chưa lưu được bản nháp đang mở',
+    'Không lưu được bản nháp hiện tại; đề mới chưa được lưu hoặc mở.'
+  ]) assert.ok(app.includes(snippet), 'missing draft-preservation invariant: ' + snippet);
+});
+
+test('saved custom-task deletion requires confirmation and rolls related device data back on failure', () => {
+  for (const id of ['custom-task-manager', 'custom-task-count']) {
+    assert.ok(html.includes('id="' + id + '"'), 'missing custom task manager mount #' + id);
+  }
+  for (const marker of [
+    'function renderCustomTaskManager()',
+    'function openCustomTask(taskId)',
+    'function deleteCustomTask(taskId)',
+    'if (agentBusy || coachBusy || submitting)',
+    'generationFields.forEach(field => { field.disabled = true; })',
+    'generationFields.forEach(field => { field.disabled = false; })',
+    'if (customTasks.length >= 30)',
+    'globalThis.crypto?.randomUUID',
+    'const approved = confirm(',
+    'applyStorageTransaction(localStorage, changes)',
+    '[DRAFT_PREFIX + taskId]: null',
+    '[COACH_PREFIX + taskId]: null',
+    '[EXAM_NOTES_PREFIX + taskId]: null',
+    '[agentRevisionKey(taskId)]: null',
+    'agentPracticeAttempts().filter(item => item.taskId !== taskId)',
+    'agentSavedArtifacts().filter(item => item.taskId !== taskId)'
+  ]) assert.ok(app.includes(marker), 'missing delete safety marker: ' + marker);
+  assert.ok(app.includes("if (!proactive) $('#agent-task-input').value = message;"),
+    'Automatic review must not replace the learner-authored Agent objective.');
+});
+
 test('native read-aloud controls are accessible, local-only and wired to the speech reader', () => {
   for (const id of ['speech-read', 'speech-pause', 'speech-resume', 'speech-stop', 'speech-rate', 'speech-status']) {
     assert.match(html, new RegExp('id="' + id + '"'), 'missing read-aloud control #' + id);
@@ -236,8 +349,6 @@ test('native read-aloud controls are accessible, local-only and wired to the spe
   assert.match(app, /not a Cambridge|chưa được hiệu chuẩn bằng giám khảo độc lập/i);
 });
 
-
-
 test('application startup binds all navigation controls before exposing the writing workspace', () => {
   assert.match(app, /\$\$\('\[data-page\]'\)\.forEach\(/,
     'Navigation controls must use the multi-element selector helper.');
@@ -246,7 +357,6 @@ test('application startup binds all navigation controls before exposing the writ
   assert.match(app, /function boot\(\)[\s\S]*?attachEvents\(\)/,
     'App boot must attach UI events after initial workspace rendering.');
 });
-
 
 test('computer-delivered exam mode keeps prompt and writing pane in responsive sibling columns', () => {
   assert.ok(html.includes('class="writing-canvas-column"'), 'Writer telemetry, editor and footer must share a pane.');
@@ -272,7 +382,6 @@ test('computer-delivered exam mode keeps prompt and writing pane in responsive s
     'Narrow exam mode must stack the writer without horizontal overflow.');
 });
 
-
 test('learner mastery radar never substitutes reference scores for missing AI evidence', () => {
   const start = app.indexOf("function renderLearning()");
   const end = app.indexOf("\nfunction ", start + 10);
@@ -287,7 +396,6 @@ test('learner mastery radar never substitutes reference scores for missing AI ev
   assert.match(css, /\.radar-empty-note/);
 });
 
-
 test('practice mode remains accessible and visible in the mobile top bar', () => {
   assert.match(html, /id="exam-mode-toggle"[^>]*aria-label="[^"]*(?:practice|luyện thi)[^"]*"/i);
   assert.match(css, /@media \(max-width: 650px\)[\s\S]*?\.zen-pill:not\(\.exam-sim-pill\) \{\s*display: none;/,
@@ -295,7 +403,6 @@ test('practice mode remains accessible and visible in the mobile top bar', () =>
   assert.match(css, /\.exam-sim-pill \{\s*display: inline-flex;/,
     'The practice-mode control must remain visible on small screens.');
 });
-
 
 test('strict CSP-compatible UI states never depend on inline style mutations or style attributes', () => {
   assert.doesNotMatch(app, /\.style\.(?:width|color|background|setProperty)\s*=/,
