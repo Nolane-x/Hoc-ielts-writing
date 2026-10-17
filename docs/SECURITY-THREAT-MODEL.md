@@ -68,3 +68,7 @@ These controls intentionally grant broad agency inside the writing workspace wit
 - Backup restore includes custom tasks and scratchpad notes but does not import provider configuration or API keys.
 - Patch application is unchanged: every edit must match a unique current substring, overlapping edits are rejected, a pre-edit snapshot must be saved, and the learner explicitly approves the edit.
 - These controls do not make model advice inherently correct. Human-rated IELTS quality and platform-specific voice behavior remain manual validation items.
+
+## Read-aloud and speech-engine boundary
+
+The read-aloud UI sanitizes text, redacts common credential-like strings and URLs, bounds playback text to 30,000 characters, and splits it into sequential utterances. WMR does not make a speech-service HTTP request and does not capture microphone input. However, the browser's `SpeechSynthesis` implementation delegates to installed browser/operating-system voices; some voices may use an online service. The app therefore does not promise offline speech on every platform. Users should review their selected voice and operating-system privacy settings when essay confidentiality is important. Text spoken by the OS voice remains untrusted content and does not grant it any new app capability.
