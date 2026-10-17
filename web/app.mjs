@@ -884,6 +884,8 @@ async function runReview(useProvider) {
     button.disabled = false;
     taskSelect.disabled = false;
     editor.readOnly = false;
+    // Keep the page's accessible heading stable; loading status lives inside the report content.
+    $('#report-title').textContent = 'Hồ sơ thẩm định bài viết';
   }
 }
 
