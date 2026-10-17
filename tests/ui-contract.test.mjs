@@ -416,3 +416,15 @@ test('strict CSP-compatible UI states never depend on inline style mutations or 
   assert.match(css, /\.mode-pill\.provider-active\s*\{/);
   assert.match(css, /\.word-progress-fill\.progress-p100,\s*\.skill-progress-fill\.progress-p100\s*\{\s*transform: scaleX\(1\);/);
 });
+
+
+test('report heading returns to its stable accessible name after review completion', () => {
+  assert.match(app, /\$\('#report-title'\)\.textContent = 'Hồ sơ thẩm định bài viết';/);
+  assert.match(app, /report-content[\s\S]*?role="status"/);
+});
+
+
+test('computer-delivered practice footer uses a high-contrast text color in light and dark themes', () => {
+  assert.match(css, /\.app-shell\.idp-bc-mode \.app-footer,\s*\.app-shell\.idp-bc-mode \.app-footer strong \{\s*color: #334155;/);
+  assert.match(css, /html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer,\s*html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer strong \{\s*color: #cbd5e1;/);
+});

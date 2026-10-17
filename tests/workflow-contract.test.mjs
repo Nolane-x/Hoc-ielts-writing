@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [releaseWorkflow, ciWorkflow, packageJson, visualWorkflow, visualSmoke] = await Promise.all([
+const [releaseWorkflow, ciWorkflow, packageJson, visualWorkflow, visualSmoke, app] = await Promise.all([
   readFile(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8'),
   readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8'),
   readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse),
   readFile(new URL('../.github/workflows/visual-smoke.yml', import.meta.url), 'utf8'),
-  readFile(new URL('../scripts/visual-smoke.mjs', import.meta.url), 'utf8')
+  readFile(new URL('../scripts/visual-smoke.mjs', import.meta.url), 'utf8'),
+  readFile(new URL('../web/app.mjs', import.meta.url), 'utf8')
 ]);
 
 test('release workflow waits for all three platform jobs before publishing', () => {
@@ -91,8 +92,22 @@ test('Chromium smoke audits WCAG 2.1 A/AA accessibility on desktop and mobile', 
   assert.match(visualSmoke, /wcag2aa/);
   assert.match(visualSmoke, /wcag21a/);
   assert.match(visualSmoke, /wcag21aa/);
-  assert.match(visualSmoke, /auditAccessibility\(page, 'desktop-writing-workspace'\)/);
-  assert.match(visualSmoke, /auditAccessibility\(mobilePage, 'mobile-writing-workspace-390x844'\)/);
+  for (const flow of [
+    "desktop-writing-workspace",
+    "desktop-report",
+    "desktop-learning-dashboard",
+    "desktop-settings-privacy",
+    "desktop-exam-practice",
+    "mobile-writing-workspace-390x844",
+    "mobile-exam-practice-390x844"
+  ]) assert.ok(visualSmoke.includes("'" + flow + "'"), 'Missing accessibility scan for ' + flow);
   assert.match(visualSmoke, /impact === 'critical' \|\| item\.impact === 'serious'/);
   assert.match(visualSmoke, /accessibilityChecks/);
+});
+
+
+test('report filters expose toggle semantics instead of an incomplete ARIA tablist', () => {
+  assert.match(app, /report-filter-bar\" role=\"group\" aria-label=\"Lọc lỗi theo tiêu chí/);
+  assert.match(app, /aria-pressed=\"' \+ String\(activeReportFilter === key\)/);
+  assert.doesNotMatch(app, /report-filter-bar\" role=\"tablist\"/);
 });
