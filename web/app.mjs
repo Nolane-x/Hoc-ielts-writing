@@ -1753,7 +1753,7 @@ function attachEvents() {
   $('#speech-pause')?.addEventListener('click', () => speechReader.pause());
   $('#speech-resume')?.addEventListener('click', () => speechReader.resume());
   $('#speech-stop')?.addEventListener('click', () => speechReader.stop());
-  $('[data-page]').forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
+  $$('[data-page]').forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
   $('#top-settings').addEventListener('click', () => showPage('settings'));
   $('#mobile-menu').addEventListener('click', () => $('#sidebar').classList.toggle('mobile-open'));
   $('#timer-toggle')?.addEventListener('click', toggleExamTimer);
