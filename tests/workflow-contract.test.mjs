@@ -103,3 +103,10 @@ test('Chromium smoke audits WCAG 2.1 A/AA accessibility on desktop and mobile', 
   assert.match(visualSmoke, /impact === 'critical' \|\| item\.impact === 'serious'/);
   assert.match(visualSmoke, /accessibilityChecks/);
 });
+
+
+test('report filters expose toggle semantics instead of an incomplete ARIA tablist', () => {
+  assert.match(app, /report-filter-bar\" role=\"group\" aria-label=\"Lọc lỗi theo tiêu chí/);
+  assert.match(app, /aria-pressed=\"' \+ String\(activeReportFilter === key\)/);
+  assert.doesNotMatch(app, /report-filter-bar\" role=\"tablist\"/);
+});
