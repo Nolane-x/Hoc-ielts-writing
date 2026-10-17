@@ -3821,12 +3821,14 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 }
 
 .app-shell.idp-bc-mode .app-footer,
+.app-shell.idp-bc-mode .app-footer span,
 .app-shell.idp-bc-mode .app-footer strong {
-  color: #334155;
+  color: #334155 !important;
 }
 html[data-theme="dark"] .app-shell.idp-bc-mode .app-footer,
+html[data-theme="dark"] .app-shell.idp-bc-mode .app-footer span,
 html[data-theme="dark"] .app-shell.idp-bc-mode .app-footer strong {
-  color: #cbd5e1;
+  color: #cbd5e1 !important;
 }
 .app-shell.idp-bc-mode .sidebar,
 .app-shell.idp-bc-mode .workspace-heading,
