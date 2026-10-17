@@ -271,3 +271,18 @@ test('computer-delivered exam mode keeps prompt and writing pane in responsive s
     css.indexOf('grid-column: 1;', mobileWriterRule) > mobileWriterRule,
     'Narrow exam mode must stack the writer without horizontal overflow.');
 });
+
+
+test('learner mastery radar never substitutes reference scores for missing AI evidence', () => {
+  const start = app.indexOf("function renderLearning()");
+  const end = app.indexOf("\nfunction ", start + 10);
+  const learning = app.slice(start, end < 0 ? app.length : end);
+  assert.match(learning, /criterionScores\.some\(item => Number\.isFinite\(item\.mean\) && item\.count > 0\)/,
+    'A radar requires real eligible criterion evidence.');
+  assert.match(learning, /radar-empty-note/,
+    'Learners without an eligible AI score need an explicit empty state.');
+  assert.match(learning, /Number\.isFinite\(val\) \? val\.toFixed\(1\) : 'Chưa có điểm AI'/,
+    'Missing criterion values must not be rendered as an invented 6.0 reference.');
+  assert.doesNotMatch(learning, /6\.0 \(Tham chiếu\)/);
+  assert.match(css, /\.radar-empty-note/);
+});
