@@ -30,6 +30,8 @@ jobs:
         run: npm run build:web
       - name: Install Playwright for CI only
         run: npm install --no-save --package-lock=false playwright axe-core
+      - name: Expose Axe as a loopback-only smoke asset
+        run: cp node_modules/axe-core/axe.min.js dist/axe.min.js
       - name: Install Chromium and system dependencies
         run: npx playwright install --with-deps chromium
       - name: Start isolated loopback app
