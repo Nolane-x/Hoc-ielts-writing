@@ -425,6 +425,6 @@ test('report heading returns to its stable accessible name after review completi
 
 
 test('computer-delivered practice footer uses a high-contrast text color in light and dark themes', () => {
-  assert.match(css, /\.app-shell\.idp-bc-mode \.app-footer \{\s*color: #334155;/);
-  assert.match(css, /html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer \{\s*color: #cbd5e1;/);
+  assert.match(css, /\.app-shell\.idp-bc-mode \.app-footer,\s*\.app-shell\.idp-bc-mode \.app-footer strong \{\s*color: #334155;/);
+  assert.match(css, /html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer,\s*html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer strong \{\s*color: #cbd5e1;/);
 });
