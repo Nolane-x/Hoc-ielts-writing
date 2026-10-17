@@ -89,6 +89,23 @@ try {
   assert.equal(speechEvidence.utterances[0].lang, 'en-GB', 'Auto-detect should select British English for an English essay.');
   assert.ok(speechEvidence.pauses > 0 && speechEvidence.resumes > 0 && speechEvidence.cancels > 0,
     'Pause, resume and stop should call the speech API controls.');
+
+  await page.locator('#essay-editor').evaluate(editor => {
+    editor.focus();
+    editor.setSelectionRange(0, 25);
+  });
+  await page.locator('[data-speech-read="selection"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  let latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  assert.ok(latestSpeech.text.includes('The first draft'), 'Selected-text reading should speak only the current editor selection.');
+  await page.locator('[data-speech-read="prompt"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  const visiblePrompt = (await page.locator('#task-prompt').innerText()).trim();
+  assert.ok(latestSpeech.text.includes(visiblePrompt.slice(0, Math.min(30, visiblePrompt.length))),
+    'Prompt reading should include the visible IELTS task.');
+  await page.locator('#speech-reader-stop').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'stopped');
   await page.locator('#speech-reader-panel').scrollIntoViewIfNeeded();
   await capture(page, '01e-speech-reader-desktop.png');
   await page.locator('#essay-editor').fill('');
