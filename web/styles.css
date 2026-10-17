@@ -22,7 +22,7 @@
   --ink: #0f172a;
   --ink-secondary: #334155;
   --muted: #64748b;
-  --muted-light: #94a3b8;
+  --muted-light: #64748b;
   --line: #e2e8f0;
   --line-strong: #cbd5e1;
 
@@ -34,13 +34,13 @@
   --accent-glow: rgba(79, 70, 229, 0.18);
 
   /* Semantic Status Tokens */
-  --green: #059669;
+  --green: #047857;
   --green-soft: #ecfdf5;
   --green-border: #a7f3d0;
-  --amber: #d97706;
+  --amber: #92400e;
   --amber-soft: #fffbeb;
   --amber-border: #fde68a;
-  --red: #e11d48;
+  --red: #be123c;
   --red-soft: #fff1f2;
   --red-border: #fecdd3;
   --danger: #e11d48;
@@ -69,7 +69,7 @@
   --ink: #f8fafc;
   --ink-secondary: #cbd5e1;
   --muted: #94a3b8;
-  --muted-light: #64748b;
+  --muted-light: #94a3b8;
   --line: #1e293b;
   --line-strong: #334155;
 
@@ -292,6 +292,10 @@ a {
   font-weight: 700;
 }
 
+.nav-item.active .nav-sub {
+  color: var(--accent-dark);
+}
+
 .nav-sub {
   font-size: 10px;
   color: var(--muted);
@@ -482,7 +486,7 @@ a {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: var(--muted);
+  color: var(--ink-secondary);
 }
 
 #timer-display {
