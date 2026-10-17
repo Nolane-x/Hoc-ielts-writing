@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add a full local read-aloud studio for listening to the current essay, IELTS prompt, selected passage or visible feedback.
+- Support pause/resume/stop, automatic or explicit British English/American English/Vietnamese voice locale, and adjustable playback speed.
+- Split long reads into bounded sequential utterances, redact URLs and credential-like strings, and disclose unsupported speech environments without claiming playback started.
+- Add unit and headless browser coverage for speech lifecycle, selected text, task prompt and responsive controls.
+
 ## 1.7.0 — Production hardening and Academy integrity
 
 - Fix Writing Agent server-sent-event framing and use a bounded client parser with protocol-level tests.
