@@ -5,8 +5,8 @@ import { formatSseEvent, isStartupTokenValid, isJsonContentType, normaliseCoachH
 
 
 test('Writing Agent events use real SSE line breaks and sanitize event names', () => {
-  assert.equal(formatSseEvent('progress', { phase: 'thinking' }), 'event: progress\\ndata: {"phase":"thinking"}\\n\\n'.replace(/\\\\n/g, '\\n'));
-  assert.equal(formatSseEvent('progress\\ninjected', { ok: true }), 'event: progressinjected\\ndata: {"ok":true}\\n\\n'.replace(/\\\\n/g, '\\n'));
+  assert.equal(formatSseEvent('progress', { phase: 'thinking' }), 'event: progress\ndata: {"phase":"thinking"}\n\n');
+  assert.equal(formatSseEvent('progress\ninjected', { ok: true }), 'event: progressinjected\ndata: {"ok":true}\n\n');
   assert.throws(() => formatSseEvent('', {}), /event name is required/);
 });
 
