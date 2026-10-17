@@ -77,7 +77,7 @@ test('Chromium smoke exercises the local Read Aloud playback lifecycle with a fa
   }
   assert.match(visualSmoke, /data-speech-read=.*essay/,
     'Visual smoke must exercise read-aloud playback for the essay.');
-  for (const state of ['pauseCount', 'resumeCount', 'cancelCount']) {
+  for (const state of ['pauses', 'resumes', 'cancels']) {
     assert.ok(visualSmoke.includes(state), 'visual smoke must verify speech lifecycle: ' + state);
   }
 });
