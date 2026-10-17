@@ -9,7 +9,7 @@
     "dev": "vite --host 127.0.0.1",
     "start": "node server/index.mjs",
     "test": "node --test",
-    "check": "node --check server/index.mjs && node --check web/app.mjs && node --check web/sse.mjs && node --check web/storage-transaction.mjs && node --check web/writing-agent.mjs && node --check web/agent-practice.mjs && node --check web/companion-policy.mjs && node --check web/local-data.mjs && node --check web/academy-studio.mjs && node --check scripts/evaluate-benchmark.mjs && node --test",
+    "check": "node --check server/index.mjs && node --check web/app.mjs && node --check web/sse.mjs && node --check web/storage-transaction.mjs && node --check web/writing-agent.mjs && node --check web/agent-practice.mjs && node --check web/companion-policy.mjs && node --check web/speech-reader.mjs && node --check web/local-data.mjs && node --check web/academy-studio.mjs && node --check scripts/evaluate-benchmark.mjs && node --test",
     "build:web": "vite build",
     "dist:desktop": "npm run build:web && electron-builder",
     "mobile:sync": "npm run build:web && cap sync android",
