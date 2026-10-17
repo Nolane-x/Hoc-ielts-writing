@@ -34,6 +34,26 @@ test('writer, submission status, settings and import controls are present in the
   assert.match(html, /id="import-file"[^>]*accept="\.json,application\/json"/);
 });
 
+test('read-aloud studio exposes accessible local playback controls and is wired to the speech reader', () => {
+  for (const id of [
+    'speech-reader-panel', 'speech-reader-title', 'speech-reader-language',
+    'speech-reader-rate', 'speech-reader-pause', 'speech-reader-resume',
+    'speech-reader-stop', 'speech-reader-status'
+  ]) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing read-aloud control #' + id);
+  }
+  for (const mode of ['essay', 'prompt', 'selection', 'feedback']) {
+    assert.match(html, new RegExp('data-speech-read="' + mode + '"'));
+  }
+  assert.match(html, /id="speech-reader-status"[^>]*role="status"[^>]*aria-live="polite"/);
+  assert.match(html, /No microphone|không ghi âm microphone/i);
+  assert.match(app, /import \{ createSpeechReader \} from '\.\/speech-reader\.mjs'/);
+  assert.match(app, /speechReader\.speak\(readAloudTextForMode\(mode\), \{ language, rate \}\)/);
+  assert.match(app, /\$\('#speech-reader-pause'\)\?\.addEventListener\('click'/);
+  assert.match(css, /\.speech-reader-panel/);
+  assert.match(css, /@media \(max-width: 650px\)/);
+});
+
 test('production source uses local assets only and has motion/contrast adaptations', () => {
   assert.doesNotMatch(html, /<script[^>]+src=["']https?:\/\//i);
   assert.doesNotMatch(html, /<link[^>]+href=["']https?:\/\//i);
