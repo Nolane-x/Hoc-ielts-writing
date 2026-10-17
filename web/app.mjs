@@ -945,7 +945,7 @@ function renderReport(report, loading = false) {
     return cat === activeReportFilter;
   });
   const filterBarHtml = issues.length
-    ? '<div class="report-filter-bar" role="tablist" aria-label="Lọc lỗi theo tiêu chí">' +
+    ? '<div class="report-filter-bar" role="group" aria-label="Lọc lỗi theo tiêu chí">' +
       [
         ['all', 'Tất cả (' + issues.length + ')'],
         ['task', report.taskType === 'task2' ? 'Task Response' : 'Task Achievement'],
@@ -953,7 +953,7 @@ function renderReport(report, loading = false) {
         ['lexical', 'Từ vựng (LR)'],
         ['grammar', 'Ngữ pháp (GRA)']
       ].map(([key, label]) =>
-        '<button type="button" class="filter-chip' + (activeReportFilter === key ? ' active' : '') + '" data-report-filter="' + key + '">' + escapeHtml(label) + '</button>'
+        '<button type="button" class="filter-chip' + (activeReportFilter === key ? ' active' : '') + '" aria-pressed="' + String(activeReportFilter === key) + '" data-report-filter="' + key + '">' + escapeHtml(label) + '</button>'
       ).join('') +
       '</div>'
     : '';
