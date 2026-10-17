@@ -545,6 +545,8 @@ a {
   color: var(--accent-dark);
 }
 
+.status-error { color: var(--red) !important; }
+
 .mode-pill {
   display: inline-flex;
   gap: 7px;
@@ -556,6 +558,11 @@ a {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
+}
+
+.mode-pill.provider-active {
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 
 .icon-button,
@@ -971,12 +978,44 @@ a {
   width: 0%;
   background: linear-gradient(90deg, var(--accent), #818cf8);
   border-radius: 999px;
-  transition: width 0.25s ease, background 0.25s ease;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+.word-progress-fill.progress-fill {
+  width: 100%;
+}
+.progress-fill {
+  display: block;
+  width: 100%;
+  transform-origin: left center;
+  transition: transform 0.25s ease;
 }
 
 .word-progress-fill.target-reached {
   background: linear-gradient(90deg, var(--green), #10b981);
 }
+
+.progress-fill.progress-p0 { transform: scaleX(0); }
+.progress-p0 { transform: scaleX(0); }
+.progress-p5 { transform: scaleX(0.05); }
+.progress-p10 { transform: scaleX(0.1); }
+.progress-p15 { transform: scaleX(0.15); }
+.progress-p20 { transform: scaleX(0.2); }
+.progress-p25 { transform: scaleX(0.25); }
+.progress-p30 { transform: scaleX(0.3); }
+.progress-p35 { transform: scaleX(0.35); }
+.progress-p40 { transform: scaleX(0.4); }
+.progress-p45 { transform: scaleX(0.45); }
+.progress-p50 { transform: scaleX(0.5); }
+.progress-p55 { transform: scaleX(0.55); }
+.progress-p60 { transform: scaleX(0.6); }
+.progress-p65 { transform: scaleX(0.65); }
+.progress-p70 { transform: scaleX(0.7); }
+.progress-p75 { transform: scaleX(0.75); }
+.progress-p80 { transform: scaleX(0.8); }
+.progress-p85 { transform: scaleX(0.85); }
+.progress-p90 { transform: scaleX(0.9); }
+.progress-p95 { transform: scaleX(0.95); }
+.progress-p100 { transform: scaleX(1); }
 
 /* The Scholar's Manuscript Canvas */
 .canvas-paper-frame {
