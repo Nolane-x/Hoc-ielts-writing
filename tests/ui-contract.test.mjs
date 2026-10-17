@@ -246,3 +246,15 @@ test('application startup binds all navigation controls before exposing the writ
   assert.match(app, /function boot\(\)[\s\S]*?attachEvents\(\)/,
     'App boot must attach UI events after initial workspace rendering.');
 });
+
+
+test('computer-delivered exam mode keeps prompt and writing pane in responsive sibling columns', () => {
+  assert.match(html, /class="writing-canvas-column"/, 'Writer telemetry, editor and footer must share a pane.');
+  assert.match(html, /class="writing-canvas-column"[\\s\\S]*?class="editor-telemetry"[\\s\\S]*?class="canvas-paper-frame"[\\s\\S]*?class="editor-footer"/,
+    'The writing pane must group status, writing surface and footer in reading order.');
+  assert.match(css, /\\.app-shell\\.idp-bc-mode \\.prompt-card \\{\\s*grid-column:\\s*1;/);
+  assert.match(css, /\\.app-shell\\.idp-bc-mode \\.writing-canvas-column \\{\\s*grid-column:\\s*2;/,
+    'Desktop exam mode must place the writer beside the prompt.');
+  assert.match(css, /@media \\(max-width: 820px\\)[\\s\\S]*?\\.app-shell\\.idp-bc-mode \\.writing-canvas-column \\{\\s*grid-column:\\s*1;/,
+    'Narrow exam mode must stack the writer without horizontal overflow.');
+});
