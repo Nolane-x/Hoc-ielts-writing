@@ -221,3 +221,18 @@ test('Full-Cycle IELTS Academy WMR 2.0 exposes Idea Lab, IDP/BC Simulator, Socra
   assert.match(app, /evaluateCohesionOrder\(/);
 });
 
+
+
+test('native read-aloud controls are accessible, local-only and wired to the speech reader', () => {
+  for (const id of ['speech-read', 'speech-pause', 'speech-resume', 'speech-stop', 'speech-rate', 'speech-status']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing read-aloud control #' + id);
+  }
+  assert.match(html, /aria-live="polite"/);
+  assert.match(app, /createSpeechReader/);
+  assert.match(app, /resolveSpeechText/);
+  assert.match(app, /speechReader\.pause\(\)/);
+  assert.match(app, /speechReader\.resume\(\)/);
+  assert.match(app, /speechReader\.stop\(\)/);
+  assert.match(app, /not a Cambridge|chưa được hiệu chuẩn bằng giám khảo độc lập/i);
+});
+

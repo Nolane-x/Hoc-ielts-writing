@@ -71,18 +71,28 @@ function currentUsage() {
   if (usage.date !== today) usage = { date: today, calls: 0, estimatedUsd: 0 };
   return usage;
 }
-function validateOrigin(req) {
-  const host = String(req.headers.host || '').toLowerCase();
+export function validateOrigin(req) {
+  const host = String(req?.headers?.host || '').trim().toLowerCase();
+  if (!host || /[\/\\@?#\s]/.test(host)) return false;
   const hostname = host.startsWith('[') ? host.slice(1, host.indexOf(']')) : host.split(':')[0];
   if (!LOOPBACK.has(hostname)) return false;
-  if (!req.headers.origin) return true;
+  const originHeader = req?.headers?.origin;
+  // All browser mutation requests must carry a same-origin Origin header. Missing
+  // Origin is not treated as proof of trust for settings, keys or AI invocation.
+  if (typeof originHeader !== 'string' || !originHeader.trim()) return false;
   try {
-    const origin = new URL(req.headers.origin);
-    return LOOPBACK.has(origin.hostname.toLowerCase()) && origin.host.toLowerCase() === host;
+    const origin = new URL(originHeader);
+    const originHostname = origin.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    return origin.protocol === 'http:' &&
+      LOOPBACK.has(originHostname) &&
+      origin.host.toLowerCase() === host;
   } catch { return false; }
 }
+export function isJsonContentType(value) {
+  return /^application\/json(?:\s*;|$)/i.test(String(value || '').trim());
+}
 async function readJson(req) {
-  if (!String(req.headers['content-type'] || '').toLowerCase().startsWith('application/json')) throw httpError(415, 'Content-Type must be application/json.');
+  if (!isJsonContentType(req.headers['content-type'])) throw httpError(415, 'Content-Type must be application/json.');
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
@@ -99,6 +109,11 @@ function json(res, status, payload) {
   res.end(text);
 }
 function httpError(status, message) { const error = new Error(message); error.status = status; return error; }
+export function formatSseEvent(type, payload) {
+  const event = String(type || '').replace(/[\r\n]/g, '');
+  if (!event) throw new TypeError('SSE event name is required.');
+  return 'event: ' + event + '\ndata: ' + JSON.stringify(payload) + '\n\n';
+}
 
 export function isStartupTokenValid(presented, expected = STARTUP_TOKEN) {
   if (!expected) return true;
@@ -195,7 +210,7 @@ async function handleWritingAgentStream(req, res, input) {
   const sendEvent = (type, payload) => {
     if (res.writableEnded || res.destroyed) return;
     try {
-      res.write('event: ' + type + '\\ndata: ' + JSON.stringify(payload) + '\\n\\n');
+      res.write(formatSseEvent(type, payload));
     } catch {
       controller.abort();
     }

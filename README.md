@@ -1,6 +1,14 @@
-# WMR Writing Mentor 1.4.0
+# WMR Writing Mentor 1.7.0
 
 WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking learners. It combines an essay editor, a guided 21-task practice bank, an optional multi-provider AI mentor, formative four-criterion feedback, private learning history and validated backup/restore.
+
+## Highlights in 1.7.0
+
+- **Native read-aloud.** The workspace can read selected text or the primary content of the current page aloud using the speech engine already provided by the browser or device. Playback supports pause, resume, stop and bounded speed choices. Text stays on-device; available languages and voices depend on the operating system and Web Speech implementation.
+- **Task-specific Academy content.** All 21 practice tasks now have targeted topic guidance, traps, collocations, sample passages and a context-specific collocation exercise. Academic Task 1 examples are aligned with the supplied line chart, bar chart, table, pie charts, map or process; General Training examples follow the requested letter purpose and tone.
+- **Honest model-example labels.** Internal examples are labelled as uncalibrated learning material, not official Cambridge content or verified Band 8.5+ samples. WMR makes no calibration claim without an independently human-rated corpus.
+- **Stricter local API request checks.** State-changing routes require an exact HTTP loopback Origin, and the JSON media-type check rejects lookalike content types.
+- **Regression coverage.** Tests cover the speech playback lifecycle, task-specific Academy content, uncalibrated-example metadata, strict request-origin checks and JSON content-type handling.
 
 ## Highlights in 1.4.0
 

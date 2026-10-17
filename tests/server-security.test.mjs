@@ -1,6 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isStartupTokenValid, normaliseCoachHistory, sanitiseSettings } from '../server/index.mjs';
+import { formatSseEvent, isStartupTokenValid, isJsonContentType, normaliseCoachHistory, sanitiseSettings, validateOrigin } from '../server/index.mjs';
+
+
+
+test('Writing Agent events use real SSE line breaks and sanitize event names', () => {
+  assert.equal(formatSseEvent('progress', { phase: 'thinking' }), 'event: progress\ndata: {"phase":"thinking"}\n\n');
+  assert.equal(formatSseEvent('progress\ninjected', { ok: true }), 'event: progressinjected\ndata: {"ok":true}\n\n');
+  assert.throws(() => formatSseEvent('', {}), /event name is required/);
+});
+
+test('state-changing API requests require an exact HTTP loopback Origin and a loopback Host', () => {
+  assert.equal(validateOrigin({ headers: { host: '127.0.0.1:4179', origin: 'http://127.0.0.1:4179' } }), true);
+  assert.equal(validateOrigin({ headers: { host: 'localhost:4179', origin: 'http://localhost:4179' } }), true);
+  assert.equal(validateOrigin({ headers: { host: '127.0.0.1:4179' } }), false);
+  assert.equal(validateOrigin({ headers: { host: '127.0.0.1:4179', origin: 'null' } }), false);
+  assert.equal(validateOrigin({ headers: { host: '127.0.0.1:4179', origin: 'https://127.0.0.1:4179' } }), false);
+  assert.equal(validateOrigin({ headers: { host: '127.0.0.1:4179', origin: 'http://127.0.0.1:4180' } }), false);
+  assert.equal(validateOrigin({ headers: { host: 'attacker.example', origin: 'http://attacker.example' } }), false);
+});
+
+test('JSON request content type rejects lookalike media types', () => {
+  assert.equal(isJsonContentType('application/json'), true);
+  assert.equal(isJsonContentType('application/json; charset=utf-8'), true);
+  assert.equal(isJsonContentType('Application/JSON'), true);
+  assert.equal(isJsonContentType('application/jsonp'), false);
+  assert.equal(isJsonContentType('text/plain'), false);
+  assert.equal(isJsonContentType(''), false);
+});
 
 test('settings are bounded and invalid provider ids cannot enable arbitrary providers', () => {
   const settings = sanitiseSettings({ provider: 'not-real', model: 'x'.repeat(1000), maxDailyCalls: 999999, dailyBudgetUsd: 999999 });

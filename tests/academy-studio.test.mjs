@@ -10,7 +10,7 @@ import {
   evaluateCohesionOrder
 } from '../web/academy-studio.mjs';
 
-test('getTaskAcademyData enriches every bundled task with deconstruction, C1/C2 collocations, Band 8.5+ model essay and interactive drills', () => {
+test('every bundled task has a bounded Academy profile, interactive drills and an explicitly uncalibrated sample', () => {
   for (const task of TASKS) {
     const data = getTaskAcademyData(task);
     assert.ok(data.topic && data.topic.length > 3, `missing topic for ${task.id}`);
@@ -20,11 +20,39 @@ test('getTaskAcademyData enriches every bundled task with deconstruction, C1/C2 
     for (const item of data.collocations) {
       assert.ok(item.phrase && item.meaning, `invalid collocation item for ${task.id}`);
     }
-    assert.ok(data.modelEssay && data.modelEssay.band >= 8.5, `missing Band 8.5+ model essay for ${task.id}`);
-    assert.ok(Array.isArray(data.modelEssay.paragraphs) && data.modelEssay.paragraphs.length >= 3, `model essay needs paragraphs for ${task.id}`);
+    assert.ok(data.modelEssay && data.modelEssay.label === 'Bài mẫu tham khảo', `missing honest sample label for ${task.id}`);
+    assert.equal(data.modelEssay.band, undefined, `must not claim an unverified band for ${task.id}`);
+    assert.equal(data.modelEssay.calibration, 'not-calibrated-against-independent-human-rated-corpus');
+    assert.ok(Array.isArray(data.modelEssay.paragraphs) && data.modelEssay.paragraphs.length >= 3, `model sample needs paragraphs for ${task.id}`);
     assert.ok(data.collocationDrill && Array.isArray(data.collocationDrill.options) && data.collocationDrill.options.length === 4);
+    assert.ok(Number.isInteger(data.collocationDrill.answerIndex) && data.collocationDrill.answerIndex >= 0 && data.collocationDrill.answerIndex < 4);
     assert.ok(data.cohesionPuzzle && Array.isArray(data.cohesionPuzzle.items) && data.cohesionPuzzle.items.length === 4);
+    assert.ok(data.cohesionPuzzle.correctOrder.length === 4);
   }
+});
+
+test('Academic Task 1 samples use the selected task data instead of one generic renewable-energy fallback', () => {
+  const taskData = id => getTaskAcademyData(TASKS.find(task => task.id === id));
+  const line = taskData('task1-line').modelEssay.paragraphs.map(item => item.text).join(' ');
+  const map = taskData('task1-map').modelEssay.paragraphs.map(item => item.text).join(' ');
+  const process = taskData('task1-process').modelEssay.paragraphs.map(item => item.text).join(' ');
+  const pie = taskData('task1-pie').modelEssay.paragraphs.map(item => item.text).join(' ');
+  assert.match(line, /Country A/);
+  assert.match(map, /warehouse/);
+  assert.match(process, /pulp/);
+  assert.match(pie, /housing/i);
+  assert.doesNotMatch(map, /renewable share|electricity generated from renewable sources/i);
+  assert.doesNotMatch(process, /renewable share|electricity generated from renewable sources/i);
+});
+
+test('General Training letter models match their purpose and audience', () => {
+  const taskData = id => getTaskAcademyData(TASKS.find(task => task.id === id));
+  const friend = taskData('task1-friend').modelEssay.paragraphs.map(item => item.text).join(' ');
+  const apology = taskData('task1-apology').modelEssay.paragraphs.map(item => item.text).join(' ');
+  const request = taskData('task1-request').modelEssay.paragraphs.map(item => item.text).join(' ');
+  assert.match(friend, /inviting me|arrive on Friday|bring/i);
+  assert.match(apology, /apology|responsibility|replacement/i);
+  assert.match(request, /Course Manager|classroom|quieter room/i);
 });
 
 test('formatOutlineForEditor builds a non-destructive 4-stage outline scaffold', () => {
@@ -41,7 +69,7 @@ test('formatOutlineForEditor builds a non-destructive 4-stage outline scaffold',
   assert.match(result, /Existing essay paragraph here\./);
 });
 
-test('buildSentenceSurgery produces 3-tier diagnosis, Band 7.5 upgrade and Band 8.5+ formulation', () => {
+test('buildSentenceSurgery provides a diagnosis and two rewrites without claiming a validated band', () => {
   const surgery = buildSentenceSurgery({
     category: 'lexical',
     quote: 'Government should do many things to solve traffic problem.',

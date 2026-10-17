@@ -4142,3 +4142,99 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   }
 }
 
+
+
+/* ==========================================================================
+   WMR 1.7 · Native read-aloud controls
+   ========================================================================== */
+.speech-dock {
+  display: grid;
+  grid-template-columns: minmax(190px, .7fr) minmax(360px, 1.3fr);
+  gap: 10px 18px;
+  align-items: center;
+  margin: 12px 24px 18px;
+  padding: 14px 16px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+.speech-dock-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.speech-dock-copy strong { color: var(--ink); font-size: 14px; }
+.speech-dock-copy > span:last-child {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.speech-dock-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.speech-action {
+  min-height: 34px;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.speech-dock-controls button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+.speech-rate-label {
+  margin-left: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+#speech-rate {
+  min-height: 34px;
+  min-width: 66px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 5px 7px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+}
+.speech-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.speech-status[data-state="error"],
+.speech-status[data-state="unsupported"] { color: var(--danger); }
+.speech-status[data-state="speaking"] { color: var(--accent-dark); }
+.speech-dock button:focus-visible,
+#speech-rate:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 850px) {
+  .speech-dock { grid-template-columns: 1fr; margin: 10px 12px 14px; }
+  .speech-dock-controls { justify-content: flex-start; }
+  .speech-status { grid-column: 1; }
+}
+@media (max-width: 480px) {
+  .speech-dock { padding: 12px; }
+  .speech-action { flex: 1 1 auto; }
+}
+@media (forced-colors: active) {
+  .speech-dock { border: 1px solid CanvasText; }
+  .speech-dock button:focus-visible,
+  #speech-rate:focus-visible { outline: 2px solid Highlight; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .speech-dock * { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+}
+
+
+@media print {
+  .speech-dock { display: none !important; }
+}
