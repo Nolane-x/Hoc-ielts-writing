@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [releaseWorkflow, ciWorkflow, packageJson, visualWorkflow, visualSmoke] = await Promise.all([
+const [releaseWorkflow, ciWorkflow, packageJson, visualWorkflow, visualSmoke, app] = await Promise.all([
   readFile(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8'),
   readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8'),
   readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse),
   readFile(new URL('../.github/workflows/visual-smoke.yml', import.meta.url), 'utf8'),
-  readFile(new URL('../scripts/visual-smoke.mjs', import.meta.url), 'utf8')
+  readFile(new URL('../scripts/visual-smoke.mjs', import.meta.url), 'utf8'),
+  readFile(new URL('../web/app.mjs', import.meta.url), 'utf8')
 ]);
 
 test('release workflow waits for all three platform jobs before publishing', () => {
