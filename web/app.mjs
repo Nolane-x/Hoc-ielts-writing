@@ -2422,7 +2422,7 @@ function attachEvents() {
       if (!spoke) setCompanionStatus('Lời nhắc bằng giọng nói đã bật, nhưng trình duyệt hiện tại có thể không hỗ trợ đọc thành tiếng.');
     }
   });
-  $('[data-speech-read]').forEach(button => button.addEventListener('click', () => {
+  $$('[data-speech-read]').forEach(button => button.addEventListener('click', () => {
     const mode = button.dataset.speechRead;
     const language = $('#speech-reader-language')?.value || 'auto';
     const rate = Number($('#speech-reader-rate')?.value || 1);
