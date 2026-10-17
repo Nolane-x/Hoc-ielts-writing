@@ -3819,6 +3819,13 @@ html[data-theme="dark"] mark.exam-mark {
 html[data-theme="dark"] .app-shell.idp-bc-mode {
   background: #111827;
 }
+
+.app-shell.idp-bc-mode .app-footer {
+  color: #334155;
+}
+html[data-theme="dark"] .app-shell.idp-bc-mode .app-footer {
+  color: #cbd5e1;
+}
 .app-shell.idp-bc-mode .sidebar,
 .app-shell.idp-bc-mode .workspace-heading,
 .app-shell.idp-bc-mode .copilot-dock,
@@ -4138,13 +4145,7 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   }
   .app-shell.idp-bc-mode .prompt-card,
   .app-shell.idp-bc-mode .editor-telemetry,
-  .app-shell.idp-bc-mode .app-footer {
-  color: #334155;
-}
-html[data-theme="dark"] .app-shell.idp-bc-mode .app-footer {
-  color: #cbd5e1;
-}
-.app-shell.idp-bc-mode .canvas-paper-frame {
+  .app-shell.idp-bc-mode .canvas-paper-frame {
     grid-column: 1;
     grid-row: auto;
     margin-top: 0;
