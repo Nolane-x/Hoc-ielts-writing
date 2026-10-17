@@ -249,12 +249,18 @@ test('application startup binds all navigation controls before exposing the writ
 
 
 test('computer-delivered exam mode keeps prompt and writing pane in responsive sibling columns', () => {
-  assert.match(html, /class="writing-canvas-column"/, 'Writer telemetry, editor and footer must share a pane.');
-  assert.match(html, /class="writing-canvas-column"[\\s\\S]*?class="editor-telemetry"[\\s\\S]*?class="canvas-paper-frame"[\\s\\S]*?class="editor-footer"/,
+  assert.ok(html.includes('class="writing-canvas-column"'), 'Writer telemetry, editor and footer must share a pane.');
+  const paneStart = html.indexOf('class="writing-canvas-column"');
+  const telemetry = html.indexOf('class="editor-telemetry"', paneStart);
+  const canvas = html.indexOf('class="canvas-paper-frame"', paneStart);
+  const footer = html.indexOf('class="editor-footer"', paneStart);
+  assert.ok(telemetry > paneStart && canvas > telemetry && footer > canvas,
     'The writing pane must group status, writing surface and footer in reading order.');
-  assert.match(css, /\\.app-shell\\.idp-bc-mode \\.prompt-card \\{\\s*grid-column:\\s*1;/);
-  assert.match(css, /\\.app-shell\\.idp-bc-mode \\.writing-canvas-column \\{\\s*grid-column:\\s*2;/,
+  assert.ok(css.includes('.app-shell.idp-bc-mode .prompt-card {\n  grid-column: 1;'));
+  assert.ok(css.includes('.app-shell.idp-bc-mode .writing-canvas-column {\n  grid-column: 2;'),
     'Desktop exam mode must place the writer beside the prompt.');
-  assert.match(css, /@media \\(max-width: 820px\\)[\\s\\S]*?\\.app-shell\\.idp-bc-mode \\.writing-canvas-column \\{\\s*grid-column:\\s*1;/,
+  const mobileBreakpoint = css.indexOf('@media (max-width: 820px) {');
+  const mobileWriterRule = css.indexOf('.app-shell.idp-bc-mode .writing-canvas-column {\n    grid-column: 1;', mobileBreakpoint);
+  assert.ok(mobileBreakpoint >= 0 && mobileWriterRule > mobileBreakpoint,
     'Narrow exam mode must stack the writer without horizontal overflow.');
 });
