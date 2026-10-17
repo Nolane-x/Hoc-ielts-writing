@@ -3971,11 +3971,11 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   background: var(--amber-soft);
   color: var(--ink);
 }
-.surgery-tier.tier-band75 {
+.surgery-tier.tier-suggested {
   background: var(--accent-soft);
   color: var(--ink);
 }
-.surgery-tier.tier-band85 {
+.surgery-tier.tier-learning {
   background: var(--green-soft);
   color: var(--ink);
   border-left: 3px solid var(--green);

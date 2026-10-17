@@ -1,5 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { createSpeechReader } from './speech.mjs';
+import { consumeSSEStream } from './sse.mjs';
+import { applyStorageTransaction } from './storage-transaction.mjs';
 import { parseLocalBackup } from './local-data.mjs';
 import { createAgentPracticeAttempt, normaliseAgentPracticeAttempts, buildAgentPracticeSummary } from './agent-practice.mjs';
 import { createLearningRecord } from './learning-records.mjs';
@@ -258,9 +260,9 @@ function showPage(page) {
   if (key === 'report') renderReport(latestReport);
   window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
-function setTheme(mode) {
+function setTheme(mode, persist = true) {
   const selected = ['light', 'dark', 'system'].includes(mode) ? mode : 'system';
-  localStorage.setItem(THEME_KEY, selected);
+  if (persist) localStorage.setItem(THEME_KEY, selected);
   const effective = selected === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : selected;
   document.documentElement.dataset.theme = effective;
   $('#theme-label').textContent = effective === 'dark' ? 'Giao diện sáng' : 'Giao diện tối';
@@ -615,12 +617,12 @@ function renderReport(report, loading = false) {
       '<p>' + escapeHtml(item.explanation || '') + '</p>' +
       (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
       (item.teachingHint ? '<p><strong>Điều cần hiểu:</strong> ' + escapeHtml(item.teachingHint) + '</p>' : '') +
-      '<div class="sentence-surgery-card" aria-label="Mổ xẻ câu văn 3 cấp độ">' +
-      '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán điểm nghẽn</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
-      '<div class="surgery-tier tier-band75"><strong>2 · Bản sửa rõ và chính xác hơn</strong>' + escapeHtml(surgery.band75) + '</div>' +
-      '<div class="surgery-tier tier-band85"><strong>3 · Phương án nâng cao để tham khảo</strong>' + escapeHtml(surgery.band85) + '</div>' +
+      '<div class="sentence-surgery-card" aria-label="Phân tích phản hồi và hướng tự sửa">' +
+      '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán từ dẫn chứng</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
+      '<div class="surgery-tier tier-suggested"><strong>2 · Gợi ý sửa từ phản hồi</strong>' + escapeHtml(surgery.suggestedRevision || 'Phản hồi chưa có câu sửa cụ thể. Không nên tự suy đoán bản sửa khi thiếu bằng chứng.') + '</div>' +
+      '<div class="surgery-tier tier-learning"><strong>3 · Ghi chú học tập</strong>' + escapeHtml(surgery.learningNote) + '</div>' +
       '</div>' +
-      '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || surgery.band85 || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
+      '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
   }).join('') : '<p class="history-empty">' + (issues.length ? 'Không có mục nào thuộc nhóm lọc này.' : report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
   const strengthsHtml = strengths.length ? strengths.map(item => '<div class="strength-item">' + (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') + '<p>' + escapeHtml(item.why || '') + '</p></div>').join('') : '<p class="history-empty">Điểm mạnh sẽ xuất hiện khi AI đưa ra nhận xét cụ thể có trích dẫn khớp bài gốc.</p>';
   const prioritiesHtml = priorities.length ? priorities.map((item, index) => '<div class="priority-item"><span class="priority-number">' + (index + 1) + '</span><div><strong>' + escapeHtml(item.title || 'Bước tiếp theo') + '</strong><p>' + escapeHtml(item.action || '') + '</p></div></div>').join('') : '<p class="history-empty">Chưa đủ dữ liệu để chọn ưu tiên.</p>';
@@ -1131,30 +1133,13 @@ function handleWritingAgentEvent(type, payload) {
   }
 }
 async function consumeWritingAgentStream(response) {
-  if (!response.body || typeof response.body.getReader !== 'function') throw new Error('Trình duyệt không hỗ trợ luồng sự kiện của Agent.');
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  const dispatch = block => {
-    let eventName = 'message';
-    const data = [];
-    for (const line of block.split(/\r?\n/)) {
-      if (line.startsWith('event:')) eventName = line.slice(6).trim();
-      else if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+  await consumeSSEStream(response, item => {
+    try {
+      handleWritingAgentEvent(item.event, JSON.parse(item.data));
+    } catch {
+      addAgentActivity('Một sự kiện Agent không hợp lệ đã bị bỏ qua.', 'notice');
     }
-    if (!data.length) return;
-    try { handleWritingAgentEvent(eventName, JSON.parse(data.join('\n'))); }
-    catch { addAgentActivity('Một sự kiện Agent không hợp lệ đã bị bỏ qua.', 'notice'); }
-  };
-  while (true) {
-    const chunk = await reader.read();
-    buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
-    const blocks = buffer.split(/\r?\n\r?\n/);
-    buffer = blocks.pop() || '';
-    for (const block of blocks) dispatch(block);
-    if (chunk.done) break;
-  }
-  if (buffer.trim()) dispatch(buffer);
+  });
 }
 
 function buildAgentLearningContext() {
@@ -1677,6 +1662,7 @@ async function importBackupFile(file) {
     setToast('File sao lưu vượt quá giới hạn 5 MB.');
     return;
   }
+  let transactionCommitted = false;
   try {
     const backup = parseLocalBackup(await file.text(), TASKS.map(task => task.id));
     const draftCount = Object.keys(backup.drafts).length;
@@ -1684,20 +1670,27 @@ async function importBackupFile(file) {
     const revisionCount = Object.values(backup.agentRevisions || {}).reduce((sum, items) => sum + items.length, 0);
     const practiceCount = Array.isArray(backup.agentPracticeAttempts) ? backup.agentPracticeAttempts.length : 0;
     if (!confirm('Khôi phục ' + draftCount + ' bản nháp, ' + backup.history.length + ' báo cáo, ' + artifactCount + ' tài liệu Agent, ' + revisionCount + ' phiên bản và ' + practiceCount + ' lượt luyện? Dữ liệu cục bộ hiện có sẽ được thay thế. Provider, quyền gửi dữ liệu và API key hiện tại sẽ không thay đổi.')) return;
+
+    const changes = {};
     for (const task of TASKS) {
-      localStorage.setItem(DRAFT_PREFIX + task.id, backup.drafts[task.id] || '');
+      changes[DRAFT_PREFIX + task.id] = backup.drafts[task.id] || '';
       const turns = backup.coachHistories[task.id] || [];
-      if (turns.length) localStorage.setItem(COACH_PREFIX + task.id, JSON.stringify(turns));
-      else localStorage.removeItem(COACH_PREFIX + task.id);
+      changes[COACH_PREFIX + task.id] = turns.length ? JSON.stringify(turns) : null;
       const revisions = backup.agentRevisions?.[task.id] || [];
-      if (revisions.length) localStorage.setItem(agentRevisionKey(task.id), JSON.stringify(revisions));
-      else localStorage.removeItem(agentRevisionKey(task.id));
+      changes[agentRevisionKey(task.id)] = revisions.length ? JSON.stringify(revisions) : null;
     }
-    localStorage.setItem(AGENT_ARTIFACTS_KEY, JSON.stringify(backup.agentArtifacts || []));
-    localStorage.setItem(AGENT_PRACTICE_ATTEMPTS_KEY, JSON.stringify(backup.agentPracticeAttempts || []));
-    history = backup.history;
-    persistHistory();
-    setTheme(backup.theme);
+    changes[AGENT_ARTIFACTS_KEY] = JSON.stringify(backup.agentArtifacts || []);
+    changes[AGENT_PRACTICE_ATTEMPTS_KEY] = JSON.stringify(backup.agentPracticeAttempts || []);
+    changes[HISTORY_KEY] = JSON.stringify(backup.history.slice(0, 30));
+    changes[THEME_KEY] = backup.theme;
+
+    // Restore is an all-or-rollback transaction. Settings and provider keys are
+    // deliberately excluded so importing a backup cannot change AI consent.
+    applyStorageTransaction(localStorage, changes);
+    transactionCommitted = true;
+    history = backup.history.slice(0, 30);
+    renderHistoryCount();
+    setTheme(backup.theme, false);
     latestReport = history[0]?.report || null;
     loadCurrentTask();
     renderAgentRevisions();
@@ -1710,9 +1703,13 @@ async function importBackupFile(file) {
     const known = {
       backup_invalid_json: 'JSON không hợp lệ.',
       backup_size_invalid: 'File sao lưu vượt quá giới hạn.',
-      backup_schema_unsupported: 'Phiên bản dữ liệu sao lưu không được hỗ trợ.'
+      backup_schema_unsupported: 'Phiên bản dữ liệu sao lưu không được hỗ trợ.',
+      storage_transaction_failed: 'Không thể ghi toàn bộ bản sao lưu; các thay đổi đã ghi được hoàn tác.',
+      storage_transaction_rollback_failed: 'Lỗi lưu trữ xảy ra và rollback cũng thất bại. Hãy xuất các dữ liệu còn đọc được trước khi thử lại.'
     };
-    setToast('Không thể nhập bản sao lưu: ' + (known[reason] || 'cấu trúc hoặc dữ liệu trong file không hợp lệ.'));
+    setToast(transactionCommitted
+      ? 'Dữ liệu đã được khôi phục, nhưng cập nhật giao diện gặp lỗi. Hãy tải lại ứng dụng để đồng bộ màn hình.'
+      : 'Không thể nhập bản sao lưu: ' + (known[reason] || 'cấu trúc hoặc dữ liệu trong file không hợp lệ.'));
   }
 }
 function exportReport() {
@@ -1775,7 +1772,7 @@ function attachEvents() {
     $('#exam-mode-toggle').setAttribute('aria-pressed', String(active));
     if (active) showPage('workspace');
     setToast(active
-      ? 'Đã bật Chế độ Phòng Thi Máy IDP/BC (Chia 50/50 · Khóa Paste · Chuẩn thi thật).'
+      ? 'Đã bật chế độ luyện thi trên máy tính. Đây là giao diện luyện tập, không phải phần mềm thi chính thức.'
       : 'Đã quay lại Chế độ Editorial Studio.');
   });
   $('#zen-toggle')?.addEventListener('click', () => {

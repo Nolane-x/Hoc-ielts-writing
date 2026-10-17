@@ -69,17 +69,21 @@ test('formatOutlineForEditor builds a non-destructive 4-stage outline scaffold',
   assert.match(result, /Existing essay paragraph here\./);
 });
 
-test('buildSentenceSurgery provides a diagnosis and two rewrites without claiming a validated band', () => {
+test('buildSentenceSurgery stays grounded in assessment evidence and never invents band-labelled rewrites', () => {
   const surgery = buildSentenceSurgery({
     category: 'lexical',
     quote: 'Government should do many things to solve traffic problem.',
     suggestedFix: 'Municipal authorities should implement targeted measures to alleviate traffic congestion.',
-    explanation: 'Cụm từ do many things và solve traffic problem còn chung chung ở mức Band 5.5.'
+    teachingHint: 'Explain how the proposed measure reduces congestion.',
+    explanation: 'The wording is vague; keep the claim specific.'
   }, 'task2');
 
   assert.ok(surgery.diagnosis.length > 10);
-  assert.ok(surgery.band75.length > 10);
-  assert.ok(surgery.band85.length > 10);
+  assert.equal(surgery.suggestedRevision, 'Municipal authorities should implement targeted measures to alleviate traffic congestion.');
+  assert.match(surgery.learningNote, /Explain how/);
+  const unsupported = buildSentenceSurgery({ category: 'lexical', quote: 'The words.' }, 'task2');
+  assert.equal(unsupported.suggestedRevision, '');
+  assert.doesNotMatch(unsupported.diagnosis, /Band 5\.5|Band 8\.5/);
 });
 
 test('renderMasteryRadarSvg outputs pure mathematical SVG with 4 axes and no external references', () => {

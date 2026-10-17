@@ -26,8 +26,13 @@ jobs:
       - name: Audit dependencies for high and critical advisories
         run: npm audit --audit-level=high
       - run: npm run check
+      - name: Verify production acceptance contracts
+        run: node --test tests/production-acceptance.test.mjs
       - run: npm run build:web
       - name: Verify built files and no remote web assets
         run: |
           test -s dist/index.html
+          APP_VERSION="$(node -p 'require("./package.json").version')"
+          grep -F "WMR Editorial Studio · v${APP_VERSION}" dist/index.html
+          ! grep -F '__APP_VERSION__' dist/index.html
           ! grep -Eo '<script[^>]+src="https?://|<link[^>]+href="https?://' dist/index.html

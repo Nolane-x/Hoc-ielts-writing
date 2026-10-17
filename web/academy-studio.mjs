@@ -459,41 +459,20 @@ export function buildSentenceSurgery(issue = {}, taskType = 'task2') {
   const quote = String(issue.quote || '').trim();
   const suggestedFix = String(issue.suggestedFix || '').trim();
   const explanation = String(issue.explanation || '').trim();
-
-  const diagnosis = explanation || (
-    rawCategory === 'lexical'
-      ? 'Từ vựng còn mang tính khẩu ngữ hoặc chung chung (Band 5.5–6.0), thiếu cụm collocation học thuật tự nhiên.'
-      : rawCategory === 'grammar'
-        ? 'Cấu trúc câu còn đơn điệu hoặc có lỗi chia động từ / mệnh đề phụ thuộc làm giảm độ chính xác ngữ pháp.'
-        : rawCategory === 'coherence'
-          ? 'Chuyển ý giữa hai mệnh đề còn đột ngột, thiếu từ nối chỉ quan hệ nguyên nhân - hệ quả rõ ràng.'
-          : 'Luận điểm chưa đi thẳng vào trọng tâm câu hỏi hoặc còn thiếu bằng chứng cụ thể.'
-  );
-
-  const band75 = suggestedFix || (
-    quote
-      ? `Moreover, ${quote.charAt(0).toLowerCase() + quote.slice(1).replace(/\.$/, '')}, which directly shapes long-term outcomes.`
-      : 'Furthermore, targeted policy measures can address the root causes of this issue effectively.'
-  );
-
-  const band85 = rawCategory === 'lexical'
-    ? (suggestedFix
-        ? `${suggestedFix.replace(/\.$/, '')}, thereby fostering sustainable long-term outcomes.`
-        : 'Consequently, implementing evidence-based interventions proves instrumental in mitigating this challenge.')
+  const teachingHint = String(issue.teachingHint || '').trim();
+  const categoryDiagnosis = rawCategory === 'lexical'
+    ? 'Kiểm tra độ chính xác, sắc thái và collocation; từ khó hơn không tự động tốt hơn.'
     : rawCategory === 'grammar'
-      ? (suggestedFix
-          ? `Not only does this approach address immediate constraints, but it also strengthens long-term resilience (${suggestedFix.replace(/\.$/, '')}).`
-          : 'Had authorities prioritised structural reforms earlier, the long-term pressures observed today would have been substantially curtailed.')
-      : taskType === 'task1-academic'
-        ? 'Notably, the upward trajectory in the primary category outpaced all other segments throughout the surveyed period.'
-        : (suggestedFix
-            ? `${suggestedFix.replace(/\.$/, '')}, underscoring the necessity of a balanced, forward-looking framework.`
-            : 'Ultimately, reconciling these competing priorities requires both institutional commitment and informed civic participation.');
-
+      ? 'Kiểm tra cấu trúc câu, sự hòa hợp chủ-vị, mạo từ, thì và dấu câu trong ngữ cảnh.'
+      : rawCategory === 'coherence'
+        ? 'Kiểm tra quan hệ logic giữa các câu và liệu mỗi câu có phát triển đúng luận điểm của đoạn.'
+        : 'Kiểm tra mức độ trực tiếp trả lời yêu cầu của đề và bằng chứng hỗ trợ luận điểm.';
   return {
-    diagnosis,
-    band75,
-    band85
+    diagnosis: explanation || (quote ? 'Đoạn được trích: “' + quote + '”. ' + categoryDiagnosis : categoryDiagnosis),
+    suggestedRevision: suggestedFix,
+    learningNote: teachingHint || (taskType === 'task1-academic'
+      ? 'Chỉ mô tả đặc điểm có thể xác minh trên biểu đồ, bản đồ hoặc sơ đồ của đề.'
+      : 'Tự kiểm tra xem bản sửa có giữ nguyên ý định của bạn và trả lời đúng câu hỏi không.')
   };
 }
 

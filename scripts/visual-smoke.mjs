@@ -59,6 +59,8 @@ try {
   listenForErrors(page, 'desktop');
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
+  assert.equal(await page.locator('.version-line').innerText(), 'WMR Editorial Studio · v' + version,
+    'The visible app version must match package.json in the production build.');
   await page.waitForFunction(() => document.querySelector('#task-select')?.options?.length > 0);
 
   const versionLabel = await page.locator('.version-line').innerText();
