@@ -131,7 +131,7 @@ try {
   assert.equal(await page.locator('#report-content .empty-report').count(), 0, 'Local check should produce a report without calling an AI provider.');
   const reportText = await page.locator('#report-content').innerText();
   assert.ok(reportText.length > 40, 'The local report should contain useful visible content.');
-  assert.match(reportText, /mẫu diễn đạt minh họa/i);
+  assert.match(reportText, /bài mẫu tham khảo|chưa hiệu chuẩn/i, 'Report should label model examples as uncalibrated learning material.');
   assert.doesNotMatch(reportText, /Bài mẫu Band 8\.5\+/i);
   await capture(page, '03-local-report-desktop.png');
 
