@@ -91,8 +91,15 @@ test('Chromium smoke audits WCAG 2.1 A/AA accessibility on desktop and mobile', 
   assert.match(visualSmoke, /wcag2aa/);
   assert.match(visualSmoke, /wcag21a/);
   assert.match(visualSmoke, /wcag21aa/);
-  assert.match(visualSmoke, /auditAccessibility\(page, 'desktop-writing-workspace'\)/);
-  assert.match(visualSmoke, /auditAccessibility\(mobilePage, 'mobile-writing-workspace-390x844'\)/);
+  for (const flow of [
+    "desktop-writing-workspace",
+    "desktop-report",
+    "desktop-learning-dashboard",
+    "desktop-settings-privacy",
+    "desktop-exam-practice",
+    "mobile-writing-workspace-390x844",
+    "mobile-exam-practice-390x844"
+  ]) assert.ok(visualSmoke.includes("'" + flow + "'"), 'Missing accessibility scan for ' + flow);
   assert.match(visualSmoke, /impact === 'critical' \|\| item\.impact === 'serious'/);
   assert.match(visualSmoke, /accessibilityChecks/);
 });
