@@ -1772,7 +1772,7 @@ function attachEvents() {
     $('#exam-mode-toggle').setAttribute('aria-pressed', String(active));
     if (active) showPage('workspace');
     setToast(active
-      ? 'Đã bật Chế độ Phòng Thi Máy IDP/BC (Chia 50/50 · Khóa Paste · Chuẩn thi thật).'
+      ? 'Đã bật chế độ luyện thi trên máy tính. Đây là giao diện luyện tập, không phải phần mềm thi chính thức.'
       : 'Đã quay lại Chế độ Editorial Studio.');
   });
   $('#zen-toggle')?.addEventListener('click', () => {
