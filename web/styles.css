@@ -545,6 +545,8 @@ a {
   color: var(--accent-dark);
 }
 
+.status-error { color: var(--red) !important; }
+
 .mode-pill {
   display: inline-flex;
   gap: 7px;
@@ -556,6 +558,11 @@ a {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
+}
+
+.mode-pill.provider-active {
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 
 .icon-button,
@@ -971,12 +978,44 @@ a {
   width: 0%;
   background: linear-gradient(90deg, var(--accent), #818cf8);
   border-radius: 999px;
-  transition: width 0.25s ease, background 0.25s ease;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+.word-progress-fill.progress-fill {
+  width: 100%;
+}
+.progress-fill {
+  display: block;
+  width: 100%;
+  transform-origin: left center;
+  transition: transform 0.25s ease;
 }
 
 .word-progress-fill.target-reached {
   background: linear-gradient(90deg, var(--green), #10b981);
 }
+
+.progress-fill.progress-p0 { transform: scaleX(0); }
+.progress-p0 { transform: scaleX(0); }
+.progress-p5 { transform: scaleX(0.05); }
+.progress-p10 { transform: scaleX(0.1); }
+.progress-p15 { transform: scaleX(0.15); }
+.progress-p20 { transform: scaleX(0.2); }
+.progress-p25 { transform: scaleX(0.25); }
+.progress-p30 { transform: scaleX(0.3); }
+.progress-p35 { transform: scaleX(0.35); }
+.progress-p40 { transform: scaleX(0.4); }
+.progress-p45 { transform: scaleX(0.45); }
+.progress-p50 { transform: scaleX(0.5); }
+.progress-p55 { transform: scaleX(0.55); }
+.progress-p60 { transform: scaleX(0.6); }
+.progress-p65 { transform: scaleX(0.65); }
+.progress-p70 { transform: scaleX(0.7); }
+.progress-p75 { transform: scaleX(0.75); }
+.progress-p80 { transform: scaleX(0.8); }
+.progress-p85 { transform: scaleX(0.85); }
+.progress-p90 { transform: scaleX(0.9); }
+.progress-p95 { transform: scaleX(0.95); }
+.progress-p100 { transform: scaleX(1); }
 
 /* The Scholar's Manuscript Canvas */
 .canvas-paper-frame {
@@ -3545,8 +3584,25 @@ a {
   .topbar-center {
     display: none;
   }
-  .zen-pill {
+  .zen-pill:not(.exam-sim-pill) {
     display: none;
+  }
+  .mode-pill {
+    display: none;
+  }
+  .topbar-actions {
+    gap: 6px;
+  }
+  .exam-sim-pill {
+    display: inline-flex;
+    max-width: 118px;
+    min-width: 0;
+    padding: 6px 9px;
+  }
+  .exam-sim-pill span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .page-view {
     padding: 20px 14px;
@@ -3816,7 +3872,7 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 }
 .app-shell.idp-bc-mode .editor-column {
   display: grid;
-  grid-template-columns: minmax(320px, 46%) minmax(360px, 54%);
+  grid-template-columns: minmax(320px, 46fr) minmax(360px, 54fr);
   gap: 18px;
   align-items: start;
   border-radius: 8px;
@@ -3825,11 +3881,18 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 }
 .app-shell.idp-bc-mode .editor-top-bar,
 .app-shell.idp-bc-mode .task-select-wrap,
-.app-shell.idp-bc-mode .editor-telemetry,
-.app-shell.idp-bc-mode .editor-footer,
 .app-shell.idp-bc-mode .editor-actions,
 .app-shell.idp-bc-mode #agent-revisions {
   grid-column: 1 / -1;
+}
+.app-shell.idp-bc-mode .writing-canvas-column {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.app-shell.idp-bc-mode .writing-canvas-column .editor-telemetry {
+  margin: 0 0 10px;
 }
 .app-shell.idp-bc-mode .prompt-card {
   grid-column: 1;
@@ -3946,6 +4009,14 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   font-family: Charter, Georgia, serif;
   font-size: 13.5px;
   line-height: 1.75;
+}
+
+.radar-empty-note {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0 0 8px;
 }
 
 /* Stage 4: Interactive Socratic Gym */
@@ -4103,6 +4174,9 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   .radar-legend-shell,
   .app-shell.idp-bc-mode .editor-column {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .app-shell.idp-bc-mode .writing-canvas-column {
+    grid-column: 1;
   }
 }
 

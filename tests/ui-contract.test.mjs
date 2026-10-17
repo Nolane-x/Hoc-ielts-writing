@@ -236,3 +236,75 @@ test('native read-aloud controls are accessible, local-only and wired to the spe
   assert.match(app, /not a Cambridge|chưa được hiệu chuẩn bằng giám khảo độc lập/i);
 });
 
+
+
+test('application startup binds all navigation controls before exposing the writing workspace', () => {
+  assert.match(app, /\$\$\('\[data-page\]'\)\.forEach\(/,
+    'Navigation controls must use the multi-element selector helper.');
+  assert.doesNotMatch(app, /(?<!\$)\$\('\[data-page\]'\)\.forEach\(/,
+    'The single-element selector must not be treated as a collection.');
+  assert.match(app, /function boot\(\)[\s\S]*?attachEvents\(\)/,
+    'App boot must attach UI events after initial workspace rendering.');
+});
+
+
+test('computer-delivered exam mode keeps prompt and writing pane in responsive sibling columns', () => {
+  assert.ok(html.includes('class="writing-canvas-column"'), 'Writer telemetry, editor and footer must share a pane.');
+  const paneStart = html.indexOf('class="writing-canvas-column"');
+  const telemetry = html.indexOf('class="editor-telemetry"', paneStart);
+  const canvas = html.indexOf('class="canvas-paper-frame"', paneStart);
+  const footer = html.indexOf('class="editor-footer"', paneStart);
+  assert.ok(telemetry > paneStart && canvas > telemetry && footer > canvas,
+    'The writing pane must group status, writing surface and footer in reading order.');
+
+  const desktopPromptRule = css.indexOf('.app-shell.idp-bc-mode .prompt-card {');
+  const desktopWriterRule = css.indexOf('.app-shell.idp-bc-mode .writing-canvas-column {');
+  assert.ok(css.includes('grid-template-columns: minmax(320px, 46fr) minmax(360px, 54fr);'),
+    'Desktop exam columns must account for the gap without overflowing their container.');
+  assert.ok(desktopPromptRule >= 0 && css.indexOf('grid-column: 1;', desktopPromptRule) > desktopPromptRule);
+  assert.ok(desktopWriterRule >= 0 && css.indexOf('grid-column: 2;', desktopWriterRule) > desktopWriterRule,
+    'Desktop exam mode must place the writer beside the prompt.');
+
+  const mobileBreakpoint = css.indexOf('@media (max-width: 820px) {');
+  const mobileWriterRule = css.indexOf('.app-shell.idp-bc-mode .writing-canvas-column {', mobileBreakpoint);
+  assert.ok(mobileBreakpoint >= 0 && mobileWriterRule > mobileBreakpoint &&
+    css.indexOf('grid-column: 1;', mobileWriterRule) > mobileWriterRule,
+    'Narrow exam mode must stack the writer without horizontal overflow.');
+});
+
+
+test('learner mastery radar never substitutes reference scores for missing AI evidence', () => {
+  const start = app.indexOf("function renderLearning()");
+  const end = app.indexOf("\nfunction ", start + 10);
+  const learning = app.slice(start, end < 0 ? app.length : end);
+  assert.match(learning, /criterionScores\.some\(item => Number\.isFinite\(item\.mean\) && item\.count > 0\)/,
+    'A radar requires real eligible criterion evidence.');
+  assert.match(learning, /radar-empty-note/,
+    'Learners without an eligible AI score need an explicit empty state.');
+  assert.match(learning, /Number\.isFinite\(val\) \? val\.toFixed\(1\) : 'Chưa có điểm AI'/,
+    'Missing criterion values must not be rendered as an invented 6.0 reference.');
+  assert.doesNotMatch(learning, /6\.0 \(Tham chiếu\)/);
+  assert.match(css, /\.radar-empty-note/);
+});
+
+
+test('practice mode remains accessible and visible in the mobile top bar', () => {
+  assert.match(html, /id="exam-mode-toggle"[^>]*aria-label="[^"]*(?:practice|luyện thi)[^"]*"/i);
+  assert.match(css, /@media \(max-width: 650px\)[\s\S]*?\.zen-pill:not\(\.exam-sim-pill\) \{\s*display: none;/,
+    'Small-screen rules may hide Zen Mode but must not hide the practice-mode toggle.');
+  assert.match(css, /\.exam-sim-pill \{\s*display: inline-flex;/,
+    'The practice-mode control must remain visible on small screens.');
+});
+
+
+test('strict CSP-compatible UI states never depend on inline style mutations or style attributes', () => {
+  assert.doesNotMatch(app, /\.style\.(?:width|color|background|setProperty)\s*=/,
+    'Dynamic states must be represented by classes under the strict style-src policy.');
+  assert.doesNotMatch(app, /style\s*=\s*["'][^"']*(?:width|color|background)\s*:/i,
+    'Generated markup must not embed inline style attributes.');
+  assert.match(app, /setProgressClass\(fillEl, pct\)/);
+  assert.match(app, /class="skill-progress-fill progress-fill progress-p' \+ progressStep \+ '"/);
+  assert.match(css, /\.status-error\s*\{/);
+  assert.match(css, /\.mode-pill\.provider-active\s*\{/);
+  assert.match(css, /\.progress-p100\s*\{\s*transform: scaleX\(1\);/);
+});
