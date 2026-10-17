@@ -319,17 +319,24 @@ try {
   await capture(mobilePage, '08-exam-practice-mobile.png');
 
   assert.deepEqual(browserErrors, [], 'Browser console/runtime errors were detected.');
-  await writeFile(path.join(outputDir, 'visual-smoke-manifest.json'), JSON.stringify({
-    status: 'passed', version, baseUrl, browser: 'Chromium (Playwright)', screenshots, viewportChecks, accessibilityChecks, browserErrors
-  }, null, 2));
   process.stdout.write(`Visual smoke passed for WMR ${version}; captured ${screenshots.length} screenshots and ${accessibilityChecks.length} Axe accessibility scans.\n`);
 } catch (error) {
   failure = error;
   throw error;
 } finally {
-  await writeFile(path.join(outputDir, 'visual-smoke-manifest.json'), JSON.stringify({
-    status: failure ? 'failed' : 'passed', version, baseUrl, screenshots, viewportChecks, browserErrors,
-    failure: failure ? String(failure.stack || failure) : null
-  }, null, 2));
-  await browser.close();
+  try {
+    await writeFile(path.join(outputDir, 'visual-smoke-manifest.json'), JSON.stringify({
+      status: failure ? 'failed' : 'passed',
+      version,
+      baseUrl,
+      browser: 'Chromium (Playwright)',
+      screenshots,
+      viewportChecks,
+      accessibilityChecks,
+      browserErrors,
+      failure: failure ? String(failure.stack || failure) : null
+    }, null, 2));
+  } finally {
+    await browser.close();
+  }
 }
