@@ -305,6 +305,52 @@
               <span id="word-target" class="word-target-pill">Mục tiêu tham khảo: 250 từ</span>
             </div>
 
+            <section class="speech-reader-panel" id="speech-reader-panel" aria-labelledby="speech-reader-title" aria-describedby="speech-reader-help">
+              <div class="speech-reader-heading">
+                <div>
+                  <span class="section-kicker">VOICE STUDIO · LISTEN &amp; REVIEW</span>
+                  <h3 id="speech-reader-title">Đọc thành tiếng</h3>
+                  <p>Nghe bài luận để kiểm tra độ tự nhiên, luyện nghe IELTS và rà soát câu chữ mà không cần rời khỏi trình soạn thảo.</p>
+                </div>
+                <span class="speech-reader-mark" aria-hidden="true">♫</span>
+              </div>
+              <div class="speech-reader-actions" aria-label="Chọn nội dung cần đọc">
+                <button class="speech-reader-action speech-reader-action-primary" type="button" data-speech-read="essay">▶ Nghe bài viết</button>
+                <button class="speech-reader-action" type="button" data-speech-read="prompt">▤ Nghe đề IELTS</button>
+                <button class="speech-reader-action" type="button" data-speech-read="selection">▸ Nghe đoạn đã chọn</button>
+                <button class="speech-reader-action" type="button" data-speech-read="feedback">✦ Nghe phản hồi</button>
+              </div>
+              <div class="speech-reader-toolbar">
+                <div class="speech-reader-setting">
+                  <label for="speech-reader-language">GIỌNG ĐỌC</label>
+                  <select id="speech-reader-language">
+                    <option value="auto">Tự nhận diện ngôn ngữ</option>
+                    <option value="en-GB">English · Anh–Anh</option>
+                    <option value="en-US">English · Anh–Mỹ</option>
+                    <option value="vi-VN">Tiếng Việt</option>
+                  </select>
+                </div>
+                <div class="speech-reader-setting">
+                  <label for="speech-reader-rate">TỐC ĐỘ</label>
+                  <select id="speech-reader-rate">
+                    <option value="0.75">0,75× · Chậm</option>
+                    <option value="0.9">0,9× · Từ tốn</option>
+                    <option value="1" selected>1× · Bình thường</option>
+                    <option value="1.15">1,15× · Nhanh nhẹ</option>
+                    <option value="1.3">1,3× · Nhanh</option>
+                    <option value="1.5">1,5× · Rất nhanh</option>
+                  </select>
+                </div>
+                <div class="speech-reader-playback" aria-label="Điều khiển phát">
+                  <button class="speech-reader-transport" id="speech-reader-pause" type="button" disabled>Ⅱ Tạm dừng</button>
+                  <button class="speech-reader-transport" id="speech-reader-resume" type="button" disabled>▶ Tiếp tục</button>
+                  <button class="speech-reader-transport speech-reader-transport-stop" id="speech-reader-stop" type="button" disabled>■ Dừng</button>
+                </div>
+              </div>
+              <p id="speech-reader-status" class="speech-reader-status" role="status" aria-live="polite" aria-atomic="true">Sẵn sàng đọc bài viết, đề IELTS hoặc nội dung đang chọn.</p>
+              <p class="speech-reader-privacy" id="speech-reader-help">Chỉ dùng giọng đọc có sẵn từ trình duyệt/hệ điều hành. Không ghi âm microphone, không gửi văn bản lên máy chủ âm thanh; giọng và tốc độ được áp dụng cho lần đọc mới.</p>
+            </section>
+
             <section id="live-annotation-panel" class="live-annotation-panel" hidden aria-label="Bản đồ chú thích AI trên bài viết">
               <div class="live-annotation-heading">
                 <div><span class="section-kicker">LIVE EVIDENCE MAP</span><h3>Chú thích có màu của AI</h3><p>Vùng đánh dấu chỉ dựa trên trích dẫn nguyên văn. Bấm chú thích để chọn đúng đoạn trong trình soạn thảo.</p></div>
