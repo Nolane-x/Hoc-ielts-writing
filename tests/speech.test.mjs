@@ -16,7 +16,7 @@ test('speech language selection distinguishes Vietnamese teaching text from Engl
   assert.equal(inferSpeechLanguage('The evidence supports a clear position.'), 'en-US');
 });
 
-test('reader speaks chunks in order and announces completion', () => {
+test('reader speaks bounded chunks in order and announces completion', () => {
   class FakeUtterance {
     constructor(text) { this.text = text; }
   }
@@ -30,15 +30,22 @@ test('reader speaks chunks in order and announces completion', () => {
   const states = [];
   const reader = createSpeechReader({ speechSynthesis: synthesis, SpeechSynthesisUtterance: FakeUtterance }, state => states.push(state));
 
-  const result = reader.read('First sentence. Second sentence.', { rate: 1.1 });
+  const text = 'First sentence. '.repeat(80).trim();
+  const result = reader.read(text, { rate: 1.1 });
   assert.equal(result.ok, true);
+  assert.ok(result.chunkCount > 1);
   assert.equal(synthesis.spoken.length, 1);
   assert.equal(synthesis.spoken[0].lang, 'en-US');
   assert.equal(synthesis.spoken[0].rate, 1.1);
 
-  synthesis.spoken[0].onend();
-  assert.equal(synthesis.spoken.length, 2);
-  synthesis.spoken[1].onend();
+  let spokenIndex = 0;
+  while (reader.getState().state === 'speaking') {
+    const utterance = synthesis.spoken[spokenIndex];
+    assert.ok(utterance, 'expected next bounded speech chunk');
+    utterance.onend();
+    spokenIndex += 1;
+  }
+  assert.equal(synthesis.spoken.length, result.chunkCount);
   assert.equal(reader.getState().state, 'complete');
   assert.ok(states.some(item => item.state === 'speaking'));
 });
