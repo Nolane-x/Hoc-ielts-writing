@@ -73,8 +73,19 @@ try {
   // already expanded; the contract is that the control can reach the open state.
   const ideaLab = page.locator('#idea-lab');
   if (!(await ideaLab.isVisible())) await page.locator('#toggle-idea-lab').click();
+  const ideaLabState = await page.evaluate(() => ({
+    hidden: document.querySelector('#idea-lab')?.hidden,
+    expanded: document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded'),
+    buttonText: document.querySelector('#toggle-idea-lab')?.textContent,
+    toast: document.querySelector('#toast')?.textContent,
+    appShellClasses: document.querySelector('#app-shell')?.className
+  }));
+  if (ideaLabState.hidden) {
+    throw new Error('Idea Lab failed to open; inspect app initialization and click wiring: ' +
+      JSON.stringify({ state: ideaLabState, browserErrors }));
+  }
   await ideaLab.waitFor({ state: 'visible', timeout: 5000 });
-  assert.equal(await page.locator('#toggle-idea-lab').getAttribute('aria-expanded'), 'true');
+  assert.equal(ideaLabState.expanded, 'true');
   await capture(page, '01b-academy-idea-lab-desktop.png');
   await page.locator('#toggle-idea-lab').click();
 
