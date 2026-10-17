@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7.0 — Speech, task-specific Academy content and local API hardening
+- Fixed a startup crash in page navigation binding discovered by real-browser smoke testing.
+- Corrected computer-delivered exam layout so the prompt and writing pane align side by side on desktop and stack responsively on narrow screens.
 - Gate release packaging and publication on reusable Node 22/24 CI plus Chromium desktop/mobile smoke evidence, including read-aloud lifecycle checks.
 
 - Add a device-native read-aloud dock with selected-text reading, current-page reading, Vietnamese/English language selection, pause/resume/stop controls and playback-rate selection. The feature uses the browser or OS speech engine and does not send text to a remote TTS provider.
