@@ -35,3 +35,12 @@ test('consumeSSEStream rejects oversized frames', async () => {
   }}));
   await assert.rejects(consumeSSEStream(response, () => {}), /maximum supported size/);
 });
+
+
+test('consumeSSEStream rejects oversized aggregate frames across individually bounded data lines', async () => {
+  const response = responseFromChunks([
+    'data: ' + 'a'.repeat(600_000) + '\n',
+    'data: ' + 'b'.repeat(500_000) + '\n\n'
+  ]);
+  await assert.rejects(consumeSSEStream(response, () => {}), /SSE frame exceeds the maximum supported size/);
+});
