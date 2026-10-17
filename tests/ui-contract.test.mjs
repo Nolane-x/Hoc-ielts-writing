@@ -416,3 +416,9 @@ test('strict CSP-compatible UI states never depend on inline style mutations or 
   assert.match(css, /\.mode-pill\.provider-active\s*\{/);
   assert.match(css, /\.word-progress-fill\.progress-p100,\s*\.skill-progress-fill\.progress-p100\s*\{\s*transform: scaleX\(1\);/);
 });
+
+
+test('report heading returns to its stable accessible name after review completion', () => {
+  assert.match(app, /\$\('#report-title'\)\.textContent = 'Hồ sơ thẩm định bài viết';/);
+  assert.match(app, /report-content[\s\S]*?role="status"/);
+});
