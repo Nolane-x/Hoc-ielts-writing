@@ -1,6 +1,10 @@
 # Changelog
 
 ## 1.7.0 — Speech, task-specific Academy content and local API hardening
+- Add opt-in Proactive Writing Companion reviews with per-task baselines, changed-text threshold, cooldown, approval-staged edits, cancellation and existing budget limits.
+- Add local custom prompt creation/management and a consent-gated task-generation endpoint that excludes essay text, the current prompt and chat history from upstream context.
+- Add quote-anchored essay annotations with revalidation and task-aware IELTS criterion naming.
+- Add Read Aloud language/voice preferences (auto, British English, American English, Vietnamese), playback controls and bounded text preparation; actual voice availability remains device-dependent.
 - Make local backup restoration transactional with rollback and explicit reporting if rollback itself fails.
 - Replace ad hoc Writing Agent SSE framing parsing with a bounded, reusable parser and fragmented UTF-8 regression coverage.
 - Generate the visible UI version from `package.json` during the Vite build.
