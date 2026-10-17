@@ -103,6 +103,12 @@ test('Chromium smoke audits WCAG 2.1 A/AA accessibility on desktop and mobile', 
   ]) assert.ok(visualSmoke.includes("'" + flow + "'"), 'Missing accessibility scan for ' + flow);
   assert.match(visualSmoke, /impact === 'critical' \|\| item\.impact === 'serious'/);
   assert.match(visualSmoke, /accessibilityChecks/);
+  assert.equal((visualSmoke.match(/writeFile\(path\.join\(outputDir, 'visual-smoke-manifest\.json'/g) || []).length, 1,
+    'A single manifest writer must preserve accessibility results in both pass and fail paths.');
+  assert.match(visualSmoke, /failure: failure \? String\(failure\.stack \|\| failure\) : null/);
+  const finalManifest = visualSmoke.slice(visualSmoke.lastIndexOf('finally {'));
+  assert.match(finalManifest, /accessibilityChecks/,
+    'Final manifest written from finally must retain every Axe scan result.');
 });
 
 
