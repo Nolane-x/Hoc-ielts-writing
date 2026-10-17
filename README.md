@@ -10,6 +10,7 @@ WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking le
 - Application version is generated from package metadata; dynamic progress styling is CSP-safe.
 - Opt-in proactive review after a pause in writing, with change threshold, cooldown and existing usage/budget gates.
 - Browser/system speech synthesis for Agent summaries and timer reminders; no microphone capture.
+- **Read-aloud studio:** listen to the IELTS prompt, the current essay, selected text or the latest feedback; pause/resume/stop, choose British/American English or Vietnamese, and adjust playback speed. Uses only browser/system speech synthesis.
 - Evidence-grounded, colour-coded annotation map that revalidates exact quotes against the live draft.
 - Learner-created and AI-generated custom prompts, persisted locally and included in validated backups; AI prompts are labelled unverified.
 
