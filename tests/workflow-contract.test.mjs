@@ -123,9 +123,9 @@ test('report filters expose toggle semantics instead of an incomplete ARIA tabli
 
 test('Chromium smoke runs keyboard-only skip-navigation and native Space activation checks', () => {
   assert.match(visualSmoke, /Keyboard-only smoke starts in a fresh tab/);
-  assert.match(visualSmoke, /page\.keyboard\.press\('Tab'\)/);
-  assert.match(visualSmoke, /page\.keyboard\.press\('Enter'\)/);
-  assert.match(visualSmoke, /page\.keyboard\.press\('Space'\)/);
+  assert.match(visualSmoke, /keyboardPage\.keyboard\.press\('Tab'\)/);
+  assert.match(visualSmoke, /keyboardPage\.keyboard\.press\('Enter'\)/);
+  assert.match(visualSmoke, /keyboardPage\.keyboard\.press\('Space'\)/);
   assert.match(visualSmoke, /skip-link-keyboard-focus\.png/);
   assert.match(visualSmoke, /visible focus indicator/);
 });
