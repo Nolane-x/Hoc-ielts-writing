@@ -3955,6 +3955,14 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   line-height: 1.75;
 }
 
+.radar-empty-note {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0 0 8px;
+}
+
 /* Stage 4: Interactive Socratic Gym */
 .socratic-gym-panel {
   display: grid;
