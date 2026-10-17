@@ -113,6 +113,53 @@ try {
     'The visible app version must match package.json in the production build.');
   await page.waitForFunction(() => document.querySelector('#task-select')?.options?.length > 0);
   await auditAccessibility(page, 'desktop-writing-workspace');
+  // Keyboard-only smoke: skip the navigation, land on the writing area, then activate a button with Space.
+  await page.keyboard.press('Tab');
+  const skipFocus = await page.evaluate(() => {
+    const element = document.activeElement;
+    const rect = element?.getBoundingClientRect();
+    const style = element ? getComputedStyle(element) : null;
+    return {
+      className: element?.className || '',
+      text: element?.textContent?.trim() || '',
+      top: rect?.top ?? -999,
+      bottom: rect?.bottom ?? -999,
+      boxShadow: style?.boxShadow || 'none',
+      outlineStyle: style?.outlineStyle || 'none'
+    };
+  });
+  assert.match(String(skipFocus.className), /skip-link/, 'The first Tab should reveal the skip-navigation link.');
+  assert.ok(skipFocus.top >= 0 && skipFocus.bottom <= 120,
+    'The focused skip link must move into the visible viewport.');
+  assert.ok(skipFocus.boxShadow !== 'none' || skipFocus.outlineStyle !== 'none',
+    'Keyboard focus on the skip link must have a visible focus indicator.');
+  await capture(page, '09-skip-link-keyboard-focus.png');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => location.hash === '#workspace-title');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'workspace-title',
+    'Activating the skip link should move focus to the main workspace heading.');
+
+  let ideaLabFocused = false;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    await page.keyboard.press('Tab');
+    if (await page.evaluate(() => document.activeElement?.id === 'toggle-idea-lab')) {
+      ideaLabFocused = true;
+      break;
+    }
+  }
+  assert.ok(ideaLabFocused, 'Keyboard traversal should reach the Idea Lab toggle without a focus trap.');
+  const buttonFocus = await page.locator('#toggle-idea-lab').evaluate(element => ({
+    boxShadow: getComputedStyle(element).boxShadow,
+    outlineStyle: getComputedStyle(element).outlineStyle
+  }));
+  assert.ok(buttonFocus.boxShadow !== 'none' || buttonFocus.outlineStyle !== 'none',
+    'Keyboard-focused action buttons must show a visible focus indicator.');
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded') === 'true');
+  assert.ok(await page.locator('#idea-lab').isVisible(), 'Space should activate the focused native button.');
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded') === 'false');
+
 
   const versionLabel = await page.locator('.version-line').innerText();
   assert.ok(versionLabel.includes(version), `UI version label "${versionLabel}" does not match package version ${version}`);
