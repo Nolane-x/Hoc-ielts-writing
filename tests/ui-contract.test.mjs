@@ -410,7 +410,7 @@ test('strict CSP-compatible UI states never depend on inline style mutations or 
     'Dynamic states must be represented by classes under the strict style-src policy.');
   assert.doesNotMatch(app, /style\s*=\s*["'][^"']*(?:width|color|background)\s*:/i,
     'Generated markup must not embed inline style attributes.');
-  assert.match(app, /setProgressClass\(fillEl, pct\)/);
+  assert.match(app, /setProgressBucket\(fillEl, pct\)/);
   assert.match(app, /class="skill-progress-fill progress-p' \+ Math\.round\(percent \/ 5\) \* 5 \+ '"/);
   assert.match(css, /\.status-error\s*\{/);
   assert.match(css, /\.mode-pill\.provider-active\s*\{/);
