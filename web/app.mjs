@@ -680,7 +680,10 @@ function renderLearning() {
 
   const radarChartEl = $('#mastery-radar-chart');
   if (radarChartEl) {
-    radarChartEl.innerHTML = renderMasteryRadarSvg(criterionScores);
+    const hasCriterionEvidence = criterionScores.some(item => Number.isFinite(item.mean) && item.count > 0);
+    radarChartEl.innerHTML = hasCriterionEvidence
+      ? renderMasteryRadarSvg(criterionScores)
+      : '<p class="radar-empty-note">Chưa có điểm AI hợp lệ để dựng biểu đồ. Hãy hoàn thành một lượt chấm AI có căn cứ; kiểm tra cục bộ không tạo band.</p>';
   }
   const radarLegendEl = $('#mastery-radar-legend');
   if (radarLegendEl) {
@@ -690,7 +693,7 @@ function renderLearning() {
       ['Lexical Resource', scoreById.get('lexical')?.mean ?? null, 'Độ chính xác của collocations theo ngữ cảnh'],
       ['Grammatical Range & Accuracy', scoreById.get('grammar')?.mean ?? null, 'Độ đa dạng & chuẩn xác cấu trúc câu']
     ].map(([label, val, note]) =>
-      '<div class="radar-legend-card"><span class="mini-label">' + escapeHtml(label) + '</span><strong>' + (Number.isFinite(val) ? val.toFixed(1) : '6.0 (Tham chiếu)') + '</strong><small>' + escapeHtml(note) + '</small></div>'
+      '<div class="radar-legend-card"><span class="mini-label">' + escapeHtml(label) + '</span><strong>' + (Number.isFinite(val) ? val.toFixed(1) : 'Chưa có điểm AI') + '</strong><small>' + escapeHtml(note) + '</small></div>'
     ).join('');
   }
 
