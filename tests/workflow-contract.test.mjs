@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [releaseWorkflow, ciWorkflow, packageJson] = await Promise.all([
+const [releaseWorkflow, ciWorkflow, packageJson, visualWorkflow, visualSmoke] = await Promise.all([
   readFile(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8'),
   readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8'),
-  readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse)
+  readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse),
+  readFile(new URL('../.github/workflows/visual-smoke.yml', import.meta.url), 'utf8'),
+  readFile(new URL('../scripts/visual-smoke.mjs', import.meta.url), 'utf8')
 ]);
 
 test('release workflow waits for all three platform jobs before publishing', () => {
@@ -51,4 +53,29 @@ test('Android release packages derive versionName and versionCode from package m
   const buildStep = releaseWorkflow.indexOf('- name: Build APK and Android App Bundle');
   assert.ok(syncStep >= 0, 'missing generated Android version alignment step');
   assert.ok(buildStep > syncStep, 'Android version alignment must occur before Gradle builds');
+});
+
+
+test('release packaging and publication are gated by reusable CI and Chromium smoke', () => {
+  assert.match(ciWorkflow, /workflow_call:/, 'CI must be callable as a reusable workflow.');
+  assert.match(visualWorkflow, /workflow_call:/, 'Visual smoke must be callable as a reusable workflow.');
+  assert.match(releaseWorkflow, /verify:\s*\n\s+name: Required CI \(Node 22 and 24\)\s*\n\s+uses: \.\/\.github\/workflows\/ci\.yml/);
+  assert.match(releaseWorkflow, /visual-smoke:\s*\n\s+name: Required Chromium desktop\/mobile smoke\s*\n\s+uses: \.\/\.github\/workflows\/visual-smoke\.yml/);
+  for (const job of ['windows', 'linux', 'android']) {
+    assert.match(releaseWorkflow, new RegExp(job + ':\\s*\\n\\s+needs:\\s*\\[verify, visual-smoke\\]'),
+      job + ' packaging must wait for both quality gates.');
+  }
+  assert.match(releaseWorkflow, /needs:\s*\[verify, visual-smoke, windows, linux, android\]/,
+    'Release publication must wait for both quality gates and all platform artifacts.');
+  assert.match(visualWorkflow, /run: node scripts\/visual-smoke\.mjs/);
+  assert.match(visualWorkflow, /if-no-files-found: warn/);
+});
+
+test('Chromium smoke exercises the local read-aloud playback lifecycle with a fake engine', () => {
+  for (const id of ['speech-read', 'speech-pause', 'speech-resume', 'speech-stop', 'speech-status']) {
+    assert.ok(visualSmoke.includes('#' + id), 'visual smoke must cover #' + id);
+  }
+  for (const state of ['pauseCount', 'resumeCount', 'cancelCount']) {
+    assert.ok(visualSmoke.includes(state), 'visual smoke must verify speech lifecycle: ' + state);
+  }
 });
