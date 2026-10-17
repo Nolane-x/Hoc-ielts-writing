@@ -31,7 +31,7 @@ const TASK_ACADEMY_CATALOG = {
       sentence: 'Secondary schools should design a ______ curriculum that balances theoretical knowledge with practical life skills.',
       options: ['holistic', 'big', 'full', 'heavy'],
       answerIndex: 0,
-      explanation: '“Holistic curriculum” là cụm collocation học thuật chuẩn C1/C2 diễn tả chương trình giáo dục toàn diện, tự nhiên hơn nhiều so với “big/full curriculum”.'
+      explanation: '“Holistic curriculum” là cụm collocation theo chủ đề diễn tả chương trình giáo dục toàn diện, tự nhiên hơn so với “big/full curriculum”.'
     },
     cohesionPuzzle: {
       prompt: 'Sắp xếp 4 câu sau thành đoạn Thân bài mạch lạc theo chuẩn Topic Sentence → Explanation → Evidence → Impact:',
@@ -61,7 +61,7 @@ const TASK_ACADEMY_CATALOG = {
       { phrase: 'commuter bottleneck', meaning: 'Điểm nghẽn giao thông giờ đi làm' }
     ],
     modelEssay: {
-      band: 8.5,
+      label: 'Bài mẫu tham khảo', calibration: 'not-calibrated-against-independent-human-rated-corpus',
       paragraphs: [
         { role: 'Introduction', text: 'Severe traffic congestion has become a defining challenge for modern metropolises. This predicament stems primarily from over-reliance on private vehicles and underfunded transit infrastructure, yet it can be mitigated through targeted transit investment and peak-hour road pricing.' },
         { role: 'Body Paragraph 1 (Causes)', text: 'The primary driver of urban gridlock is the disproportionate growth of private car ownership relative to road capacity. As cities expand outward, commuters living in peripheral suburbs often lack reliable rail or bus connections, forcing millions of solo drivers onto arterial highways during identical peak windows.' },
@@ -309,7 +309,7 @@ function buildFallbackAcademyData(task) {
         { phrase: 'over the surveyed period', meaning: 'Trong suốt giai đoạn được khảo sát' }
       ],
       modelEssay: {
-        band: 8.5,
+        label: 'Bài mẫu tham khảo', calibration: 'not-calibrated-against-independent-human-rated-corpus',
         paragraphs: [
           { role: 'Introduction', text: `The supplied diagram illustrates key quantitative patterns for ${task.title.toLowerCase()}, enabling direct comparison across the reported categories and time frames.` },
           { role: 'Overview', text: 'Overall, the most striking feature is the substantial divergence between the leading and trailing categories, alongside a clear structural shift over the surveyed period.' },
@@ -354,7 +354,7 @@ function buildFallbackAcademyData(task) {
         { phrase: 'at your earliest convenience', meaning: 'Vào thời điểm thuận tiện sớm nhất của quý vị' }
       ],
       modelEssay: {
-        band: 8.5,
+        label: 'Bài mẫu tham khảo', calibration: 'not-calibrated-against-independent-human-rated-corpus',
         paragraphs: [
           { role: 'Opening & Purpose', text: 'Dear Sir or Madam, I am writing to formally report an issue regarding my recent experience and to request a practical resolution at your earliest convenience.' },
           { role: 'Bullet 1 & 2 (Context & Impact)', text: 'Specifically, the situation differed markedly from what was confirmed at the time of registration. Because this issue directly affected my schedule and daily work, I would appreciate your reviewing the details carefully.' },
@@ -397,7 +397,7 @@ function buildFallbackAcademyData(task) {
       { phrase: 'strike a pragmatic balance between', meaning: 'Đạt được sự cân bằng thực tế giữa...' }
     ],
     modelEssay: {
-      band: 8.5,
+      label: 'Bài mẫu tham khảo', calibration: 'not-calibrated-against-independent-human-rated-corpus',
       paragraphs: [
         { role: 'Introduction', text: `Contemporary policy discussions increasingly centre on ${task.title.toLowerCase()}. While competing priorities exist on both sides of the issue, I maintain that a balanced, evidence-led approach yields the most durable public benefit.` },
         { role: 'Body Paragraph 1', text: 'From an immediate practical standpoint, targeted investment addresses pressing community needs. When authorities allocate resources transparently and align incentives with citizen behaviour, measurable improvements emerge within a short timeframe.' },
