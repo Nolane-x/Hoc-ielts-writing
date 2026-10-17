@@ -14,7 +14,7 @@ test('release workflow waits for all three platform jobs before publishing', () 
   assert.match(releaseWorkflow, /windows:\s*\n\s+(?:needs:[^\n]*\n\s+)?runs-on:\s*windows-latest/);
   assert.match(releaseWorkflow, /linux:\s*\n\s+(?:needs:[^\n]*\n\s+)?runs-on:\s*ubuntu-latest/);
   assert.match(releaseWorkflow, /android:\s*\n\s+(?:needs:[^\n]*\n\s+)?runs-on:\s*ubuntu-latest/);
-  assert.match(releaseWorkflow, /needs:\s*\[windows, linux, android\]/);
+  assert.match(releaseWorkflow, /needs:\s*\[verify, visual-smoke, windows, linux, android\]/);
   assert.match(releaseWorkflow, /permissions:\s*\n\s+contents:\s*write/);
   assert.match(releaseWorkflow, /prerelease:\s*true/);
 });
