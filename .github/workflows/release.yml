@@ -6,7 +6,14 @@ on:
 permissions:
   contents: read
 jobs:
+  verify:
+    name: Required CI (Node 22 and 24)
+    uses: ./.github/workflows/ci.yml
+  visual-smoke:
+    name: Required Chromium desktop/mobile smoke
+    uses: ./.github/workflows/visual-smoke.yml
   windows:
+    needs: [verify, visual-smoke]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +32,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   linux:
+    needs: [verify, visual-smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,6 +51,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   android:
+    needs: [verify, visual-smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +96,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   publish:
-    needs: [windows, linux, android]
+    needs: [verify, visual-smoke, windows, linux, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
