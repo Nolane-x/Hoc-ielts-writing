@@ -114,7 +114,7 @@ try {
   await page.waitForFunction(() => document.querySelector('#task-select')?.options?.length > 0);
   await auditAccessibility(page, 'desktop-writing-workspace');
   // Keyboard-only smoke starts in a fresh tab, matching a learner's first visit.
-  const keyboardPage = await context.newPage();
+  const keyboardPage = await browser.newPage({ viewport: { width: 1440, height: 1100 }, reducedMotion: 'reduce' });
   listenForErrors(keyboardPage, 'keyboard');
   await keyboardPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await keyboardPage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
@@ -133,7 +133,7 @@ try {
       outlineStyle: style?.outlineStyle || 'none'
     };
   });
-  assert.match(String(skipFocus.className), /skip-link/, 'The first Tab should reveal the skip-navigation link.');
+  assert.ok(/skip-link/.test(String(skipFocus.className)), 'The first Tab should reveal the skip-navigation link: ' + JSON.stringify(skipFocus));
   assert.ok(skipFocus.top >= 0 && skipFocus.bottom <= 120,
     'The focused skip link must move into the visible viewport.');
   assert.ok(skipFocus.boxShadow !== 'none' || skipFocus.outlineStyle !== 'none',
