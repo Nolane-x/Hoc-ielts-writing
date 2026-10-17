@@ -54,7 +54,6 @@ try {
         resume: () => { mock.resumes += 1; },
         speak: utterance => {
           mock.utterances.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate });
-          setTimeout(() => utterance.onend?.(), 500);
         }
       }
     });
