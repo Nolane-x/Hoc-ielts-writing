@@ -166,7 +166,7 @@ test('micro-practice answers persist locally and the practice journal clearly di
   assert.match(app, /function renderAgentPracticeJournal\(\)/);
   assert.match(app, /createAgentPracticeAttempt\(/);
   assert.match(app, /agentPracticeAttempts: agentPracticeAttempts\(\)/);
-  assert.match(app, /localStorage\.setItem\(AGENT_PRACTICE_ATTEMPTS_KEY, JSON\.stringify\(backup\.agentPracticeAttempts \|\| \[\]\)\)/);
+  assert.match(app, /changes\[AGENT_PRACTICE_ATTEMPTS_KEY\] = JSON\.stringify\(backup\.agentPracticeAttempts \|\| \[\]\)/);
   assert.match(app, /feedbackSource: response\?\.source === 'configuration-message'/);
   assert.match(app, /không phải band hay bằng chứng đã thành thạo/i);
   assert.match(app, /Đã xóa lượt luyện khỏi nhật ký cục bộ/);
