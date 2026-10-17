@@ -95,9 +95,9 @@
         </div>
 
         <div class="topbar-actions">
-          <button class="zen-pill exam-sim-pill" id="exam-mode-toggle" type="button" aria-pressed="false" aria-label="Bật/tắt chế độ luyện thi mô phỏng phòng thi IELTS trên máy" title="Chế độ luyện viết trên máy tính; không phải phần mềm thi chính thức">
+          <button class="zen-pill exam-sim-pill" id="exam-mode-toggle" type="button" aria-label="Bật/tắt chế độ luyện thi" aria-pressed="false" title="Chế độ luyện viết trên máy tính; không phải phần mềm thi chính thức">
             <span aria-hidden="true">▣</span>
-            <span>Luyện thi</span>
+            <span>Luyện thi máy tính</span>
           </button>
           <button class="zen-pill" id="zen-toggle" type="button" aria-pressed="false" title="Chế độ tập trung tối đa (Zen Focus Mode)">
             <span aria-hidden="true">⤢</span>
@@ -110,28 +110,6 @@
           <button class="icon-button" id="top-settings" type="button" aria-label="Mở cài đặt" title="Cài đặt">⚙</button>
         </div>
       </header>
-
-      <section class="speech-dock" aria-label="Điều khiển đọc thành tiếng">
-        <div class="speech-dock-copy">
-          <span class="section-kicker">ACCESSIBILITY · NATIVE VOICE</span>
-          <strong>Đọc thành tiếng</strong>
-          <span>Đọc phần đang chọn hoặc nội dung chính của trang. Văn bản được xử lý bằng giọng đọc có sẵn trên thiết bị.</span>
-        </div>
-        <div class="speech-dock-controls">
-          <button class="button button-primary speech-action" id="speech-read" type="button" title="Đọc phần văn bản đang chọn hoặc nội dung chính">🔊 Nói thành tiếng</button>
-          <button class="quiet-button speech-action" id="speech-pause" type="button" disabled title="Tạm dừng đọc">⏸ Tạm dừng</button>
-          <button class="quiet-button speech-action" id="speech-resume" type="button" disabled title="Tiếp tục đọc">▶ Tiếp tục</button>
-          <button class="quiet-button speech-action" id="speech-stop" type="button" disabled title="Dừng và xóa hàng đợi giọng đọc">■ Dừng</button>
-          <label class="speech-rate-label" for="speech-rate">Tốc độ</label>
-          <select id="speech-rate" aria-label="Tốc độ đọc">
-            <option value="0.8">0,8×</option>
-            <option value="1" selected>1×</option>
-            <option value="1.15">1,15×</option>
-            <option value="1.3">1,3×</option>
-          </select>
-        </div>
-        <p class="speech-status" id="speech-status" role="status" aria-live="polite">Sẵn sàng đọc bằng giọng có sẵn trên thiết bị.</p>
-      </section>
 
       <!-- PAGE 1: WORKSPACE & INTEGRATED AI CO-PILOT STUDIO -->
       <section class="page-view active" id="page-workspace" aria-labelledby="workspace-title">
@@ -153,7 +131,7 @@
               <span class="stat-symbol stat-symbol-indigo" aria-hidden="true">✦</span>
               <div>
                 <strong id="active-task-badge">Task 2</strong>
-                <span>4 tiêu chí IELTS Writing</span>
+                <span>Luyện IELTS · 4 tiêu chí</span>
               </div>
             </div>
           </div>
@@ -179,10 +157,76 @@
               <select id="task-select" aria-describedby="task-goal"></select>
             </div>
 
+            <details class="custom-task-panel" id="custom-task-panel">
+              <summary>＋ Nhập đề riêng hoặc nhờ AI tạo một đề mới</summary>
+              <div class="custom-task-fields">
+                <section class="saved-custom-task-manager" aria-label="Quản lý đề tùy chỉnh">
+                  <div class="saved-custom-task-heading">
+                    <strong>Đề riêng đã lưu trên thiết bị</strong>
+                    <span id="custom-task-count" class="count-badge">0 / 30</span>
+                  </div>
+                  <div id="custom-task-manager" class="saved-custom-task-list" aria-live="polite">
+                    <p class="field-help">Chưa có đề riêng. Tạo đề ở bên dưới; bạn có thể mở hoặc xóa đề ở đây.</p>
+                  </div>
+                </section>
+                <div class="custom-task-row">
+                  <div class="field">
+                    <label for="custom-task-type">LOẠI BÀI</label>
+                    <select id="custom-task-type">
+                      <option value="task2">Task 2 · Essay</option>
+                      <option value="task1-academic">Academic Task 1</option>
+                      <option value="task1-general">General Training Task 1</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="custom-task-title">TÊN ĐỀ</label>
+                    <input id="custom-task-title" maxlength="120" placeholder="Ví dụ: AI và tư duy độc lập">
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="custom-task-prompt">ĐỀ BÀI CỦA BẠN</label>
+                  <textarea id="custom-task-prompt" rows="4" maxlength="1600" placeholder="Dán hoặc viết đề bài muốn luyện tại đây..."></textarea>
+                </div>
+                <div class="field">
+                  <label for="custom-task-goal">MỤC TIÊU LUYỆN TẬP</label>
+                  <input id="custom-task-goal" maxlength="500" placeholder="Ví dụ: phát triển hai luận điểm và đánh giá phản biện">
+                </div>
+                <div class="custom-task-actions">
+                  <button class="button button-secondary" type="button" id="save-custom-task">Lưu và mở đề riêng</button>
+                  <button class="button button-primary" type="button" id="generate-custom-task">✦ Nhờ AI tạo đề mới</button>
+                </div>
+                <p class="field-help">Đề do AI tạo được gắn nhãn chưa kiểm định. Chỉ nội dung cần cho việc tạo đề mới được gửi; bài luận hiện tại không được đưa vào yêu cầu tạo đề này.</p>
+              </div>
+            </details>
+
+            <section class="live-companion-controls" aria-label="Điều khiển AI đồng hành">
+              <div class="live-companion-control">
+                <label class="toggle-line" for="proactive-review-toggle">
+                  <input id="proactive-review-toggle" type="checkbox">
+                  <span><strong>AI chủ động theo dõi tiến trình viết</strong><small>Chỉ gọi model sau khi bạn bật công tắc và cấp quyền provider.</small></span>
+                </label>
+              </div>
+              <div class="live-companion-control">
+                <label class="toggle-line" for="voice-reminder-toggle">
+                  <input id="voice-reminder-toggle" type="checkbox">
+                  <span><strong>Đọc lời nhắc thành tiếng</strong><small>Dùng giọng đọc của trình duyệt/hệ điều hành; không ghi âm microphone. Một số giọng có thể cần mạng theo cài đặt thiết bị.</small></span>
+                </label>
+              </div>
+              <div class="field proactive-threshold-field">
+                <label for="proactive-threshold">MỨC THAY ĐỔI TRƯỚC KHI AI KIỂM TRA</label>
+                <select id="proactive-threshold">
+                  <option value="100">Khoảng 100 ký tự mới/thay đổi</option>
+                  <option value="180">Khoảng 180 ký tự mới/thay đổi</option>
+                  <option value="280">Khoảng 280 ký tự mới/thay đổi</option>
+                </select>
+              </div>
+              <p id="companion-status" class="companion-status" role="status" aria-live="polite">Đang tắt. AI không theo dõi tiến trình và không tự gửi bản nháp.</p>
+            </section>
+
             <div class="prompt-card" id="prompt-card">
               <div class="prompt-card-top">
                 <div class="prompt-badges">
-                  <span class="prompt-label">IELTS PRACTICE PROMPT</span>
+                  <span class="prompt-label">IELTS PRACTICE TASK</span>
                   <div class="prompt-meta" id="task-meta"></div>
                 </div>
                 <div class="prompt-actions-bar">
@@ -200,17 +244,17 @@
             </div>
 
             <!-- STAGE 1: PRE-WRITING & ACADEMIC IDEA LAB -->
-            <section class="idea-lab-panel" id="idea-lab" hidden aria-label="Khoang phân tích đề, cụm từ theo chủ đề và dựng dàn ý">
+            <section class="idea-lab-panel" id="idea-lab" hidden aria-label="Khoang phân tích đề, từ vựng C1/C2 và dựng dàn ý">
               <div class="idea-lab-head">
                 <div>
                   <span class="section-kicker">STAGE 01 · PRE-WRITING &amp; ACADEMIC IDEA LAB</span>
-                  <h3>Phân tích đề · Cụm từ học thuật · Khung dàn ý 4 đoạn</h3>
+                  <h3>Phân tích đề · Vốn từ C1/C2 · Khung dàn ý 4 đoạn</h3>
                 </div>
-                <span class="count-badge">Chuẩn tư duy Band 8.0+</span>
+                <span class="count-badge">Tư duy học thuật nâng cao</span>
               </div>
               <div id="task-deconstruct-view" class="deconstruct-grid"></div>
               <div class="lexical-bank-wrap">
-                <span class="mini-label">CỤM TỪ HỌC THUẬT THEO CHỦ ĐỀ (BẤM ĐỂ CHÈN VÀO BÀI)</span>
+                <span class="mini-label">CỤM COLLOCATIONS C1/C2 THEO CHỦ ĐỀ (BẤM ĐỂ CHÈN VÀO BÀI)</span>
                 <div id="topic-lexical-bank" class="lexical-chip-grid"></div>
               </div>
               <div class="outline-builder-grid" id="outline-builder">
@@ -262,6 +306,61 @@
               <span id="word-target" class="word-target-pill">Mục tiêu tham khảo: 250 từ</span>
             </div>
             </div>
+
+            <section class="speech-reader-panel" id="speech-reader-panel" aria-labelledby="speech-reader-title" aria-describedby="speech-reader-help">
+              <div class="speech-reader-heading">
+                <div>
+                  <span class="section-kicker">VOICE STUDIO · LISTEN &amp; REVIEW</span>
+                  <h3 id="speech-reader-title">Đọc thành tiếng</h3>
+                  <p>Nghe bài luận để kiểm tra độ tự nhiên, luyện nghe IELTS và rà soát câu chữ mà không cần rời khỏi trình soạn thảo.</p>
+                </div>
+                <span class="speech-reader-mark" aria-hidden="true">♫</span>
+              </div>
+              <div class="speech-reader-actions" aria-label="Chọn nội dung cần đọc">
+                <button class="speech-reader-action speech-reader-action-primary" type="button" data-speech-read="essay">▶ Nghe bài viết</button>
+                <button class="speech-reader-action" type="button" data-speech-read="prompt">▤ Nghe đề IELTS</button>
+                <button class="speech-reader-action" type="button" data-speech-read="selection">▸ Nghe đoạn đã chọn</button>
+                <button class="speech-reader-action" type="button" data-speech-read="feedback">✦ Nghe phản hồi</button>
+              </div>
+              <div class="speech-reader-toolbar">
+                <div class="speech-reader-setting">
+                  <label for="speech-reader-language">GIỌNG ĐỌC</label>
+                  <select id="speech-reader-language">
+                    <option value="auto">Tự nhận diện ngôn ngữ</option>
+                    <option value="en-GB">English · Anh–Anh</option>
+                    <option value="en-US">English · Anh–Mỹ</option>
+                    <option value="vi-VN">Tiếng Việt</option>
+                  </select>
+                </div>
+                <div class="speech-reader-setting">
+                  <label for="speech-reader-rate">TỐC ĐỘ</label>
+                  <select id="speech-reader-rate">
+                    <option value="0.75">0,75× · Chậm</option>
+                    <option value="0.9">0,9× · Từ tốn</option>
+                    <option value="1" selected>1× · Bình thường</option>
+                    <option value="1.15">1,15× · Nhanh nhẹ</option>
+                    <option value="1.3">1,3× · Nhanh</option>
+                    <option value="1.5">1,5× · Rất nhanh</option>
+                  </select>
+                </div>
+                <div class="speech-reader-playback" aria-label="Điều khiển phát">
+                  <button class="speech-reader-transport" id="speech-reader-pause" type="button" disabled>Ⅱ Tạm dừng</button>
+                  <button class="speech-reader-transport" id="speech-reader-resume" type="button" disabled>▶ Tiếp tục</button>
+                  <button class="speech-reader-transport speech-reader-transport-stop" id="speech-reader-stop" type="button" disabled>■ Dừng</button>
+                </div>
+              </div>
+              <p id="speech-reader-status" class="speech-reader-status" role="status" aria-live="polite" aria-atomic="true">Sẵn sàng đọc bài viết, đề IELTS hoặc nội dung đang chọn.</p>
+              <p class="speech-reader-privacy" id="speech-reader-help">Dùng bộ đọc tiếng nói của trình duyệt/hệ điều hành. WMR không tự gửi văn bản tới dịch vụ AI/âm thanh và không ghi âm microphone; một số giọng hệ thống có thể dùng dịch vụ trực tuyến tùy cài đặt thiết bị. Giọng và tốc độ áp dụng cho lần đọc mới.</p>
+            </section>
+
+            <section id="live-annotation-panel" class="live-annotation-panel" hidden aria-label="Bản đồ chú thích AI trên bài viết">
+              <div class="live-annotation-heading">
+                <div><span class="section-kicker">LIVE EVIDENCE MAP</span><h3>Chú thích có màu của AI</h3><p>Vùng đánh dấu chỉ dựa trên trích dẫn nguyên văn. Bấm chú thích để chọn đúng đoạn trong trình soạn thảo.</p></div>
+                <button class="quiet-button" id="clear-live-annotations" type="button">Ẩn chú thích</button>
+              </div>
+              <div id="live-annotation-preview" class="live-annotation-preview" aria-label="Bản xem trước có đánh dấu"></div>
+              <div id="live-annotation-list" class="live-annotation-list"></div>
+            </section>
 
             <div class="editor-actions">
               <button class="button button-primary button-lg" id="submit-review" type="button">
@@ -331,7 +430,7 @@
                     <span>⚡ Sửa 3 lỗi chí mạng nhất</span>
                   </button>
                   <button class="preset-chip" type="button" data-agent-preset="Tìm các cụm từ còn đơn giản hoặc lặp lại trong bài nháp, đề xuất tối đa 3 bản vá nâng cấp lên collocation học thuật tự nhiên đúng ngữ cảnh và tạo 1 bài luyện từ vựng.">
-                    <span>💎 Nâng cấp độ chính xác từ vựng</span>
+                    <span>💎 Nâng cấp từ vựng Band 7.5+</span>
                   </button>
                   <button class="preset-chip" type="button" data-agent-preset="Phân tích tính mạch lạc (Coherence &amp; Cohesion) và độ sâu lập luận của từng đoạn, chỉ ra đoạn yếu nhất, đề xuất sửa câu chủ đề/liên kết và tạo khung dàn ý cải thiện.">
                     <span>🧭 Chẩn đoán mạch lạc &amp; lập luận</span>
@@ -360,7 +459,7 @@
 
               <section id="agent-result" class="agent-result" aria-label="Kết quả và thao tác đang chờ duyệt"></section>
 
-              <p class="agent-permission-note">Khi quyền gửi provider được bật, Agent gửi đề hiện tại, bản nháp hiện tại và bản tóm tắt tiến trình (điểm tiêu chí/lỗi lặp lại; không gửi nguyên văn bài cũ). Agent không có shell, quyền đọc file tùy ý hay quyền truy cập API key; công cụ chỉ thao tác trên bài viết và tài liệu học được cung cấp.</p>
+              <p class="agent-permission-note">Khi quyền gửi provider được bật, phiên Writing Agent gửi đề hiện tại, bản nháp hiện tại, ghi chú riêng của đề hiện tại và bản tóm tắt tiến trình (điểm tiêu chí/lỗi lặp lại; không gửi nguyên văn bài cũ). Chế độ chủ động chỉ tự gửi sau khi bạn bật công tắc riêng, tạm dừng gõ và vượt ngưỡng nội dung thay đổi; có khoảng nghỉ giữa các lần gọi. Tắt quyền provider sẽ yêu cầu dừng lượt tự động đang chạy. Agent không có shell, quyền đọc file tùy ý, chụp màn hình, microphone hay quyền truy cập API key; công cụ chỉ thao tác trên bài viết và tài liệu học được cung cấp.</p>
 
               <section class="agent-saved-panel" aria-label="Tài liệu học do Agent tạo">
                 <div class="panel-heading">
@@ -434,7 +533,7 @@
 
               <div class="coach-input-area">
                 <label for="coach-input">ĐẶT CÂU HỎI CHO MENTOR</label>
-                <textarea id="coach-input" rows="3" placeholder="Ví dụ: Làm sao để viết câu Overview cho biểu đồ này rõ ràng và có so sánh tốt hơn?"></textarea>
+                <textarea id="coach-input" rows="3" placeholder="Ví dụ: Làm sao để viết câu Overview cho biểu đồ này đạt Band 7.5+?"></textarea>
                 <button class="button button-dark" id="ask-coach" type="button">
                   <span>Gửi câu hỏi tới Mentor</span>
                   <span aria-hidden="true">↑</span>
@@ -454,7 +553,7 @@
                 </div>
                 <span class="count-badge">100% Offline</span>
               </div>
-              <p class="coach-intro">Rèn phản xạ chọn collocation phù hợp ngữ cảnh và sắp xếp mạch lập luận (Cohesion Logic Puzzle) gắn liền với đề hiện tại.</p>
+              <p class="coach-intro">Rèn phản xạ chọn cụm Collocations C1/C2 và sắp xếp mạch lập luận (Cohesion Logic Puzzle) gắn liền với đề hiện tại.</p>
               <div id="gym-collocation-drill" class="gym-drill-box"></div>
               <div id="gym-cohesion-puzzle" class="gym-drill-box"></div>
             </section>
