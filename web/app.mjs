@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { createSpeechReader } from './speech.mjs';
 import { parseLocalBackup } from './local-data.mjs';
 import { createAgentPracticeAttempt, normaliseAgentPracticeAttempts, buildAgentPracticeSummary } from './agent-practice.mjs';
 import { createLearningRecord } from './learning-records.mjs';
@@ -67,6 +68,7 @@ let examSecondsRemaining = 40 * 60;
 let promptHighlights = [];
 let activeReportFilter = 'all';
 let cohesionSelectedOrder = [];
+const speechReader = createSpeechReader({}, updateSpeechControls);
 
 function safeParse(value, fallback) { try { return JSON.parse(value); } catch { return fallback; } }
 function escapeHtml(value) {
@@ -78,6 +80,51 @@ function setToast(message) {
   el.classList.add('visible');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('visible'), 2800);
+}
+function updateSpeechControls(snapshot) {
+  const status = $('#speech-status');
+  if (status) {
+    status.textContent = snapshot.message || '';
+    status.dataset.state = snapshot.state || 'idle';
+  }
+  const read = $('#speech-read');
+  const pause = $('#speech-pause');
+  const resume = $('#speech-resume');
+  const stop = $('#speech-stop');
+  if (read) read.disabled = !snapshot.supported;
+  if (pause) pause.disabled = snapshot.state !== 'speaking';
+  if (resume) resume.disabled = snapshot.state !== 'paused';
+  if (stop) stop.disabled = !['speaking', 'paused'].includes(snapshot.state);
+}
+function readSpeechTextFromElement(element) {
+  if (!element) return '';
+  const clone = element.cloneNode(true);
+  clone.querySelectorAll('button, input, textarea, select, label, script, style, .speech-dock, .report-filter-bar, .issue-actions, .prompt-actions-bar, .agent-activity').forEach(node => node.remove());
+  clone.querySelectorAll('[hidden], [aria-hidden="true"]').forEach(node => node.remove());
+  return String(clone.innerText || clone.textContent || '').replace(/\\s+/g, ' ').trim();
+}
+function resolveSpeechText() {
+  const selection = window.getSelection?.()?.toString().trim();
+  if (selection) return selection;
+  const editor = $('#essay-editor');
+  if (editor && Number.isInteger(editor.selectionStart) && Number.isInteger(editor.selectionEnd) && editor.selectionStart !== editor.selectionEnd) {
+    return editor.value.slice(editor.selectionStart, editor.selectionEnd).trim();
+  }
+  const activePage = $('.page-view.active');
+  if (activePage?.id === 'page-report') return readSpeechTextFromElement(activePage);
+  if (activePage?.id === 'page-learn') return readSpeechTextFromElement(activePage);
+  if (activePage?.id === 'page-settings') return readSpeechTextFromElement(activePage);
+  const agentResultEl = $('#agent-result');
+  if (agentResultEl && agentResultEl.textContent.trim()) return readSpeechTextFromElement(agentResultEl);
+  const coachAnswer = $('#coach-answer');
+  if (coachAnswer && !coachAnswer.hidden && coachAnswer.textContent.trim()) return coachAnswer.textContent.trim();
+  const essay = String(editor?.value || '').trim();
+  return [
+    currentTask?.title || '',
+    currentTask?.prompt || '',
+    currentTask?.goal || '',
+    essay ? 'Bản nháp của bạn. ' + essay : ''
+  ].filter(Boolean).join('\\n\\n').trim();
 }
 function setStatus(selector, message, bad = false) {
   const el = $(selector);
@@ -559,11 +606,11 @@ function renderReport(report, loading = false) {
   const academy = getTaskAcademyData(currentTask);
   const learnerParagraphs = String(currentRecord?.essay || $('#essay-editor')?.value || '').trim().split(/\r?\n\s*\r?\n+/).filter(Boolean);
   const parallelHtml = academy?.modelEssay?.paragraphs?.length
-    ? '<section class="panel parallel-model-panel"><div class="report-panel-heading"><div><span class="section-kicker">PARALLEL MODEL ESSAY BENCHMARKING</span><h2>Đối sánh song song với Bài mẫu Band ' + academy.modelEssay.band.toFixed(1) + '+</h2><p>So sánh từng đoạn trong bài của bạn với cấu trúc lập luận và từ vựng học thuật của bài mẫu chuẩn Cambridge.</p></div><span class="count-badge">Band ' + academy.modelEssay.band.toFixed(1) + '+</span></div>' +
+    ? '<section class="panel parallel-model-panel"><div class="report-panel-heading"><div><span class="section-kicker">PARALLEL MODEL RESPONSE</span><h2>Đối chiếu với bài mẫu tham khảo</h2><p>Bài mẫu nội bộ để học cấu trúc lập luận và cách diễn đạt; chưa được hiệu chuẩn bằng giám khảo độc lập và không phải tài liệu Cambridge chính thức.</p></div><span class="count-badge">Chưa hiệu chuẩn</span></div>' +
       '<div class="parallel-model-grid">' +
       academy.modelEssay.paragraphs.map((modelPara, idx) =>
         '<div class="parallel-pair-card"><span class="pair-role">Đoạn ' + (idx + 1) + ' của bạn · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(learnerParagraphs[idx] || 'Chưa có đoạn tương ứng trong bản nháp.') + '</p></div>' +
-        '<div class="parallel-pair-card"><span class="pair-role">Bài mẫu Band ' + academy.modelEssay.band.toFixed(1) + '+ · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(modelPara.text) + '</p></div>'
+        '<div class="parallel-pair-card"><span class="pair-role">Bài mẫu tham khảo · ' + escapeHtml(modelPara.role) + '</span><p>' + escapeHtml(modelPara.text) + '</p></div>'
       ).join('') +
       '</div></section>'
     : '';
@@ -1679,7 +1726,20 @@ async function clearLocalData() {
   setToast('Đã xóa bản nháp, hội thoại Mentor, tài liệu Agent, nhật ký luyện và lịch sử cục bộ.');
 }
 function attachEvents() {
-  $$('[data-page]').forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
+  updateSpeechControls(speechReader.getState());
+  $('#speech-read')?.addEventListener('click', () => {
+    const source = resolveSpeechText();
+    if (!source) {
+      setToast('Chưa có nội dung để đọc. Hãy chọn văn bản hoặc mở một bài viết/báo cáo trước.');
+      return;
+    }
+    const result = speechReader.read(source, { rate: Number($('#speech-rate')?.value) || 1 });
+    if (!result.ok) setToast(result.reason === 'empty-text' ? 'Chưa có nội dung để đọc.' : 'Thiết bị chưa hỗ trợ đọc thành tiếng.');
+  });
+  $('#speech-pause')?.addEventListener('click', () => speechReader.pause());
+  $('#speech-resume')?.addEventListener('click', () => speechReader.resume());
+  $('#speech-stop')?.addEventListener('click', () => speechReader.stop());
+  $('[data-page]').forEach(el => el.addEventListener('click', () => showPage(el.dataset.page)));
   $('#top-settings').addEventListener('click', () => showPage('settings'));
   $('#mobile-menu').addEventListener('click', () => $('#sidebar').classList.toggle('mobile-open'));
   $('#timer-toggle')?.addEventListener('click', toggleExamTimer);
