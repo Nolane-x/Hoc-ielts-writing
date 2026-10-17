@@ -3820,10 +3820,12 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   background: #111827;
 }
 
-.app-shell.idp-bc-mode .app-footer {
+.app-shell.idp-bc-mode .app-footer,
+.app-shell.idp-bc-mode .app-footer strong {
   color: #334155;
 }
-html[data-theme="dark"] .app-shell.idp-bc-mode .app-footer {
+html[data-theme="dark"] .app-shell.idp-bc-mode .app-footer,
+html[data-theme="dark"] .app-shell.idp-bc-mode .app-footer strong {
   color: #cbd5e1;
 }
 .app-shell.idp-bc-mode .sidebar,
