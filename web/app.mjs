@@ -158,7 +158,7 @@ function readableRegionText(selector) {
   if (!element || element.hidden) return '';
   const copy = element.cloneNode(true);
   copy.querySelectorAll('button, input, select, textarea, script, style, [aria-hidden="true"]').forEach(node => node.remove());
-  return String(copy.innerText || copy.textContent || '').replace(/\\s+/gu, ' ').trim();
+  return String(copy.innerText || copy.textContent || '').replace(/\s+/gu, ' ').trim();
 }
 function feedbackTextForSpeech() {
   const page = $('.page-view.active')?.id;
