@@ -44,3 +44,41 @@ The Writing Agent uses a fixed, named tool allowlist for the supplied IELTS task
 A patch must match one unique source substring, must not overlap another staged patch, and is applied only after a learner clicks an explicit apply control. Applying changes records the previous draft locally; recovery replaces the editor only after a confirmation when the current text differs. The server streams progress and tool results with SSE; disconnecting aborts the session/provider request where supported. Each run is bounded by model-turn/tool-call limits, request timeout, body-size bound and the existing cost ledger. The existing Settings permission switch remains the explicit boundary for sending essay content to a configured provider.
 
 These controls intentionally grant broad agency inside the writing workspace without granting control over the host operating system, credentials or arbitrary network destinations. Tool output and essays remain untrusted content; exact quotes prove location only, not semantic correctness.
+
+
+## Proactive companion, annotation and custom-task extensions
+
+### Additional data flows
+
+| Flow | Source and authority | Deterministic gate | Effect |
+|---|---|---|---|
+| Idle-triggered review | Text entered by the learner; always untrusted content | Explicit local companion toggle AND existing provider-consent toggle; minimum changed-character threshold, minimum draft length, 25-second idle interval, two-minute cooldown, daily call cap and agent-session budget | One bounded Writing Agent run over a snapshot; all edits remain staged for a learner click |
+| Scratchpad notes | Learner-authored short notes attached to the selected task; untrusted data | Length bounds and same provider-consent/budget gates as the corresponding Agent run | Included as context, never instructions or capabilities |
+| AI annotations | Model proposes an exact quote and a category/note | Quote must occur exactly once, no overlapping annotation, per-session limit of ten | Colour-coded read-only evidence preview and click-to-select; it does not write into the learner essay |
+| AI-generated task | Model-generated task fields | Strict JSON extraction, field limits, allowed Task type, minimum prompt length and task-count cap | Presented as unverified; persistence/opening requires a learner click |
+| Direct AI task generation | User-selected task type plus optional user-supplied topic; no essay field is sent | Existing provider-consent check and one-request provider budget/call limits; output is parsed and bounded before display | Draft prompt is reviewed by the learner and saved only after an explicit action |
+| Voice reminders | Existing timer text or bounded Agent summary | Local voice toggle; maximum 320 spoken characters; no capture API requested | Browser/system speech-synthesis output only; no microphone recording or audio upload |
+
+### Additional protected invariants and validation
+
+- The live-review timer does not call a model when proactive mode is off, external-provider permission is off, the workspace is busy, the draft has not reached the configured change threshold, or the cooldown remains active.
+- Model-produced notes and generated tasks remain data. They cannot add tools, change model configuration, write credentials or trigger external actions.
+- Annotation rendering escapes all text and re-resolves each quote against the current editor. Missing, repeated, stale or overlapping anchors are omitted instead of guessed.
+- Generated and imported custom tasks are normalized against a strict task-type allowlist and bounded title, prompt, goal, tip and ID formats. Custom tasks cannot use reserved base-task IDs.
+- Backup restore includes custom tasks and scratchpad notes but does not import provider configuration or API keys.
+- Patch application is unchanged: every edit must match a unique current substring, overlapping edits are rejected, a pre-edit snapshot must be saved, and the learner explicitly approves the edit.
+- These controls do not make model advice inherently correct. Human-rated IELTS quality and platform-specific voice behavior remain manual validation items.
+
+## Read-aloud and speech-engine boundary
+
+The read-aloud UI sanitizes text, redacts common credential-like strings and URLs, bounds playback text to 30,000 characters, and splits it into sequential utterances. WMR does not make a speech-service HTTP request and does not capture microphone input. However, the browser's `SpeechSynthesis` implementation delegates to installed browser/operating-system voices; some voices may use an online service. The app therefore does not promise offline speech on every platform. Users should review their selected voice and operating-system privacy settings when essay confidentiality is important. Text spoken by the OS voice remains untrusted content and does not grant it any new app capability.
+
+
+## Current release-gate hardening
+
+- State-changing loopback requests fail closed unless their `Origin` matches the exact loopback host/port; JSON content type matching rejects lookalike media types.
+- Writing Agent event frames are serialized by a CR/LF-sanitizing server formatter and consumed by a bounded parser that cancels the stream on oversized-frame errors.
+- Local backup import parses and validates the full payload before writing, applies related keys through a rollback-capable transaction, and excludes secrets/provider consent from restored settings.
+- Companion task generation is a separate route with strict task-type/schema validation, bounded topic/idea fields, existing usage budgets/timeouts, explicit provider consent, and no essay/prompt/history in the upstream request.
+- Proactive review requires explicit opt-in and is cancelled when disabled or provider consent is revoked. Suggestions are staged; they do not silently overwrite the essay.
+- These controls reduce identified risks but do not replace independent penetration testing, real-provider billing tests or physical-device acceptance.
