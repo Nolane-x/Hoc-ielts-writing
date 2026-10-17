@@ -302,7 +302,7 @@ function renderSocraticGym(task) {
   if (collocBox && academy.collocationDrill) {
     const drill = academy.collocationDrill;
     collocBox.innerHTML =
-      '<span class="mini-label">BÀI TẬP 1 · COLLOCATION MATCHER C1/C2</span>' +
+      '<span class="mini-label">BÀI TẬP 1 · COLLOCATION MATCHER THEO NGỮ CẢNH</span>' +
       '<h3>Chọn từ học thuật chuẩn xác nhất cho ngữ cảnh đề bài</h3>' +
       '<p class="gym-sentence">' + escapeHtml(drill.sentence) + '</p>' +
       '<div class="gym-options-grid">' +
@@ -596,8 +596,8 @@ function renderReport(report, loading = false) {
       (item.teachingHint ? '<p><strong>Điều cần hiểu:</strong> ' + escapeHtml(item.teachingHint) + '</p>' : '') +
       '<div class="sentence-surgery-card" aria-label="Mổ xẻ câu văn 3 cấp độ">' +
       '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán điểm nghẽn</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
-      '<div class="surgery-tier tier-band75"><strong>2 · Nâng cấp Band 7.5+</strong>' + escapeHtml(surgery.band75) + '</div>' +
-      '<div class="surgery-tier tier-band85"><strong>3 · Diễn đạt chuẩn Band 8.5+</strong>' + escapeHtml(surgery.band85) + '</div>' +
+      '<div class="surgery-tier tier-band75"><strong>2 · Bản sửa rõ và chính xác hơn</strong>' + escapeHtml(surgery.band75) + '</div>' +
+      '<div class="surgery-tier tier-band85"><strong>3 · Phương án nâng cao để tham khảo</strong>' + escapeHtml(surgery.band85) + '</div>' +
       '</div>' +
       '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || surgery.band85 || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
   }).join('') : '<p class="history-empty">' + (issues.length ? 'Không có mục nào thuộc nhóm lọc này.' : report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
@@ -673,7 +673,7 @@ function renderLearning() {
     radarLegendEl.innerHTML = [
       ['Task Response / Achievement', scoreById.get('taskResponse')?.mean ?? scoreById.get('taskAchievement')?.mean ?? null, 'Đáp ứng đúng trọng tâm câu hỏi'],
       ['Coherence & Cohesion', scoreById.get('coherence')?.mean ?? null, 'Mạch lập luận & liên kết đoạn'],
-      ['Lexical Resource', scoreById.get('lexical')?.mean ?? null, 'Độ chuẩn xác Collocations C1/C2'],
+      ['Lexical Resource', scoreById.get('lexical')?.mean ?? null, 'Độ chính xác của collocations theo ngữ cảnh'],
       ['Grammatical Range & Accuracy', scoreById.get('grammar')?.mean ?? null, 'Độ đa dạng & chuẩn xác cấu trúc câu']
     ].map(([label, val, note]) =>
       '<div class="radar-legend-card"><span class="mini-label">' + escapeHtml(label) + '</span><strong>' + (Number.isFinite(val) ? val.toFixed(1) : '6.0 (Tham chiếu)') + '</strong><small>' + escapeHtml(note) + '</small></div>'
@@ -1781,7 +1781,7 @@ function attachEvents() {
     editor.value = editor.value.slice(0, start) + prefix + phrase + editor.value.slice(end);
     editor.focus();
     saveDraft();
-    setToast('Đã chèn cụm C1/C2 vào bài: ' + phrase);
+    setToast('Đã chèn cụm từ học thuật vào bài: ' + phrase);
   });
   $('#insert-outline')?.addEventListener('click', () => {
     const editor = $('#essay-editor');
