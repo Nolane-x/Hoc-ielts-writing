@@ -85,7 +85,8 @@ test('Chromium smoke exercises the local Read Aloud playback lifecycle with a fa
 
 test('Chromium smoke audits WCAG 2.1 A/AA accessibility on desktop and mobile', () => {
   assert.match(visualWorkflow, /npm install --no-save --package-lock=false playwright axe-core/);
-  assert.match(visualSmoke, /require\.resolve\('axe-core'\)/);
+  assert.match(visualSmoke, /new URL\('\/axe\.min\.js', baseUrl\)/);
+  assert.match(visualWorkflow, /cp node_modules\/axe-core\/axe\.min\.js dist\/axe\.min\.js/);
   assert.match(visualSmoke, /wcag2a/);
   assert.match(visualSmoke, /wcag2aa/);
   assert.match(visualSmoke, /wcag21a/);
