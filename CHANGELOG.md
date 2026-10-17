@@ -1,6 +1,10 @@
 # Changelog
 
 ## 1.7.0 — Speech, task-specific Academy content and local API hardening
+- Make local backup restoration transactional with rollback and explicit reporting if rollback itself fails.
+- Replace ad hoc Writing Agent SSE framing parsing with a bounded, reusable parser and fragmented UTF-8 regression coverage.
+- Generate the visible UI version from `package.json` during the Vite build.
+- Remove synthetic Band 7.5/8.5 rewrite tiers and describe the exam-like interface and task bank as practice material, not official test software or Cambridge content.
 - Fixed a startup crash in page navigation binding discovered by real-browser smoke testing.
 - Corrected computer-delivered exam layout so the prompt and writing pane align side by side on desktop and stack responsively on narrow screens.
 - Gate release packaging and publication on reusable Node 22/24 CI plus Chromium desktop/mobile smoke evidence, including read-aloud lifecycle checks.
