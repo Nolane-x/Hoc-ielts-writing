@@ -69,7 +69,7 @@ test('formatOutlineForEditor builds a non-destructive 4-stage outline scaffold',
   assert.match(result, /Existing essay paragraph here\./);
 });
 
-test('buildSentenceSurgery produces 3-tier diagnosis, Band 7.5 upgrade and Band 8.5+ formulation', () => {
+test('buildSentenceSurgery provides a diagnosis and two rewrites without claiming a validated band', () => {
   const surgery = buildSentenceSurgery({
     category: 'lexical',
     quote: 'Government should do many things to solve traffic problem.',
