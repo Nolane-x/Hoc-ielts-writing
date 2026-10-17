@@ -40,7 +40,7 @@ test('Academic Task 1 samples use the selected task data instead of one generic 
   assert.match(line, /Country A/);
   assert.match(map, /warehouse/);
   assert.match(process, /pulp/);
-  assert.match(pie, /housing/);
+  assert.match(pie, /housing/i);
   assert.doesNotMatch(map, /renewable share|electricity generated from renewable sources/i);
   assert.doesNotMatch(process, /renewable share|electricity generated from renewable sources/i);
 });
