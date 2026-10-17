@@ -73,7 +73,7 @@ function currentUsage() {
 }
 export function validateOrigin(req) {
   const host = String(req?.headers?.host || '').trim().toLowerCase();
-  if (!host || /[\\/\\\\@?#\\s]/.test(host)) return false;
+  if (!host || /[\/\\@?#\s]/.test(host)) return false;
   const hostname = host.startsWith('[') ? host.slice(1, host.indexOf(']')) : host.split(':')[0];
   if (!LOOPBACK.has(hostname)) return false;
   const originHeader = req?.headers?.origin;
@@ -82,14 +82,14 @@ export function validateOrigin(req) {
   if (typeof originHeader !== 'string' || !originHeader.trim()) return false;
   try {
     const origin = new URL(originHeader);
-    const originHostname = origin.hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
+    const originHostname = origin.hostname.toLowerCase().replace(/^\[|\]$/g, '');
     return origin.protocol === 'http:' &&
       LOOPBACK.has(originHostname) &&
       origin.host.toLowerCase() === host;
   } catch { return false; }
 }
 export function isJsonContentType(value) {
-  return /^application\\/json(?:\\s*;|$)/i.test(String(value || '').trim());
+  return /^application\/json(?:\s*;|$)/i.test(String(value || '').trim());
 }
 async function readJson(req) {
   if (!isJsonContentType(req.headers['content-type'])) throw httpError(415, 'Content-Type must be application/json.');
