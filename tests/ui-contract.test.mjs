@@ -286,3 +286,12 @@ test('learner mastery radar never substitutes reference scores for missing AI ev
   assert.doesNotMatch(learning, /6\.0 \(Tham chiếu\)/);
   assert.match(css, /\.radar-empty-note/);
 });
+
+
+test('practice mode remains accessible and visible in the mobile top bar', () => {
+  assert.match(html, /id="exam-mode-toggle"[^>]*aria-label="[^"]*(?:practice|luyện thi)[^"]*"/i);
+  assert.match(css, /@media \(max-width: 650px\)[\s\S]*?\.zen-pill:not\(\.exam-sim-pill\) \{\s*display: none;/,
+    'Small-screen rules may hide Zen Mode but must not hide the practice-mode toggle.');
+  assert.match(css, /\.exam-sim-pill \{\s*display: inline-flex;/,
+    'The practice-mode control must remain visible on small screens.');
+});
