@@ -241,7 +241,7 @@ test('native read-aloud controls are accessible, local-only and wired to the spe
 test('application startup binds all navigation controls before exposing the writing workspace', () => {
   assert.match(app, /\$\$\('\[data-page\]'\)\.forEach\(/,
     'Navigation controls must use the multi-element selector helper.');
-  assert.doesNotMatch(app, /\$\('\[data-page\]'\)\.forEach\(/,
+  assert.doesNotMatch(app, /(?<!\$)\$\('\[data-page\]'\)\.forEach\(/,
     'The single-element selector must not be treated as a collection.');
   assert.match(app, /function boot\(\)[\s\S]*?attachEvents\(\)/,
     'App boot must attach UI events after initial workspace rendering.');
