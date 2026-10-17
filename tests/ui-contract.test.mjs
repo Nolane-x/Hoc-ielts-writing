@@ -428,3 +428,9 @@ test('computer-delivered practice footer uses a high-contrast text color in ligh
   assert.match(css, /\.app-shell\.idp-bc-mode \.app-footer,\s*\.app-shell\.idp-bc-mode \.app-footer strong \{\s*color: #334155;/);
   assert.match(css, /html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer,\s*html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer strong \{\s*color: #cbd5e1;/);
 });
+
+
+test('exam-mode footer text uses contrast-safe colors in both themes', () => {
+  assert.match(css, /\.app-shell\.idp-bc-mode \.app-footer span,\s*\.app-shell\.idp-bc-mode \.app-footer strong\s*\{\s*color: #334155 !important;/);
+  assert.match(css, /html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer span,\s*html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer strong\s*\{\s*color: #cbd5e1 !important;/);
+});
