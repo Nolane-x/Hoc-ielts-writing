@@ -87,7 +87,7 @@ Settings → Data lets you export a JSON backup and restore one later. Import is
 
 ## GitHub Actions release
 
-CI uses the committed lockfile, runs npm audit --audit-level=high, executes the test suite and builds the web application on Node 22/24. Release publication is additionally gated by reusable Node 22/24 CI and a Chromium smoke run covering desktop/mobile navigation, local reporting, privacy defaults and the read-aloud pause/resume/stop lifecycle. The platform packaging jobs do not start until both checks pass; screenshots and a machine-readable manifest are retained as workflow artifacts.
+CI uses the committed lockfile, runs npm audit --audit-level=high, executes the test suite and builds the web application on Node 22/24. Release publication is additionally gated by reusable Node 22/24 CI and a Chromium smoke run covering desktop/mobile navigation, local reporting, privacy defaults and the read-aloud pause/resume/stop lifecycle. The platform packaging jobs do not start until both checks pass; screenshots and a machine-readable manifest are retained as workflow artifacts. The browser check also catches application startup/navigation failures and verifies the desktop exam layout and its narrow-screen fallback. Read-aloud lifecycle checks use a mocked Web Speech engine: they verify local controls and state transitions, not physical speakers, installed voice availability, or audio quality.
 
 Pushing to main starts platform builds:
 
