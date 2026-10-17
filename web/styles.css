@@ -3825,11 +3825,18 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 }
 .app-shell.idp-bc-mode .editor-top-bar,
 .app-shell.idp-bc-mode .task-select-wrap,
-.app-shell.idp-bc-mode .editor-telemetry,
-.app-shell.idp-bc-mode .editor-footer,
 .app-shell.idp-bc-mode .editor-actions,
 .app-shell.idp-bc-mode #agent-revisions {
   grid-column: 1 / -1;
+}
+.app-shell.idp-bc-mode .writing-canvas-column {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.app-shell.idp-bc-mode .writing-canvas-column .editor-telemetry {
+  margin: 0 0 10px;
 }
 .app-shell.idp-bc-mode .prompt-card {
   grid-column: 1;
@@ -4103,6 +4110,9 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
   .radar-legend-shell,
   .app-shell.idp-bc-mode .editor-column {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .app-shell.idp-bc-mode .writing-canvas-column {
+    grid-column: 1;
   }
 }
 
