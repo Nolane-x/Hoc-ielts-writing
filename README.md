@@ -45,7 +45,7 @@ WMR is a local-first IELTS Writing learning workspace for Vietnamese-speaking le
 - On desktop, the API key stays in process memory and must be re-entered after restarting WMR. On Android, the key is stored using Android Keystore-backed secure storage.
 - No user account, cloud sync or multi-user web service is implemented. The local HTTP runtime binds to loopback only; do not expose its port through a LAN, tunnel or reverse proxy.
 - The agent has no shell, generic tool-execution, arbitrary file/browser access, screen capture or microphone access. Learner essay, prompt, scratchpad and previous conversation turns are untrusted content.
-- Voice output uses local browser/system speech synthesis only; no audio is recorded or uploaded.
+- Voice output uses the browser/system speech synthesis API and records no microphone. WMR makes no direct speech-service request, but some OS/browser voices may themselves rely on an online service depending on device settings.
 - Hosted endpoints must use HTTPS and explicitly supplied input/output token prices. WMR estimates spend; the provider's actual billing can differ.
 - On Android, 127.0.0.1 means the Android device itself. It does not reach an Ollama/LM Studio instance on a different computer.
 
