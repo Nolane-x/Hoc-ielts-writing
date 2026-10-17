@@ -411,8 +411,8 @@ test('strict CSP-compatible UI states never depend on inline style mutations or 
   assert.doesNotMatch(app, /style\s*=\s*["'][^"']*(?:width|color|background)\s*:/i,
     'Generated markup must not embed inline style attributes.');
   assert.match(app, /setProgressClass\(fillEl, pct\)/);
-  assert.match(app, /class="skill-progress-fill progress-fill progress-p' \+ progressStep \+ '"/);
+  assert.match(app, /class="skill-progress-fill progress-p' \+ Math\.round\(percent \/ 5\) \* 5 \+ '"/);
   assert.match(css, /\.status-error\s*\{/);
   assert.match(css, /\.mode-pill\.provider-active\s*\{/);
-  assert.match(css, /\.progress-p100\s*\{\s*transform: scaleX\(1\);/);
+  assert.match(css, /\.word-progress-fill\.progress-p100,\s*\.skill-progress-fill\.progress-p100\s*\{\s*transform: scaleX\(1\);/);
 });
