@@ -295,3 +295,16 @@ test('practice mode remains accessible and visible in the mobile top bar', () =>
   assert.match(css, /\.exam-sim-pill \{\s*display: inline-flex;/,
     'The practice-mode control must remain visible on small screens.');
 });
+
+
+test('strict CSP-compatible UI states never depend on inline style mutations or style attributes', () => {
+  assert.doesNotMatch(app, /\.style\.(?:width|color|background|setProperty)\s*=/,
+    'Dynamic states must be represented by classes under the strict style-src policy.');
+  assert.doesNotMatch(app, /style\s*=\s*["'][^"']*(?:width|color|background)\s*:/i,
+    'Generated markup must not embed inline style attributes.');
+  assert.match(app, /setProgressClass\(fillEl, pct\)/);
+  assert.match(app, /class="skill-progress-fill progress-fill progress-p' \+ progressStep \+ '"/);
+  assert.match(css, /\.status-error\s*\{/);
+  assert.match(css, /\.mode-pill\.provider-active\s*\{/);
+  assert.match(css, /\.progress-fill\.progress-p100/);
+});
