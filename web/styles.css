@@ -3545,8 +3545,25 @@ a {
   .topbar-center {
     display: none;
   }
-  .zen-pill {
+  .zen-pill:not(.exam-sim-pill) {
     display: none;
+  }
+  .mode-pill {
+    display: none;
+  }
+  .topbar-actions {
+    gap: 6px;
+  }
+  .exam-sim-pill {
+    display: inline-flex;
+    max-width: 118px;
+    min-width: 0;
+    padding: 6px 9px;
+  }
+  .exam-sim-pill span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .page-view {
     padding: 20px 14px;
