@@ -147,15 +147,17 @@ function speakReminder(value) {
   }
 }
 function selectedTextForSpeech() {
+  const pageSelection = String(globalThis.getSelection?.() || '').trim();
+  if (pageSelection) return pageSelection;
   const editor = $('#essay-editor');
   if (editor && Number.isInteger(editor.selectionStart) && editor.selectionStart !== editor.selectionEnd) {
     return editor.value.slice(editor.selectionStart, editor.selectionEnd).trim();
   }
-  return String(globalThis.getSelection?.() || '').trim();
+  return '';
 }
 function readableRegionText(selector) {
   const element = $(selector);
-  if (!element || element.hidden) return '';
+  if (!element || element.hidden || element.closest('[hidden]') || element.getClientRects().length === 0) return '';
   const copy = element.cloneNode(true);
   copy.querySelectorAll('button, input, select, textarea, script, style, [aria-hidden="true"]').forEach(node => node.remove());
   return String(copy.innerText || copy.textContent || '').replace(/\s+/gu, ' ').trim();
