@@ -47,6 +47,7 @@ test('read-aloud studio exposes accessible local playback controls and is wired 
   }
   assert.match(html, /id="speech-reader-status"[^>]*role="status"[^>]*aria-live="polite"/);
   assert.match(html, /No microphone|không ghi âm microphone/i);
+  assert.match(html, /giọng hệ thống có thể dùng dịch vụ trực tuyến/i);
   assert.match(app, /import \{ createSpeechReader \} from '\.\/speech-reader\.mjs'/);
   assert.match(app, /speechReader\.speak\(readAloudTextForMode\(mode\), \{ language, rate \}\)/);
   assert.match(app, /\$\('#speech-reader-pause'\)\?\.addEventListener\('click'/);
