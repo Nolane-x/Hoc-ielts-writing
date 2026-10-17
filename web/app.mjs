@@ -101,7 +101,7 @@ function readSpeechTextFromElement(element) {
   const clone = element.cloneNode(true);
   clone.querySelectorAll('button, input, textarea, select, label, script, style, .speech-dock, .report-filter-bar, .issue-actions, .prompt-actions-bar, .agent-activity').forEach(node => node.remove());
   clone.querySelectorAll('[hidden], [aria-hidden="true"]').forEach(node => node.remove());
-  return String(clone.innerText || clone.textContent || '').replace(/\\s+/g, ' ').trim();
+  return String(clone.innerText || clone.textContent || '').replace(/\s+/g, ' ').trim();
 }
 function resolveSpeechText() {
   const selection = window.getSelection?.()?.toString().trim();
@@ -124,7 +124,7 @@ function resolveSpeechText() {
     currentTask?.prompt || '',
     currentTask?.goal || '',
     essay ? 'Bản nháp của bạn. ' + essay : ''
-  ].filter(Boolean).join('\\n\\n').trim();
+  ].filter(Boolean).join('\n\n').trim();
 }
 function setStatus(selector, message, bad = false) {
   const el = $(selector);
