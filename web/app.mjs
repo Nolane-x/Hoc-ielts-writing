@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { parseLocalBackup } from './local-data.mjs';
 import { createAgentPracticeAttempt, normaliseAgentPracticeAttempts, buildAgentPracticeSummary } from './agent-practice.mjs';
 import { createLearningRecord } from './learning-records.mjs';
+import { createSpeechReader } from './speech-reader.mjs';
 import { buildStudyPlan } from './study-plan.mjs';
 import { getRubricGuide } from './rubric-guide.mjs';
 import { buildRevisionComparison } from './revision-analysis.mjs';
@@ -84,6 +85,22 @@ let promptHighlights = [];
 let activeReportFilter = 'all';
 let cohesionSelectedOrder = [];
 
+let speechReader;
+function updateSpeechReaderState(state) {
+  const status = $('#speech-reader-status');
+  if (status) {
+    status.textContent = state.message;
+    status.dataset.state = state.status;
+  }
+  const pause = $('#speech-reader-pause');
+  const resume = $('#speech-reader-resume');
+  const stop = $('#speech-reader-stop');
+  if (pause) pause.disabled = state.status !== 'speaking';
+  if (resume) resume.disabled = state.status !== 'paused';
+  if (stop) stop.disabled = !['speaking', 'paused'].includes(state.status);
+}
+speechReader = createSpeechReader({ onState: updateSpeechReaderState });
+
 function safeParse(value, fallback) { try { return JSON.parse(value); } catch { return fallback; } }
 function saveCompanionPrefs() {
   try { localStorage.setItem(COMPANION_PREFS_KEY, JSON.stringify(companionPrefs)); } catch {}
@@ -108,7 +125,7 @@ function setCompanionStatus(message, bad = false) {
   host.classList.toggle('is-error', Boolean(bad));
 }
 function speakReminder(value) {
-  if (!companionPrefs.voiceReminders) return false;
+  if (!companionPrefs.voiceReminders || speechReader?.isActive()) return false;
   const synth = globalThis.speechSynthesis;
   const Utterance = globalThis.SpeechSynthesisUtterance;
   const text = buildSpokenSummary(value, 320);
@@ -128,6 +145,46 @@ function speakReminder(value) {
     setCompanionStatus('Không thể phát giọng nói trên môi trường hiện tại; lời nhắc vẫn hiển thị.');
     return false;
   }
+}
+function selectedTextForSpeech() {
+  const editor = $('#essay-editor');
+  if (editor && Number.isInteger(editor.selectionStart) && editor.selectionStart !== editor.selectionEnd) {
+    return editor.value.slice(editor.selectionStart, editor.selectionEnd).trim();
+  }
+  return String(globalThis.getSelection?.() || '').trim();
+}
+function readableRegionText(selector) {
+  const element = $(selector);
+  if (!element || element.hidden) return '';
+  const copy = element.cloneNode(true);
+  copy.querySelectorAll('button, input, select, textarea, script, style, [aria-hidden="true"]').forEach(node => node.remove());
+  return String(copy.innerText || copy.textContent || '').replace(/\\s+/gu, ' ').trim();
+}
+function feedbackTextForSpeech() {
+  const page = $('.page-view.active')?.id;
+  const selectors = page === 'page-report'
+    ? ['#report-content', '#agent-result', '#coach-answer', '#study-plan']
+    : page === 'page-learn'
+      ? ['#study-plan', '#coach-answer', '#agent-result', '#report-content']
+      : ['#agent-result', '#coach-answer', '#report-content', '#study-plan'];
+  for (const selector of selectors) {
+    const value = readableRegionText(selector);
+    if (value.length >= 20) return value;
+  }
+  return '';
+}
+function readAloudTextForMode(mode) {
+  if (mode === 'essay') return $('#essay-editor')?.value || '';
+  if (mode === 'prompt') {
+    return [
+      currentTask?.title || '',
+      $('#task-prompt')?.textContent || '',
+      $('#task-goal')?.textContent || ''
+    ].filter(Boolean).join('. ');
+  }
+  if (mode === 'selection') return selectedTextForSpeech();
+  if (mode === 'feedback') return feedbackTextForSpeech();
+  return '';
 }
 function setCompanionControlsFromPrefs() {
   if ($('#proactive-review-toggle')) $('#proactive-review-toggle').checked = companionPrefs.proactiveReview;
@@ -2162,6 +2219,7 @@ async function clearLocalData() {
   $('#agent-activity').innerHTML = '';
   $('#essay-editor').value = '';
   liveAnnotationVisible = true;
+  speechReader.stop();
   localStorage.removeItem(COMPANION_PREFS_KEY);
   companionPrefs = { proactiveReview: false, voiceReminders: false, minChangedCharacters: 100, lastProactiveAt: 0 };
   setCompanionControlsFromPrefs();
@@ -2355,13 +2413,22 @@ function attachEvents() {
   $('#voice-reminder-toggle')?.addEventListener('change', event => {
     companionPrefs.voiceReminders = event.target.checked === true;
     saveCompanionPrefs();
-    if (!companionPrefs.voiceReminders) globalThis.speechSynthesis?.cancel?.();
+    if (!companionPrefs.voiceReminders && !speechReader.isActive()) globalThis.speechSynthesis?.cancel?.();
     setCompanionControlsFromPrefs();
     if (companionPrefs.voiceReminders) {
       const spoke = speakReminder('Đã bật lời nhắc bằng giọng nói. WMR không ghi âm microphone.');
       if (!spoke) setCompanionStatus('Lời nhắc bằng giọng nói đã bật, nhưng trình duyệt hiện tại có thể không hỗ trợ đọc thành tiếng.');
     }
   });
+  $('[data-speech-read]').forEach(button => button.addEventListener('click', () => {
+    const mode = button.dataset.speechRead;
+    const language = $('#speech-reader-language')?.value || 'auto';
+    const rate = Number($('#speech-reader-rate')?.value || 1);
+    speechReader.speak(readAloudTextForMode(mode), { language, rate });
+  }));
+  $('#speech-reader-pause')?.addEventListener('click', () => speechReader.pause());
+  $('#speech-reader-resume')?.addEventListener('click', () => speechReader.resume());
+  $('#speech-reader-stop')?.addEventListener('click', () => speechReader.stop());
   $('#proactive-threshold')?.addEventListener('change', event => {
     const value = Number(event.target.value);
     companionPrefs.minChangedCharacters = [100, 180, 280].includes(value) ? value : 100;
