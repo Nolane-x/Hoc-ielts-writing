@@ -32,6 +32,14 @@ async function capture(page, name, options = {}) {
 }
 
 async function auditAccessibility(page, label) {
+  // Audit the settled UI, not text while a page transition is still fading in.
+  await page.evaluate(async () => {
+    const finiteAnimations = document.getAnimations().filter(animation =>
+      animation.playState === 'running' &&
+      animation.effect?.getComputedTiming().iterations !== Infinity
+    );
+    await Promise.all(finiteAnimations.map(animation => animation.finished.catch(() => {})));
+  });
   if (!(await page.evaluate(() => Boolean(window.axe)))) {
     await page.addScriptTag({ url: new URL('/axe.min.js', baseUrl).toString() });
   }
