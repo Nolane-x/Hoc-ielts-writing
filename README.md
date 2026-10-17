@@ -123,3 +123,14 @@ Answers to Writing Agent micro-exercises can be submitted for a tutor response a
 ## WMR 1.6.0 — Adaptive micro-practice
 
 The Writing Agent's micro-exercises now form a persistent learning loop. Answers, exercise criteria and verified tutor feedback can be reviewed or deleted from the on-device practice journal, included in validated local backups, and summarized across tasks on the adaptive Learning page. Provider configuration notices are never treated as teaching feedback; activity counts are not represented as band scores or proof of mastery.
+
+
+## Proactive Writing Companion, custom prompts and Read Aloud
+
+**Writing Companion is opt-in.** When enabled, it can offer a focused review after the draft has been idle and enough text has changed. It uses a per-task baseline and cooldown, respects existing call/cost/session limits, cancels when disabled or provider consent is revoked, and keeps the learner's manually entered Agent objective intact. Suggested edits remain staged for learner approval.
+
+Learners can author and manage local custom prompts, or ask an AI provider to draft a new prompt when the separate provider-consent setting is enabled. The generation request sends only the requested task type and bounded topic/idea fields; the current essay, previous task prompt and chat history are excluded. Generated prompts are marked unverified and remain drafts until the learner explicitly saves or opens them. Custom task IDs are local-only, and deletion removes associated local material transactionally.
+
+The report annotation preview attaches colour-coded notes to exact quoted spans. It revalidates the quote before applying an annotation, so stale offsets do not silently highlight different words. Task 1 uses Task Achievement labels; Task 2 uses Task Response labels.
+
+The Read Aloud studio can read the essay, visible prompt, selected passage or current feedback. It offers automatic language selection, British English, American English and Vietnamese, plus pause/resume/stop and adjustable playback speed. It uses the browser/OS Web Speech engine rather than sending text to WMR's own remote TTS endpoint, filters links and common credential-like strings, and bounds long text. Voice availability, actual sound output and voice quality still depend on the device/browser; some system voices may use online services.
