@@ -46,7 +46,7 @@ The full Read Aloud panel can read the current essay, active IELTS prompt, selec
 The following are checked in CI via unit and local integration tests:
 - Tool allowlist rejects undeclared capabilities; exact-quote annotation and custom-task creation are validated and bounded.
 - Proactive review is opt-in, requires the explicit provider-permission setting, triggers only after an idle interval and sufficient changed text, and has a cooldown plus existing provider budget/call caps.
-- Speech reminders use local browser/system speech synthesis only; WMR does not request or record microphone input.
+- Speech reminders use browser/system speech synthesis and do not request or record microphone input; selected platform voices may still rely on an online service.
 - Custom-task and scratchpad backup fields are length/type/identifier validated; API keys and provider settings remain excluded from import.
 - Task generation sends a dedicated prompt with an empty essay context; generated prompts remain marked unverified.
 - Edit anchors must be exact and unique; overlapping patches are rejected.
