@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
@@ -8,8 +7,6 @@ const baseUrl = process.env.WMR_BASE_URL || 'http://127.0.0.1:4179';
 const outputDir = process.env.WMR_SCREENSHOT_DIR || 'artifacts/ui-screenshots';
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const version = packageJson.version;
-const require = createRequire(import.meta.url);
-const axeSourcePath = require.resolve('axe-core');
 await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
@@ -35,7 +32,7 @@ async function capture(page, name, options = {}) {
 }
 
 async function auditAccessibility(page, label) {
-  await page.addScriptTag({ path: axeSourcePath });
+  await page.addScriptTag({ url: new URL('/axe.min.js', baseUrl).toString() });
   const result = await page.evaluate(async () => window.axe.run(document, {
     runOnly: {
       type: 'tag',
