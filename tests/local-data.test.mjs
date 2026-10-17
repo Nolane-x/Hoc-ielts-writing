@@ -160,3 +160,34 @@ test('backup normalises Writing Agent practice journal records without trusting 
   assert.equal(backup.agentPracticeAttempts[0].feedbackSource, 'ai-provider');
   assert.equal(backup.agentPracticeAttempts[0].status, 'feedback-received');
 });
+
+
+test('backup preserves bounded custom prompts and scratchpad notes without accepting arbitrary task IDs', () => {
+  const validCustom = {
+    id: 'custom-example-task-a1',
+    type: 'task2',
+    title: 'A custom practice task',
+    group: 'Learner-created',
+    difficulty: 'Custom',
+    skillFocus: 'Argument development',
+    prompt: 'Some people believe online learning is more effective, while others disagree. Discuss both views and give your opinion.',
+    goal: 'Present a clear position supported by developed reasons.',
+    provenance: 'ai-generated-unverified'
+  };
+  const backup = normaliseLocalBackup({
+    schemaVersion: 1,
+    customTasks: [
+      validCustom,
+      { ...validCustom, id: 'attacker-task', title: 'Bad identifier' },
+      { ...validCustom, id: 'custom-example-task-b2', type: 'shell' }
+    ],
+    drafts: { 'custom-example-task-a1': 'A saved custom draft.', 'attacker-task': 'drop this' },
+    examNotes: { 'custom-example-task-a1': 'Compare the two positions.', 'attacker-task': 'ignore this', 'task2-opinion': 'N'.repeat(400) }
+  }, taskIds);
+  assert.equal(backup.customTasks.length, 1);
+  assert.equal(backup.customTasks[0].provenance, 'ai-generated-unverified');
+  assert.deepEqual(backup.drafts, { 'custom-example-task-a1': 'A saved custom draft.' });
+  assert.equal(backup.examNotes['custom-example-task-a1'], 'Compare the two positions.');
+  assert.equal(backup.examNotes['task2-opinion'].length, 280);
+  assert.equal(Object.hasOwn(backup.drafts, 'attacker-task'), false);
+});
