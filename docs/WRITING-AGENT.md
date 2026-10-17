@@ -41,6 +41,8 @@ If the model returns unstructured text or malformed tool calls, the agent falls 
 
 ## Production acceptance checklist
 
+The full Read Aloud panel can read the current essay, active IELTS prompt, selected passage or latest visible feedback; users can pause, resume, stop, select Auto/English UK/English US/Vietnamese, and choose playback speed. Text is bounded to 30,000 characters and split into sequential utterances; URLs and credential-like values are filtered before playback. Audio uses browser/system speech synthesis locally, without microphone capture or an audio-provider request. On unsupported platforms the UI explains the limitation instead of claiming playback started.
+
 The following are checked in CI via unit and local integration tests:
 - Tool allowlist rejects undeclared capabilities; exact-quote annotation and custom-task creation are validated and bounded.
 - Proactive review is opt-in, requires the explicit provider-permission setting, triggers only after an idle interval and sufficient changed text, and has a cooldown plus existing provider budget/call caps.
