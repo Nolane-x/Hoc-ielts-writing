@@ -32,7 +32,9 @@ async function capture(page, name, options = {}) {
 }
 
 async function auditAccessibility(page, label) {
-  await page.addScriptTag({ url: new URL('/axe.min.js', baseUrl).toString() });
+  if (!(await page.evaluate(() => Boolean(window.axe)))) {
+    await page.addScriptTag({ url: new URL('/axe.min.js', baseUrl).toString() });
+  }
   const result = await page.evaluate(async () => window.axe.run(document, {
     runOnly: {
       type: 'tag',
@@ -218,6 +220,7 @@ try {
     `Prompt and editor should align in two columns; got ${JSON.stringify(practiceGeometry)}`);
   assert.ok(practiceGeometry.editorLeft > practiceGeometry.promptRight - 10,
     `Prompt and editor should remain side by side; got ${JSON.stringify(practiceGeometry)}`);
+  await auditAccessibility(page, 'desktop-exam-practice');
   await capture(page, '01c-exam-practice-desktop.png');
   await page.locator('#exam-mode-toggle').click();
 
@@ -234,16 +237,19 @@ try {
   assert.ok(reportText.length > 40, 'The local report should contain useful visible content.');
   assert.match(reportText, /mẫu diễn đạt minh họa/i);
   assert.doesNotMatch(reportText, /Bài mẫu Band 8\.5\+/i);
+  await auditAccessibility(page, 'desktop-report');
   await capture(page, '03-local-report-desktop.png');
 
   await page.locator('button.nav-item[data-page="learn"]').click();
   await page.locator('#learn-title').waitFor({ state: 'visible', timeout: 10000 });
   assert.ok(await page.locator('#mastery-radar-chart .radar-empty-note').count(), 'Learning must disclose missing eligible AI scores.');
+  await auditAccessibility(page, 'desktop-learning-dashboard');
   await capture(page, '04-learning-dashboard-desktop.png');
 
   await page.locator('button.nav-item[data-page="settings"]').click();
   await page.locator('#settings-title').waitFor({ state: 'visible', timeout: 10000 });
   assert.equal(await page.locator('#external-allowed').isChecked(), false, 'Provider access must default to off in the visual smoke environment.');
+  await auditAccessibility(page, 'desktop-settings-privacy');
   await capture(page, '05-settings-privacy-desktop.png');
 
   const mobileContext = await browser.newContext({
@@ -297,6 +303,7 @@ try {
     `Mobile practice mode has horizontal overflow: ${JSON.stringify(mobilePractice)}`);
   assert.ok(mobilePractice.editorTop > mobilePractice.promptTop,
     `Practice mode should stack prompt before editor on narrow screens: ${JSON.stringify(mobilePractice)}`);
+  await auditAccessibility(mobilePage, 'mobile-exam-practice-390x844');
   await capture(mobilePage, '08-exam-practice-mobile.png');
 
   assert.deepEqual(browserErrors, [], 'Browser console/runtime errors were detected.');
