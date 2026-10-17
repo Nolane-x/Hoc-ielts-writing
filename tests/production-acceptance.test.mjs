@@ -48,7 +48,7 @@ test('local backup restoration is routed through a rollback-capable storage tran
   assert.match(app, /storage_transaction_rollback_failed/);
   assert.match(source, /storage_transaction_failed/);
   assert.match(source, /storage_transaction_rollback_failed/);
-  assert.match(app, /Cài đặt AI và khóa hiện tại sẽ không thay đổi/);
+  assert.match(app, /Provider, quyền gửi dữ liệu và API key hiện tại sẽ không thay đổi/);
 });
 
 test('Writing Agent uses a bounded reusable SSE parser with regression coverage', async () => {
