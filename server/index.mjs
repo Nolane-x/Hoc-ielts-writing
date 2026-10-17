@@ -109,6 +109,11 @@ function json(res, status, payload) {
   res.end(text);
 }
 function httpError(status, message) { const error = new Error(message); error.status = status; return error; }
+export function formatSseEvent(type, payload) {
+  const event = String(type || '').replace(/[\r\n]/g, '');
+  if (!event) throw new TypeError('SSE event name is required.');
+  return 'event: ' + event + '\ndata: ' + JSON.stringify(payload) + '\n\n';
+}
 
 export function isStartupTokenValid(presented, expected = STARTUP_TOKEN) {
   if (!expected) return true;
@@ -205,7 +210,7 @@ async function handleWritingAgentStream(req, res, input) {
   const sendEvent = (type, payload) => {
     if (res.writableEnded || res.destroyed) return;
     try {
-      res.write('event: ' + type + '\\ndata: ' + JSON.stringify(payload) + '\\n\\n');
+      res.write(formatSseEvent(type, payload));
     } catch {
       controller.abort();
     }
