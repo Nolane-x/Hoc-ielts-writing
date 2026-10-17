@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add a full local read-aloud studio for listening to the current essay, IELTS prompt, selected passage or visible feedback.
+- Add a read-aloud studio using browser/system speech synthesis for the current essay, IELTS prompt, selected passage or visible feedback.
 - Support pause/resume/stop, automatic or explicit British English/American English/Vietnamese voice locale, and adjustable playback speed.
 - Split long reads into bounded sequential utterances, redact URLs and credential-like strings, and disclose unsupported speech environments without claiming playback started.
 - Add unit and headless browser coverage for speech lifecycle, selected text, task prompt and responsive controls.
