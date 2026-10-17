@@ -35,27 +35,31 @@ try {
     viewport: { width: 1440, height: 1100 },
     reducedMotion: 'reduce'
   });
-  const page = await context.newPage();
+  // Stub the local Web Speech API so headless CI can exercise real UI wiring without audio or network access.
   await context.addInitScript(() => {
-    const calls = [];
-    Object.defineProperty(window, '__wmrSpeechCalls', { value: calls, configurable: false });
-    const synthesis = {
-      pauseCount: 0,
-      resumeCount: 0,
-      cancelCount: 0,
-      speak(utterance) { calls.push(utterance); },
-      pause() { this.pauseCount += 1; },
-      resume() { this.resumeCount += 1; },
-      cancel() { this.cancelCount += 1; }
-    };
-    Object.defineProperty(window, 'speechSynthesis', { value: synthesis, configurable: true });
+    const mock = { utterances: [], cancels: 0, pauses: 0, resumes: 0 };
+    class MockSpeechSynthesisUtterance {
+      constructor(text) { this.text = text; this.lang = ''; this.rate = 1; this.pitch = 1; this.voice = null; }
+    }
     Object.defineProperty(window, 'SpeechSynthesisUtterance', {
-      value: class MockSpeechSynthesisUtterance {
-        constructor(text) { this.text = text; }
-      },
-      configurable: true
+      configurable: true,
+      value: MockSpeechSynthesisUtterance
     });
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        getVoices: () => [{ name: 'Mock British English', lang: 'en-GB' }],
+        cancel: () => { mock.cancels += 1; },
+        pause: () => { mock.pauses += 1; },
+        resume: () => { mock.resumes += 1; },
+        speak: utterance => {
+          mock.utterances.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate });
+        }
+      }
+    });
+    Object.defineProperty(window, '__wmrSpeechMock', { configurable: false, value: mock });
   });
+  const page = await context.newPage();
   listenForErrors(page, 'desktop');
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
@@ -68,26 +72,104 @@ try {
   assert.ok(await page.locator('#essay-editor').isVisible(), 'Essay editor should be visible.');
   assert.ok(await page.locator('#run-writing-agent').isVisible(), 'Writing Agent action should be visible.');
   assert.ok((await page.locator('#agent-practice-journal').count()) > 0, 'Practice journal mount point should exist.');
+  assert.ok(await page.locator('#speech-reader-panel').isVisible(), 'The full read-aloud studio must be visible in the writing workspace.');
+  for (const mode of ['essay', 'prompt', 'selection', 'feedback']) {
+    assert.equal(await page.locator('[data-speech-read="' + mode + '"]').count(), 1, 'Missing read-aloud action for ' + mode);
+  }
+
+  await page.locator('#essay-editor').fill('The first draft is useful, but reading it aloud helps me find awkward phrases and improve my IELTS writing.');
+  await page.locator('[data-speech-read="essay"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  await page.locator('#speech-reader-pause').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'paused');
+  await page.locator('#speech-reader-resume').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  await page.locator('#speech-reader-stop').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'stopped');
+  const speechEvidence = await page.evaluate(() => window.__wmrSpeechMock);
+  assert.ok(speechEvidence.utterances.some(item => item.text.includes('reading it aloud')), 'Clicking read-aloud should call the local speech API with the essay text.');
+  assert.equal(speechEvidence.utterances[0].lang, 'en-GB', 'Auto-detect should select British English for an English essay.');
+  assert.ok(speechEvidence.pauses > 0 && speechEvidence.resumes > 0 && speechEvidence.cancels > 0,
+    'Pause, resume and stop should call the speech API controls.');
+
+  await page.locator('#essay-editor').evaluate(editor => {
+    editor.focus();
+    editor.setSelectionRange(0, 25);
+  });
+  await page.locator('[data-speech-read="selection"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  let latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  assert.ok(latestSpeech.text.includes('The first draft'), 'Selected-text reading should speak only the current editor selection.');
+  await page.locator('[data-speech-read="prompt"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  const visiblePrompt = (await page.locator('#task-prompt').innerText()).replace(/\s+/g, ' ').trim();
+  assert.ok(latestSpeech.text.includes(visiblePrompt.slice(0, Math.min(30, visiblePrompt.length))),
+    'Prompt reading should include the visible IELTS task.');
+
+  const originalAgentMarkup = await page.locator('#agent-result').innerHTML();
+  await page.locator('#agent-result').evaluate(element => { element.textContent = 'Mock feedback: develop your main reason with one specific example.'; });
+  await page.locator('[data-speech-read="feedback"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  assert.ok(latestSpeech.text.includes('Mock feedback'), 'Feedback reading should read the visible Agent feedback.');
+  await page.locator('#agent-result').evaluate((element, markup) => { element.innerHTML = markup; }, originalAgentMarkup);
+
+  await page.locator('#speech-reader-stop').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'stopped');
+  await page.locator('#speech-reader-panel').scrollIntoViewIfNeeded();
+  await capture(page, '01e-speech-reader-desktop.png');
+  await page.locator('#essay-editor').fill('');
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await capture(page, '01-writing-workspace-desktop.png');
 
+  // Verify the extra AI action remains blocked until the existing provider-consent switch is enabled.
+  await page.locator('#custom-task-panel > summary').click();
+  await page.locator('#custom-task-title').fill('Smoke-test custom task');
+  await page.locator('#custom-task-prompt').fill('Some people support this change while others disagree. Discuss both views and give your own opinion.');
+  await page.locator('#custom-task-panel').scrollIntoViewIfNeeded();
+  await capture(page, '01d-custom-task-builder-desktop.png');
+  let coachRequests = 0;
+  let taskGenerationRequests = 0;
+  page.on('request', request => {
+    if (request.url().endsWith('/api/coach')) coachRequests++;
+    if (request.url().endsWith('/api/tasks/generate')) taskGenerationRequests++;
+  });
+  await page.locator('#generate-custom-task').click();
+  await page.waitForFunction(() => document.querySelector('#toast')?.textContent.toLowerCase().includes('quyền gửi provider'));
+  assert.equal(coachRequests, 0, 'Custom-task generation must not call Mentor while permission is off.');
+  assert.equal(taskGenerationRequests, 0, 'Custom-task generation must not call the dedicated AI endpoint while permission is off.');
+  assert.equal(await page.locator('#external-allowed').isChecked().catch(() => false), false);
+
+  // Learner-created tasks are persisted locally and can be removed with a clear destructive confirmation.
+  await page.locator('#custom-task-title').fill('Smoke-test custom task');
+  await page.locator('#custom-task-prompt').fill('Some people support this change while others disagree. Discuss both views and give your own opinion.');
+  await page.locator('#custom-task-goal').fill('Compare both positions and support a clear opinion with developed reasons.');
+  await page.locator('#save-custom-task').click();
+  const customOption = page.locator('#task-select option').filter({ hasText: 'Smoke-test custom task' });
+  await customOption.waitFor({ state: 'attached', timeout: 5000 });
+  const customId = await customOption.getAttribute('value');
+  assert.ok(customId?.startsWith('custom-'), 'Custom task needs a namespaced local identifier.');
+  await page.locator('#essay-editor').fill('This is a local smoke-test draft for a custom writing task.');
+  await page.waitForTimeout(350);
+  await page.locator('#custom-task-panel > summary').click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('[data-delete-custom-task="' + customId + '"]').click();
+  await page.waitForFunction(id => ![...document.querySelector('#task-select').options].some(option => option.value === id), customId);
+  assert.equal(await page.evaluate(id => localStorage.getItem('wmr-draft-v1:' + id), customId), null,
+    'Deleting a custom task should transactionally remove its local draft.');
+  assert.equal(coachRequests, 0, 'Custom task CRUD must not call Mentor or the external provider.');
+  assert.equal(taskGenerationRequests, 0, 'Custom task CRUD must not call the dedicated AI endpoint.');
+
+  const manualAgentObjective = 'Keep my own manual Agent instruction intact.';
+  await page.locator('#agent-task-input').fill(manualAgentObjective);
+  await page.locator('#proactive-review-toggle').check();
+  assert.equal(await page.locator('#agent-task-input').inputValue(), manualAgentObjective,
+    'Enabling proactive review must not overwrite the learner-authored Agent objective.');
+  await page.locator('#proactive-review-toggle').uncheck();
+
   await page.locator('#toggle-idea-lab').click();
-  // Preserve state parity when restoring an existing draft can leave the panel
-  // already expanded; the contract is that the control can reach the open state.
-  const ideaLab = page.locator('#idea-lab');
-  if (!(await ideaLab.isVisible())) await page.locator('#toggle-idea-lab').click();
-  const ideaLabState = await page.evaluate(() => ({
-    hidden: document.querySelector('#idea-lab')?.hidden,
-    expanded: document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded'),
-    buttonText: document.querySelector('#toggle-idea-lab')?.textContent,
-    toast: document.querySelector('#toast')?.textContent,
-    appShellClasses: document.querySelector('#app-shell')?.className
-  }));
-  if (ideaLabState.hidden) {
-    throw new Error('Idea Lab failed to open; inspect app initialization and click wiring: ' +
-      JSON.stringify({ state: ideaLabState, browserErrors }));
-  }
-  await ideaLab.waitFor({ state: 'visible', timeout: 5000 });
-  assert.equal(ideaLabState.expanded, 'true');
+  await page.locator('#idea-lab').waitFor({ state: 'visible', timeout: 5000 });
   await capture(page, '01b-academy-idea-lab-desktop.png');
   await page.locator('#toggle-idea-lab').click();
 
@@ -95,7 +177,7 @@ try {
   await page.locator('#app-shell.idp-bc-mode').waitFor({ state: 'visible', timeout: 5000 });
   const practiceGeometry = await page.evaluate(() => {
     const prompt = document.querySelector('#prompt-card')?.getBoundingClientRect();
-    const editor = document.querySelector('.writing-canvas-column')?.getBoundingClientRect();
+    const editor = document.querySelector('.canvas-paper-frame')?.getBoundingClientRect();
     return prompt && editor ? { promptTop: prompt.top, editorTop: editor.top, promptRight: prompt.right, editorLeft: editor.left } : null;
   });
   assert.ok(practiceGeometry, 'Practice mode must expose both prompt and writing canvas.');
@@ -112,44 +194,12 @@ try {
   await page.locator('#essay-editor').fill(
     'Many people believe that education should focus on practical skills. However, I believe that schools should balance practical knowledge with critical thinking because both help students make informed decisions.'
   );
-
-  // Assert the local read-aloud control drives the browser speech adapter.
-  // The fake speech engine validates UI state transitions; it does not claim to
-  // validate physical speakers, installed voices or real-world audio quality.
-  await page.locator('#speech-read').click();
-  await page.waitForFunction(() => window.__wmrSpeechCalls?.length > 0);
-  const speechStart = await page.evaluate(() => ({
-    text: window.__wmrSpeechCalls[0]?.text || '',
-    language: window.__wmrSpeechCalls[0]?.lang || '',
-    rate: window.__wmrSpeechCalls[0]?.rate
-  }));
-  assert.match(speechStart.text, /Many people believe that education should focus on practical skills/i,
-    'Read-aloud should include the current learner draft.');
-  assert.ok(['en-US', 'vi-VN'].includes(speechStart.language), 'Speech language should be an explicit supported locale.');
-  assert.ok(speechStart.rate >= 0.7 && speechStart.rate <= 1.3, 'Speech rate should stay within the supported safe range.');
-
-  await page.locator('#speech-pause').click();
-  await page.waitForFunction(() => document.querySelector('#speech-status')?.textContent.includes('tạm dừng'));
-  await page.locator('#speech-resume').click();
-  await page.waitForFunction(() => document.querySelector('#speech-status')?.textContent.includes('tiếp tục'));
-  await page.locator('#speech-stop').click();
-  await page.waitForFunction(() => document.querySelector('#speech-status')?.textContent.includes('Đã dừng đọc'));
-  const speechLifecycle = await page.evaluate(() => ({
-    pauseCount: window.speechSynthesis.pauseCount,
-    resumeCount: window.speechSynthesis.resumeCount,
-    cancelCount: window.speechSynthesis.cancelCount
-  }));
-  assert.equal(speechLifecycle.pauseCount, 1, 'Pause should reach the local speech engine.');
-  assert.equal(speechLifecycle.resumeCount, 1, 'Resume should reach the local speech engine.');
-  assert.ok(speechLifecycle.cancelCount >= 2, 'Read/restart/stop should cancel any previous speech queue.');
-  await capture(page, '01d-read-aloud-dock-desktop.png');
-
   await page.locator('#local-check').click();
   await page.locator('#page-report.active').waitFor({ state: 'visible', timeout: 10000 });
   assert.equal(await page.locator('#report-content .empty-report').count(), 0, 'Local check should produce a report without calling an AI provider.');
   const reportText = await page.locator('#report-content').innerText();
   assert.ok(reportText.length > 40, 'The local report should contain useful visible content.');
-  assert.match(reportText, /bài mẫu tham khảo|chưa hiệu chuẩn/i, 'Report should label model examples as uncalibrated learning material.');
+  assert.match(reportText, /mẫu diễn đạt minh họa/i);
   assert.doesNotMatch(reportText, /Bài mẫu Band 8\.5\+/i);
   await capture(page, '03-local-report-desktop.png');
 

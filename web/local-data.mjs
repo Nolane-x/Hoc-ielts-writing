@@ -1,4 +1,5 @@
 import { normaliseAgentPracticeAttempts } from './agent-practice.mjs';
+import { normaliseCustomTasks } from './companion-policy.mjs';
 
 const TASK_TYPES = new Set(['task1-academic', 'task1-general', 'task2']);
 const CRITERION_IDS = new Set(['taskResponse', 'coherence', 'lexical', 'grammar']);
@@ -19,11 +20,21 @@ export function normaliseLocalBackup(input, validTaskIds) {
   if (!input || typeof input !== 'object' || Array.isArray(input) || input.schemaVersion !== 1) {
     throw new Error('backup_schema_unsupported');
   }
-  const taskIds = new Set(Array.isArray(validTaskIds) ? validTaskIds.filter(x => typeof x === 'string') : []);
+  const customTasks = normaliseCustomTasks(input.customTasks, []);
+  const taskIds = new Set([
+    ...(Array.isArray(validTaskIds) ? validTaskIds.filter(x => typeof x === 'string') : []),
+    ...customTasks.map(task => task.id)
+  ]);
   const drafts = {};
   if (input.drafts && typeof input.drafts === 'object' && !Array.isArray(input.drafts)) {
     for (const [id, value] of Object.entries(input.drafts)) {
       if (taskIds.has(id) && typeof value === 'string') drafts[id] = value.slice(0, 20000);
+    }
+  }
+  const examNotes = {};
+  if (input.examNotes && typeof input.examNotes === 'object' && !Array.isArray(input.examNotes)) {
+    for (const [id, value] of Object.entries(input.examNotes)) {
+      if (taskIds.has(id) && typeof value === 'string') examNotes[id] = cleanText(value, 280);
     }
   }
   const history = Array.isArray(input.history)
@@ -55,6 +66,8 @@ export function normaliseLocalBackup(input, validTaskIds) {
     schemaVersion: 1,
     exportedAt: cleanText(input.exportedAt, 80),
     theme: THEMES.has(input.theme) ? input.theme : 'system',
+    customTasks,
+    examNotes,
     drafts,
     history,
     coachHistories,

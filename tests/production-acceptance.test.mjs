@@ -25,10 +25,10 @@ test('visible application version is generated from package.json during the buil
 test('dynamic progress and status never mutate inline styles under the strict CSP', () => {
   assert.doesNotMatch(app, /\.style\.(?:width|color|background|setProperty)\s*=/);
   assert.doesNotMatch(app, /style\s*=\s*["'][^"']*(?:width|color|background)\s*:/i);
-  assert.match(app, /setProgressClass\(fillEl, pct\)/);
+  assert.match(app, /setProgressBucket\(fillEl, pct\)/);
   assert.match(app, /status-error/);
   assert.match(app, /provider-active/);
-  assert.match(styles, /\.progress-p100\s*\{\s*transform: scaleX\(1\);/);
+  assert.match(styles, /\.word-progress-fill\.progress-p100,\s*\.skill-progress-fill\.progress-p100\s*\{\s*transform: scaleX\(1\);/);
 });
 
 test('sentence surgery uses supplied evidence instead of synthetic Band 7.5/8.5 rewrites', () => {

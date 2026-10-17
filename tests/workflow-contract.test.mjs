@@ -71,11 +71,13 @@ test('release packaging and publication are gated by reusable CI and Chromium sm
   assert.match(visualWorkflow, /if-no-files-found: warn/);
 });
 
-test('Chromium smoke exercises the local read-aloud playback lifecycle with a fake engine', () => {
-  for (const id of ['speech-read', 'speech-pause', 'speech-resume', 'speech-stop', 'speech-status']) {
+test('Chromium smoke exercises the local Read Aloud playback lifecycle with a fake engine', () => {
+  for (const id of ['speech-reader-panel', 'speech-reader-pause', 'speech-reader-resume', 'speech-reader-stop', 'speech-reader-status']) {
     assert.ok(visualSmoke.includes('#' + id), 'visual smoke must cover #' + id);
   }
-  for (const state of ['pauseCount', 'resumeCount', 'cancelCount']) {
+  assert.match(visualSmoke, /data-speech-read=.*essay/,
+    'Visual smoke must exercise read-aloud playback for the essay.');
+  for (const state of ['pauses', 'resumes', 'cancels']) {
     assert.ok(visualSmoke.includes(state), 'visual smoke must verify speech lifecycle: ' + state);
   }
 });
