@@ -35,6 +35,30 @@ try {
     viewport: { width: 1440, height: 1100 },
     reducedMotion: 'reduce'
   });
+  // Stub the local Web Speech API so headless CI can exercise real UI wiring without audio or network access.
+  await context.addInitScript(() => {
+    const mock = { utterances: [], cancels: 0, pauses: 0, resumes: 0 };
+    class MockSpeechSynthesisUtterance {
+      constructor(text) { this.text = text; this.lang = ''; this.rate = 1; this.pitch = 1; this.voice = null; }
+    }
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      configurable: true,
+      value: MockSpeechSynthesisUtterance
+    });
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        getVoices: () => [{ name: 'Mock British English', lang: 'en-GB' }],
+        cancel: () => { mock.cancels += 1; },
+        pause: () => { mock.pauses += 1; },
+        resume: () => { mock.resumes += 1; },
+        speak: utterance => {
+          mock.utterances.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate });
+        }
+      }
+    });
+    Object.defineProperty(window, '__wmrSpeechMock', { configurable: false, value: mock });
+  });
   const page = await context.newPage();
   listenForErrors(page, 'desktop');
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -46,7 +70,101 @@ try {
   assert.ok(await page.locator('#essay-editor').isVisible(), 'Essay editor should be visible.');
   assert.ok(await page.locator('#run-writing-agent').isVisible(), 'Writing Agent action should be visible.');
   assert.ok((await page.locator('#agent-practice-journal').count()) > 0, 'Practice journal mount point should exist.');
+  assert.ok(await page.locator('#speech-reader-panel').isVisible(), 'The full read-aloud studio must be visible in the writing workspace.');
+  for (const mode of ['essay', 'prompt', 'selection', 'feedback']) {
+    assert.equal(await page.locator('[data-speech-read="' + mode + '"]').count(), 1, 'Missing read-aloud action for ' + mode);
+  }
+
+  await page.locator('#essay-editor').fill('The first draft is useful, but reading it aloud helps me find awkward phrases and improve my IELTS writing.');
+  await page.locator('[data-speech-read="essay"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  await page.locator('#speech-reader-pause').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'paused');
+  await page.locator('#speech-reader-resume').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  await page.locator('#speech-reader-stop').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'stopped');
+  const speechEvidence = await page.evaluate(() => window.__wmrSpeechMock);
+  assert.ok(speechEvidence.utterances.some(item => item.text.includes('reading it aloud')), 'Clicking read-aloud should call the local speech API with the essay text.');
+  assert.equal(speechEvidence.utterances[0].lang, 'en-GB', 'Auto-detect should select British English for an English essay.');
+  assert.ok(speechEvidence.pauses > 0 && speechEvidence.resumes > 0 && speechEvidence.cancels > 0,
+    'Pause, resume and stop should call the speech API controls.');
+
+  await page.locator('#essay-editor').evaluate(editor => {
+    editor.focus();
+    editor.setSelectionRange(0, 25);
+  });
+  await page.locator('[data-speech-read="selection"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  let latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  assert.ok(latestSpeech.text.includes('The first draft'), 'Selected-text reading should speak only the current editor selection.');
+  await page.locator('[data-speech-read="prompt"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  const visiblePrompt = (await page.locator('#task-prompt').innerText()).replace(/\s+/g, ' ').trim();
+  assert.ok(latestSpeech.text.includes(visiblePrompt.slice(0, Math.min(30, visiblePrompt.length))),
+    'Prompt reading should include the visible IELTS task.');
+
+  const originalAgentMarkup = await page.locator('#agent-result').innerHTML();
+  await page.locator('#agent-result').evaluate(element => { element.textContent = 'Mock feedback: develop your main reason with one specific example.'; });
+  await page.locator('[data-speech-read="feedback"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  assert.ok(latestSpeech.text.includes('Mock feedback'), 'Feedback reading should read the visible Agent feedback.');
+  await page.locator('#agent-result').evaluate((element, markup) => { element.innerHTML = markup; }, originalAgentMarkup);
+
+  await page.locator('#speech-reader-stop').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'stopped');
+  await page.locator('#speech-reader-panel').scrollIntoViewIfNeeded();
+  await capture(page, '01e-speech-reader-desktop.png');
+  await page.locator('#essay-editor').fill('');
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await capture(page, '01-writing-workspace-desktop.png');
+
+  // Verify the extra AI action remains blocked until the existing provider-consent switch is enabled.
+  await page.locator('#custom-task-panel > summary').click();
+  await page.locator('#custom-task-title').fill('Smoke-test custom task');
+  await page.locator('#custom-task-prompt').fill('Some people support this change while others disagree. Discuss both views and give your own opinion.');
+  await page.locator('#custom-task-panel').scrollIntoViewIfNeeded();
+  await capture(page, '01d-custom-task-builder-desktop.png');
+  let coachRequests = 0;
+  let taskGenerationRequests = 0;
+  page.on('request', request => {
+    if (request.url().endsWith('/api/coach')) coachRequests++;
+    if (request.url().endsWith('/api/tasks/generate')) taskGenerationRequests++;
+  });
+  await page.locator('#generate-custom-task').click();
+  await page.waitForFunction(() => document.querySelector('#toast')?.textContent.toLowerCase().includes('quyền gửi provider'));
+  assert.equal(coachRequests, 0, 'Custom-task generation must not call Mentor while permission is off.');
+  assert.equal(taskGenerationRequests, 0, 'Custom-task generation must not call the dedicated AI endpoint while permission is off.');
+  assert.equal(await page.locator('#external-allowed').isChecked().catch(() => false), false);
+
+  // Learner-created tasks are persisted locally and can be removed with a clear destructive confirmation.
+  await page.locator('#custom-task-title').fill('Smoke-test custom task');
+  await page.locator('#custom-task-prompt').fill('Some people support this change while others disagree. Discuss both views and give your own opinion.');
+  await page.locator('#custom-task-goal').fill('Compare both positions and support a clear opinion with developed reasons.');
+  await page.locator('#save-custom-task').click();
+  const customOption = page.locator('#task-select option').filter({ hasText: 'Smoke-test custom task' });
+  await customOption.waitFor({ state: 'attached', timeout: 5000 });
+  const customId = await customOption.getAttribute('value');
+  assert.ok(customId?.startsWith('custom-'), 'Custom task needs a namespaced local identifier.');
+  await page.locator('#essay-editor').fill('This is a local smoke-test draft for a custom writing task.');
+  await page.waitForTimeout(350);
+  await page.locator('#custom-task-panel > summary').click();
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('[data-delete-custom-task="' + customId + '"]').click();
+  await page.waitForFunction(id => ![...document.querySelector('#task-select').options].some(option => option.value === id), customId);
+  assert.equal(await page.evaluate(id => localStorage.getItem('wmr-draft-v1:' + id), customId), null,
+    'Deleting a custom task should transactionally remove its local draft.');
+  assert.equal(coachRequests, 0, 'Custom task CRUD must not call Mentor or the external provider.');
+  assert.equal(taskGenerationRequests, 0, 'Custom task CRUD must not call the dedicated AI endpoint.');
+
+  const manualAgentObjective = 'Keep my own manual Agent instruction intact.';
+  await page.locator('#agent-task-input').fill(manualAgentObjective);
+  await page.locator('#proactive-review-toggle').check();
+  assert.equal(await page.locator('#agent-task-input').inputValue(), manualAgentObjective,
+    'Enabling proactive review must not overwrite the learner-authored Agent objective.');
+  await page.locator('#proactive-review-toggle').uncheck();
 
   await page.locator('#toggle-idea-lab').click();
   await page.locator('#idea-lab').waitFor({ state: 'visible', timeout: 5000 });

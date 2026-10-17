@@ -209,3 +209,146 @@ test('writing agent streams tool progress and final result from a configured loc
   assert.doesNotMatch(upstreamText, /ignore-this-field/);
   assert.equal(outputs.length, 0);
 });
+
+
+test('disconnecting during task generation aborts the in-flight provider fetch', async t => {
+  let resolveUpstreamStarted;
+  const upstreamStarted = new Promise(resolve => { resolveUpstreamStarted = resolve; });
+  let resolveUpstreamClosed;
+  const upstreamClosed = new Promise(resolve => { resolveUpstreamClosed = resolve; });
+  const providerServer = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    resolveUpstreamStarted(JSON.parse(body));
+    res.on('close', () => resolveUpstreamClosed());
+    // Intentionally leave the upstream response pending until the local client aborts.
+  });
+  await new Promise((resolve, reject) => { providerServer.once('error', reject); providerServer.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => providerServer.close(resolve)); });
+
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const providerBase = 'http://127.0.0.1:' + providerServer.address().port + '/v1';
+  const saved = await fetch(base + '/api/settings', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({
+      provider: 'ollama', baseUrl: providerBase, model: 'wmr-cancel-test-model',
+      externalAllowed: true, dailyBudgetUsd: 1, maxCallUsd: 1,
+      maxDailyCalls: 4, maxOutputTokens: 900
+    })
+  });
+  assert.equal(saved.status, 200);
+
+  const controller = new AbortController();
+  const responsePromise = fetch(base + '/api/tasks/generate', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    signal: controller.signal,
+    body: JSON.stringify({ taskType: 'task2', topic: 'Synthetic cancellation test', learnerIdea: 'No personal essay.' })
+  }).catch(error => error);
+  let modelPayload;
+  const started = await Promise.race([
+    upstreamStarted.then(payload => { modelPayload = payload; return true; }),
+    new Promise(resolve => setTimeout(() => resolve(false), 5000))
+  ]);
+  assert.equal(started, true, 'The model request should have reached the controlled test provider.');
+  assert.ok(modelPayload.messages.some(message => message.role === 'system' && message.content.includes('You generate one original IELTS Writing practice prompt')));
+
+  controller.abort();
+  await responsePromise;
+  const closed = await Promise.race([
+    upstreamClosed.then(() => true),
+    new Promise(resolve => setTimeout(() => resolve(false), 5000))
+  ]);
+  assert.equal(closed, true, 'Closing the local client response should abort the upstream model response.');
+});
+test('AI task generation route fails closed while provider consent is disabled', async t => {
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  await fetch(base + '/api/settings', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({ provider: 'ollama', baseUrl: 'http://127.0.0.1:11434/v1', model: 'blocked-task-model', externalAllowed: false })
+  });
+  const response = await fetch(base + '/api/tasks/generate', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({ taskType: 'task2', topic: 'AI', learnerIdea: 'A practice question.' })
+  });
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /Bật quyền gửi provider/);
+});
+
+test('AI task generation uses a dedicated strict-schema route and excludes the current essay from provider context', async t => {
+  const modelRequests = [];
+  const providerServer = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    const payload = JSON.parse(body);
+    modelRequests.push(payload.messages);
+    assert.equal(payload.model, 'wmr-test-model');
+    assert.equal(payload.stream, false);
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({
+      model: 'wmr-test-model',
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            title: 'Technology and independent learning',
+            prompt: 'Some people believe artificial intelligence improves independent learning, while others think it reduces critical thinking. Discuss both views and give your own opinion.',
+            goal: 'Evaluate both views and support a clear position with developed reasons.'
+          })
+        }
+      }],
+      usage: { prompt_tokens: 90, completion_tokens: 70 }
+    }));
+  });
+  await new Promise((resolve, reject) => { providerServer.once('error', reject); providerServer.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => providerServer.close(resolve)); });
+
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const providerBase = 'http://127.0.0.1:' + providerServer.address().port + '/v1';
+  const saved = await fetch(base + '/api/settings', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({
+      provider: 'ollama', baseUrl: providerBase, model: 'wmr-test-model',
+      externalAllowed: true, dailyBudgetUsd: 1, maxCallUsd: 1,
+      maxDailyCalls: 4, maxOutputTokens: 900
+    })
+  });
+  assert.equal(saved.status, 200);
+
+  const response = await fetch(base + '/api/tasks/generate', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({
+      taskType: 'task2',
+      topic: 'Technology and learning',
+      learnerIdea: 'Discuss independent thinking.',
+      essay: 'essay-private-sentinel-must-not-leave-device',
+      taskPrompt: 'task-prompt-private-sentinel-must-not-leave-device',
+      history: [{ role: 'assistant', content: 'history-private-sentinel' }]
+    })
+  });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.aiStatus, 'ai-complete');
+  const generated = JSON.parse(result.answer);
+  assert.equal(generated.taskType, 'task2');
+  assert.equal(generated.provenance, 'ai-generated-unverified');
+  assert.ok(generated.prompt.length >= 40);
+  const upstreamText = JSON.stringify(modelRequests);
+  assert.ok(upstreamText.includes('Technology and learning'));
+  assert.ok(upstreamText.includes('Discuss independent thinking.'));
+  assert.doesNotMatch(upstreamText, /essay-private-sentinel|task-prompt-private-sentinel|history-private-sentinel/);
+  assert.match(upstreamText, /You generate one original IELTS Writing practice prompt/);
+});
