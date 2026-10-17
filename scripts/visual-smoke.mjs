@@ -93,7 +93,7 @@ try {
   await page.locator('#app-shell.idp-bc-mode').waitFor({ state: 'visible', timeout: 5000 });
   const practiceGeometry = await page.evaluate(() => {
     const prompt = document.querySelector('#prompt-card')?.getBoundingClientRect();
-    const editor = document.querySelector('.canvas-paper-frame')?.getBoundingClientRect();
+    const editor = document.querySelector('.writing-canvas-column')?.getBoundingClientRect();
     return prompt && editor ? { promptTop: prompt.top, editorTop: editor.top, promptRight: prompt.right, editorLeft: editor.left } : null;
   });
   assert.ok(practiceGeometry, 'Practice mode must expose both prompt and writing canvas.');
