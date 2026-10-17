@@ -617,12 +617,12 @@ function renderReport(report, loading = false) {
       '<p>' + escapeHtml(item.explanation || '') + '</p>' +
       (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
       (item.teachingHint ? '<p><strong>Điều cần hiểu:</strong> ' + escapeHtml(item.teachingHint) + '</p>' : '') +
-      '<div class="sentence-surgery-card" aria-label="Mổ xẻ câu văn 3 cấp độ">' +
-      '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán điểm nghẽn</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
-      '<div class="surgery-tier tier-band75"><strong>2 · Bản sửa rõ và chính xác hơn</strong>' + escapeHtml(surgery.band75) + '</div>' +
-      '<div class="surgery-tier tier-band85"><strong>3 · Phương án nâng cao để tham khảo</strong>' + escapeHtml(surgery.band85) + '</div>' +
+      '<div class="sentence-surgery-card" aria-label="Phân tích phản hồi và hướng tự sửa">' +
+      '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán từ dẫn chứng</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
+      '<div class="surgery-tier tier-suggested"><strong>2 · Gợi ý sửa từ phản hồi</strong>' + escapeHtml(surgery.suggestedRevision || 'Phản hồi chưa có câu sửa cụ thể. Không nên tự suy đoán bản sửa khi thiếu bằng chứng.') + '</div>' +
+      '<div class="surgery-tier tier-learning"><strong>3 · Ghi chú học tập</strong>' + escapeHtml(surgery.learningNote) + '</div>' +
       '</div>' +
-      '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || surgery.band85 || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
+      '<div class="issue-actions"><button type="button" data-issue-fixed="' + index + '" aria-pressed="' + String(item.userMarkedResolved === true) + '">' + (item.userMarkedResolved === true ? '✓ Đã xử lý · Hoàn tác' : '✓ Đã xử lý') + '</button><button type="button" data-copy-fix="' + index + '" data-fix-text="' + escapeHtml(item.suggestedFix || item.explanation || '') + '">Sao chép gợi ý</button></div></article>';
   }).join('') : '<p class="history-empty">' + (issues.length ? 'Không có mục nào thuộc nhóm lọc này.' : report.status === 'ai-formative' ? 'AI không trả về lỗi có đủ bằng chứng để hiển thị.' : 'Kiểm tra cục bộ chưa tạo danh sách lỗi ngôn ngữ sâu. Bật provider nếu bạn chủ động muốn chấm AI.') + '</p>';
   const strengthsHtml = strengths.length ? strengths.map(item => '<div class="strength-item">' + (item.quote ? '<div class="quote-box">' + escapeHtml(item.quote) + '</div>' : '') + '<p>' + escapeHtml(item.why || '') + '</p></div>').join('') : '<p class="history-empty">Điểm mạnh sẽ xuất hiện khi AI đưa ra nhận xét cụ thể có trích dẫn khớp bài gốc.</p>';
   const prioritiesHtml = priorities.length ? priorities.map((item, index) => '<div class="priority-item"><span class="priority-number">' + (index + 1) + '</span><div><strong>' + escapeHtml(item.title || 'Bước tiếp theo') + '</strong><p>' + escapeHtml(item.action || '') + '</p></div></div>').join('') : '<p class="history-empty">Chưa đủ dữ liệu để chọn ưu tiên.</p>';
