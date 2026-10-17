@@ -101,7 +101,7 @@ try {
   await page.locator('[data-speech-read="prompt"]').click();
   await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
   latestSpeech = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
-  const visiblePrompt = (await page.locator('#task-prompt').innerText()).replace(/\\s+/g, ' ').trim();
+  const visiblePrompt = (await page.locator('#task-prompt').innerText()).replace(/\s+/g, ' ').trim();
   assert.ok(latestSpeech.text.includes(visiblePrompt.slice(0, Math.min(30, visiblePrompt.length))),
     'Prompt reading should include the visible IELTS task.');
 
