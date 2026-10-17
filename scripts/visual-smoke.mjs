@@ -35,6 +35,31 @@ try {
     viewport: { width: 1440, height: 1100 },
     reducedMotion: 'reduce'
   });
+  // Stub the local Web Speech API so headless CI can exercise real UI wiring without audio or network access.
+  await context.addInitScript(() => {
+    const mock = { utterances: [], cancels: 0, pauses: 0, resumes: 0 };
+    class MockSpeechSynthesisUtterance {
+      constructor(text) { this.text = text; this.lang = ''; this.rate = 1; this.pitch = 1; this.voice = null; }
+    }
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      configurable: true,
+      value: MockSpeechSynthesisUtterance
+    });
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        getVoices: () => [{ name: 'Mock British English', lang: 'en-GB' }],
+        cancel: () => { mock.cancels += 1; },
+        pause: () => { mock.pauses += 1; },
+        resume: () => { mock.resumes += 1; },
+        speak: utterance => {
+          mock.utterances.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate });
+          setTimeout(() => utterance.onend?.(), 500);
+        }
+      }
+    });
+    Object.defineProperty(window, '__wmrSpeechMock', { configurable: false, value: mock });
+  });
   const page = await context.newPage();
   listenForErrors(page, 'desktop');
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -46,6 +71,29 @@ try {
   assert.ok(await page.locator('#essay-editor').isVisible(), 'Essay editor should be visible.');
   assert.ok(await page.locator('#run-writing-agent').isVisible(), 'Writing Agent action should be visible.');
   assert.ok((await page.locator('#agent-practice-journal').count()) > 0, 'Practice journal mount point should exist.');
+  assert.ok(await page.locator('#speech-reader-panel').isVisible(), 'The full read-aloud studio must be visible in the writing workspace.');
+  for (const mode of ['essay', 'prompt', 'selection', 'feedback']) {
+    assert.equal(await page.locator('[data-speech-read="' + mode + '"]').count(), 1, 'Missing read-aloud action for ' + mode);
+  }
+
+  await page.locator('#essay-editor').fill('The first draft is useful, but reading it aloud helps me find awkward phrases and improve my IELTS writing.');
+  await page.locator('[data-speech-read="essay"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  await page.locator('#speech-reader-pause').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'paused');
+  await page.locator('#speech-reader-resume').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  await page.locator('#speech-reader-stop').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'stopped');
+  const speechEvidence = await page.evaluate(() => window.__wmrSpeechMock);
+  assert.ok(speechEvidence.utterances.some(item => item.text.includes('reading it aloud')), 'Clicking read-aloud should call the local speech API with the essay text.');
+  assert.equal(speechEvidence.utterances[0].lang, 'en-GB', 'Auto-detect should select British English for an English essay.');
+  assert.ok(speechEvidence.pauses > 0 && speechEvidence.resumes > 0 && speechEvidence.cancels > 0,
+    'Pause, resume and stop should call the speech API controls.');
+  await page.locator('#speech-reader-panel').scrollIntoViewIfNeeded();
+  await capture(page, '01e-speech-reader-desktop.png');
+  await page.locator('#essay-editor').fill('');
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await capture(page, '01-writing-workspace-desktop.png');
 
   // Verify the extra AI action remains blocked until the existing provider-consent switch is enabled.
