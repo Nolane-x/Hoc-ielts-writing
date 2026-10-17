@@ -259,6 +259,8 @@ test('computer-delivered exam mode keeps prompt and writing pane in responsive s
 
   const desktopPromptRule = css.indexOf('.app-shell.idp-bc-mode .prompt-card {');
   const desktopWriterRule = css.indexOf('.app-shell.idp-bc-mode .writing-canvas-column {');
+  assert.ok(css.includes('grid-template-columns: minmax(320px, 46fr) minmax(360px, 54fr);'),
+    'Desktop exam columns must account for the gap without overflowing their container.');
   assert.ok(desktopPromptRule >= 0 && css.indexOf('grid-column: 1;', desktopPromptRule) > desktopPromptRule);
   assert.ok(desktopWriterRule >= 0 && css.indexOf('grid-column: 2;', desktopWriterRule) > desktopWriterRule,
     'Desktop exam mode must place the writer beside the prompt.');
