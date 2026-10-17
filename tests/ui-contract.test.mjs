@@ -434,3 +434,11 @@ test('exam-mode footer text uses contrast-safe colors in both themes', () => {
   assert.match(css, /\.app-shell\.idp-bc-mode \.app-footer span,\s*\.app-shell\.idp-bc-mode \.app-footer strong\s*\{\s*color: #334155 !important;/);
   assert.match(css, /html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer span,\s*html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer strong\s*\{\s*color: #cbd5e1 !important;/);
 });
+
+
+test('keyboard navigation offers a visible skip link and focusable writing destination', () => {
+  assert.match(html, /<a class="skip-link" href="#workspace-title">Bỏ qua điều hướng, đến nội dung chính<\/a>/);
+  assert.match(html, /<h1 id="workspace-title" tabindex="-1">/);
+  assert.match(css, /\.skip-link:focus(?:-visible)?\s*\{/);
+  assert.match(css, /\.skip-link:focus-visible\s*\{[\s\S]*?outline: 3px solid var\(--accent\)/);
+});
