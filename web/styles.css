@@ -4233,3 +4233,8 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 @media (prefers-reduced-motion: reduce) {
   .speech-dock * { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
+
+
+@media print {
+  .speech-dock { display: none !important; }
+}
