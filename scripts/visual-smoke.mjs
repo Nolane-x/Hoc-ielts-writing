@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
@@ -7,12 +8,15 @@ const baseUrl = process.env.WMR_BASE_URL || 'http://127.0.0.1:4179';
 const outputDir = process.env.WMR_SCREENSHOT_DIR || 'artifacts/ui-screenshots';
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const version = packageJson.version;
+const require = createRequire(import.meta.url);
+const axeSourcePath = require.resolve('axe-core');
 await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
 const screenshots = [];
 const browserErrors = [];
 const viewportChecks = [];
+const accessibilityChecks = [];
 let failure = null;
 
 function listenForErrors(page, label) {
@@ -28,6 +32,37 @@ async function capture(page, name, options = {}) {
   await page.locator('#toast.visible').waitFor({ state: 'hidden', timeout: 4500 }).catch(() => {});
   await page.screenshot({ path: file, animations: 'disabled', ...options });
   screenshots.push({ file, page: name });
+}
+
+async function auditAccessibility(page, label) {
+  await page.addScriptTag({ path: axeSourcePath });
+  const result = await page.evaluate(async () => window.axe.run(document, {
+    runOnly: {
+      type: 'tag',
+      values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
+    }
+  }));
+  const violations = result.violations.map(item => ({
+    id: item.id,
+    impact: item.impact,
+    help: item.help,
+    tags: item.tags.filter(tag => tag.startsWith('wcag')),
+    affectedNodes: item.nodes.length,
+    targets: item.nodes.slice(0, 8).map(node => node.target)
+  }));
+  accessibilityChecks.push({
+    page: label,
+    passedRules: result.passes.length,
+    incompleteRules: result.incomplete.length,
+    violationCount: violations.length,
+    violations
+  });
+  const blockers = violations.filter(item => item.impact === 'critical' || item.impact === 'serious');
+  if (blockers.length) {
+    throw new Error('Axe WCAG accessibility blockers on ' + label + ': ' +
+      blockers.map(item => item.id + ' (' + item.impact + '): ' + item.help +
+        '; targets=' + JSON.stringify(item.targets)).join(' | '));
+  }
 }
 
 try {
@@ -66,6 +101,7 @@ try {
   assert.equal(await page.locator('.version-line').innerText(), 'WMR Editorial Studio · v' + version,
     'The visible app version must match package.json in the production build.');
   await page.waitForFunction(() => document.querySelector('#task-select')?.options?.length > 0);
+  await auditAccessibility(page, 'desktop-writing-workspace');
 
   const versionLabel = await page.locator('.version-line').innerText();
   assert.ok(versionLabel.includes(version), `UI version label "${versionLabel}" does not match package version ${version}`);
@@ -223,6 +259,7 @@ try {
   listenForErrors(mobilePage, 'mobile');
   await mobilePage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await mobilePage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
+  await auditAccessibility(mobilePage, 'mobile-writing-workspace-390x844');
   assert.ok(await mobilePage.locator('#exam-mode-toggle').isVisible(), 'Practice mode toggle must remain reachable on mobile.');
   assert.match(await mobilePage.locator('#exam-mode-toggle').getAttribute('aria-label'), /practice|luyện thi/i);
   const geometry = await mobilePage.evaluate(() => ({
@@ -267,9 +304,9 @@ try {
 
   assert.deepEqual(browserErrors, [], 'Browser console/runtime errors were detected.');
   await writeFile(path.join(outputDir, 'visual-smoke-manifest.json'), JSON.stringify({
-    status: 'passed', version, baseUrl, browser: 'Chromium (Playwright)', screenshots, viewportChecks, browserErrors
+    status: 'passed', version, baseUrl, browser: 'Chromium (Playwright)', screenshots, viewportChecks, accessibilityChecks, browserErrors
   }, null, 2));
-  process.stdout.write(`Visual smoke passed for WMR ${version}; captured ${screenshots.length} screenshots.\n`);
+  process.stdout.write(`Visual smoke passed for WMR ${version}; captured ${screenshots.length} screenshots and ${accessibilityChecks.length} Axe accessibility scans.\n`);
 } catch (error) {
   failure = error;
   throw error;
