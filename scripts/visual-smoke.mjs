@@ -47,7 +47,11 @@ async function auditAccessibility(page, label) {
     help: item.help,
     tags: item.tags.filter(tag => tag.startsWith('wcag')),
     affectedNodes: item.nodes.length,
-    targets: item.nodes.slice(0, 8).map(node => node.target)
+    nodes: item.nodes.slice(0, 8).map(node => ({
+      target: node.target,
+      html: node.html.slice(0, 260),
+      failureSummary: node.failureSummary || ''
+    }))
   }));
   accessibilityChecks.push({
     page: label,
@@ -60,7 +64,7 @@ async function auditAccessibility(page, label) {
   if (blockers.length) {
     throw new Error('Axe WCAG accessibility blockers on ' + label + ': ' +
       blockers.map(item => item.id + ' (' + item.impact + '): ' + item.help +
-        '; targets=' + JSON.stringify(item.targets)).join(' | '));
+        '; nodes=' + JSON.stringify(item.nodes)).join(' | '));
   }
 }
 
