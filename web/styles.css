@@ -3816,7 +3816,7 @@ html[data-theme="dark"] .app-shell.idp-bc-mode {
 }
 .app-shell.idp-bc-mode .editor-column {
   display: grid;
-  grid-template-columns: minmax(320px, 46%) minmax(360px, 54%);
+  grid-template-columns: minmax(320px, 46fr) minmax(360px, 54fr);
   gap: 18px;
   align-items: start;
   border-radius: 8px;
