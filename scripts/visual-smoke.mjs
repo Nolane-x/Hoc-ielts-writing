@@ -118,6 +118,7 @@ try {
   listenForErrors(keyboardPage, 'keyboard');
   await keyboardPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await keyboardPage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
+  await keyboardPage.bringToFront();
   await keyboardPage.keyboard.press('Tab');
   const skipFocus = await keyboardPage.evaluate(() => {
     const element = document.activeElement;
