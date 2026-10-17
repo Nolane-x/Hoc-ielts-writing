@@ -25,7 +25,7 @@ test('visible application version is generated from package.json during the buil
 test('dynamic progress and status never mutate inline styles under the strict CSP', () => {
   assert.doesNotMatch(app, /\.style\.(?:width|color|background|setProperty)\s*=/);
   assert.doesNotMatch(app, /style\s*=\s*["'][^"']*(?:width|color|background)\s*:/i);
-  assert.match(app, /setProgressClass\(fillEl, pct\)/);
+  assert.match(app, /setProgressBucket\(fillEl, pct\)/);
   assert.match(app, /status-error/);
   assert.match(app, /provider-active/);
   assert.match(styles, /\.progress-p100\s*\{\s*transform: scaleX\(1\);/);
