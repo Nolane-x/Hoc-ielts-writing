@@ -69,7 +69,12 @@ try {
   await capture(page, '01-writing-workspace-desktop.png');
 
   await page.locator('#toggle-idea-lab').click();
-  await page.locator('#idea-lab').waitFor({ state: 'visible', timeout: 5000 });
+  // Preserve state parity when restoring an existing draft can leave the panel
+  // already expanded; the contract is that the control can reach the open state.
+  const ideaLab = page.locator('#idea-lab');
+  if (!(await ideaLab.isVisible())) await page.locator('#toggle-idea-lab').click();
+  await ideaLab.waitFor({ state: 'visible', timeout: 5000 });
+  assert.equal(await page.locator('#toggle-idea-lab').getAttribute('aria-expanded'), 'true');
   await capture(page, '01b-academy-idea-lab-desktop.png');
   await page.locator('#toggle-idea-lab').click();
 
