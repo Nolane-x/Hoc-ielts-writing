@@ -336,17 +336,18 @@ test('saved custom-task deletion requires confirmation and rolls related device 
     'Automatic review must not replace the learner-authored Agent objective.');
 });
 
-test('native read-aloud controls are accessible, local-only and wired to the speech reader', () => {
-  for (const id of ['speech-read', 'speech-pause', 'speech-resume', 'speech-stop', 'speech-rate', 'speech-status']) {
-    assert.match(html, new RegExp('id="' + id + '"'), 'missing read-aloud control #' + id);
+test('advanced Read Aloud studio exposes content selection, language/rate and lifecycle controls', () => {
+  for (const id of ['speech-reader-panel', 'speech-reader-language', 'speech-reader-rate', 'speech-reader-pause', 'speech-reader-resume', 'speech-reader-stop', 'speech-reader-status']) {
+    assert.match(html, new RegExp('id="' + id + '"'), 'missing Read Aloud control #' + id);
   }
+  for (const mode of ['essay', 'prompt', 'selection', 'feedback']) assert.match(html, new RegExp('data-speech-read="' + mode + '"'));
   assert.match(html, /aria-live="polite"/);
   assert.match(app, /createSpeechReader/);
-  assert.match(app, /resolveSpeechText/);
+  assert.match(app, /speechReader\.speak\(readAloudTextForMode\(mode\), \{ language, rate \}\)/);
   assert.match(app, /speechReader\.pause\(\)/);
   assert.match(app, /speechReader\.resume\(\)/);
   assert.match(app, /speechReader\.stop\(\)/);
-  assert.match(app, /not a Cambridge|chưa được hiệu chuẩn bằng giám khảo độc lập/i);
+  assert.match(app, /buildSpokenSummary/);
 });
 
 test('application startup binds all navigation controls before exposing the writing workspace', () => {
