@@ -6,13 +6,16 @@ export async function consumeSSEStream(response, onEvent) {
   if (typeof onEvent !== 'function') throw new TypeError('onEvent must be a function.');
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = '', eventName = '', eventId = '', dataLines = [];
+  let buffer = '', eventName = '', eventId = '', dataLines = [], frameChars = 0;
   const dispatch = async () => {
     if (dataLines.length) await onEvent({ event: eventName || 'message', data: dataLines.join('\n'), id: eventId });
     eventName = '';
     dataLines = [];
+    frameChars = 0;
   };
   const processLine = async line => {
+    frameChars += line.length + 1;
+    if (frameChars > MAX_SSE_BUFFER_CHARS) throw new Error('SSE frame exceeds the maximum supported size.');
     if (line === '') { await dispatch(); return; }
     if (line.startsWith(':')) return;
     const colon = line.indexOf(':');
@@ -45,6 +48,9 @@ export async function consumeSSEStream(response, onEvent) {
       await processLine(lastLine);
     }
     await dispatch();
+  } catch (error) {
+    try { await reader.cancel(error); } catch {}
+    throw error;
   } finally {
     reader.releaseLock?.();
   }
