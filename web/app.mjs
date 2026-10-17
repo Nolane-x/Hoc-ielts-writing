@@ -101,7 +101,21 @@ function readSpeechTextFromElement(element) {
   const clone = element.cloneNode(true);
   clone.querySelectorAll('button, input, textarea, select, label, script, style, .speech-dock, .report-filter-bar, .issue-actions, .prompt-actions-bar, .agent-activity').forEach(node => node.remove());
   clone.querySelectorAll('[hidden], [aria-hidden="true"]').forEach(node => node.remove());
-  return String(clone.innerText || clone.textContent || '').replace(/\s+/g, ' ').trim();
+  const blockTags = new Set(['article', 'section', 'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'pre', 'blockquote', 'summary']);
+  const readNode = node => {
+    if (node.nodeType === 3) return node.nodeValue || '';
+    if (node.nodeType !== 1) return '';
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'br') return '\n';
+    const children = [...node.childNodes].map(readNode).join('');
+    return blockTags.has(tag) ? '\n' + children + '\n' : children;
+  };
+  return readNode(clone)
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 function resolveSpeechText() {
   const selection = window.getSelection?.()?.toString().trim();
