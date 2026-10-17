@@ -113,9 +113,13 @@ try {
     'The visible app version must match package.json in the production build.');
   await page.waitForFunction(() => document.querySelector('#task-select')?.options?.length > 0);
   await auditAccessibility(page, 'desktop-writing-workspace');
-  // Keyboard-only smoke: skip the navigation, land on the writing area, then activate a button with Space.
-  await page.keyboard.press('Tab');
-  const skipFocus = await page.evaluate(() => {
+  // Keyboard-only smoke starts in a fresh tab, matching a learner's first visit.
+  const keyboardPage = await context.newPage();
+  listenForErrors(keyboardPage, 'keyboard');
+  await keyboardPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await keyboardPage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
+  await keyboardPage.keyboard.press('Tab');
+  const skipFocus = await keyboardPage.evaluate(() => {
     const element = document.activeElement;
     const rect = element?.getBoundingClientRect();
     const style = element ? getComputedStyle(element) : null;
@@ -133,33 +137,33 @@ try {
     'The focused skip link must move into the visible viewport.');
   assert.ok(skipFocus.boxShadow !== 'none' || skipFocus.outlineStyle !== 'none',
     'Keyboard focus on the skip link must have a visible focus indicator.');
-  await capture(page, '09-skip-link-keyboard-focus.png');
-  await page.keyboard.press('Enter');
-  await page.waitForFunction(() => location.hash === '#workspace-title');
-  assert.equal(await page.evaluate(() => document.activeElement.id), 'workspace-title',
+  await capture(keyboardPage, '09-skip-link-keyboard-focus.png');
+  await keyboardPage.keyboard.press('Enter');
+  await keyboardPage.waitForFunction(() => location.hash === '#workspace-title');
+  assert.equal(await keyboardPage.evaluate(() => document.activeElement.id), 'workspace-title',
     'Activating the skip link should move focus to the main workspace heading.');
 
   let ideaLabFocused = false;
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    await page.keyboard.press('Tab');
-    if (await page.evaluate(() => document.activeElement?.id === 'toggle-idea-lab')) {
+    await keyboardPage.keyboard.press('Tab');
+    if (await keyboardPage.evaluate(() => document.activeElement?.id === 'toggle-idea-lab')) {
       ideaLabFocused = true;
       break;
     }
   }
   assert.ok(ideaLabFocused, 'Keyboard traversal should reach the Idea Lab toggle without a focus trap.');
-  const buttonFocus = await page.locator('#toggle-idea-lab').evaluate(element => ({
+  const buttonFocus = await keyboardPage.locator('#toggle-idea-lab').evaluate(element => ({
     boxShadow: getComputedStyle(element).boxShadow,
     outlineStyle: getComputedStyle(element).outlineStyle
   }));
   assert.ok(buttonFocus.boxShadow !== 'none' || buttonFocus.outlineStyle !== 'none',
     'Keyboard-focused action buttons must show a visible focus indicator.');
-  await page.keyboard.press('Space');
-  await page.waitForFunction(() => document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded') === 'true');
-  assert.ok(await page.locator('#idea-lab').isVisible(), 'Space should activate the focused native button.');
-  await page.keyboard.press('Space');
-  await page.waitForFunction(() => document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded') === 'false');
-
+  await keyboardPage.keyboard.press('Space');
+  await keyboardPage.waitForFunction(() => document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded') === 'true');
+  assert.ok(await keyboardPage.locator('#idea-lab').isVisible(), 'Space should activate the focused native button.');
+  await keyboardPage.keyboard.press('Space');
+  await keyboardPage.waitForFunction(() => document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded') === 'false');
+  await keyboardPage.close();
 
   const versionLabel = await page.locator('.version-line').innerText();
   assert.ok(versionLabel.includes(version), `UI version label "${versionLabel}" does not match package version ${version}`);
