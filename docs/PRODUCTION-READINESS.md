@@ -7,6 +7,7 @@ The repository now enforces the following evidence on the release workflow:
 - Node 22 and Node 24 CI, including the full test suite and a high/critical dependency audit gate.
 - A production web build whose displayed version is generated from `package.json`.
 - A Chromium desktop/mobile smoke run covering application startup, navigation, the two-column exam practice layout, its narrow-screen fallback, read-aloud UI state transitions, local report generation, learner-evidence messaging, privacy defaults and visible version parity.
+- Axe scans across nine UI states (writing, reports, learning dashboard, privacy settings, exam practice, light/dark themes and mobile practice) record findings in the artifact and fail if any WCAG A/AA violation is found under the configured WCAG 2.0, 2.1 and 2.2 tags. The latest confirmed artifact on 2026-10-18 showed 0 violations across nine WCAG 2.0/2.1 A/AA scans; the new 2.2 gate must pass before it becomes part of the release contract.
 - Release packaging jobs wait for both reusable CI and browser-smoke workflows; publication waits for those checks and all platform artifact jobs.
 - Local backup restore is applied with rollback on failed storage writes. A bounded, reusable SSE parser is shared by the Writing Agent stream and dedicated regression tests.
 - Academy sample essays are explicitly uncalibrated study material. Sentence Surgery does not invent generic “Band 7.5/8.5” rewrites when the assessment provides no supported suggestion.
@@ -17,7 +18,7 @@ Browser smoke uses a mocked Web Speech engine. It verifies UI control wiring and
 
 - Manual real-provider acceptance with test credentials for timeouts, cancellation, malformed output, rate limits and budget accounting. Credentials must stay out of source, screenshots and logs.
 - Install/launch and data restore checks on Windows and Linux; Android APK/AAB checks on a physical device. The generated Android App Bundle is unsigned unless a separate signing workflow is configured.
-- Keyboard-only and screen-reader review, zoom/reflow checks, forced-colors review and device-specific spoken-language testing.
+- Manual screen-reader review with NVDA/VoiceOver/TalkBack, real keyboard-only review outside headless Chromium, zoom/reflow checks at 200–400%, forced-colors review and device-specific spoken-language testing. Automated Axe results do not certify these interaction modes.
 - Independent IELTS educator ratings on a permissioned, de-identified held-out essay corpus before making any band-calibration or score-accuracy claim.
 
 ## Release boundary
