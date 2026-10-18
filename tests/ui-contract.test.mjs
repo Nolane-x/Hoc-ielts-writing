@@ -2,10 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+// Git's Windows checkout may convert tracked text files to CRLF. Normalize source
+// fixtures before static contract assertions so behavior is not OS-dependent.
+const readNormalizedText = url => readFile(url, 'utf8').then(value => value.replace(/\r\n/g, '\n'));
 const [html, css, app] = await Promise.all([
-  readFile(new URL('../web/index.html', import.meta.url), 'utf8'),
-  readFile(new URL('../web/styles.css', import.meta.url), 'utf8'),
-  readFile(new URL('../web/app.mjs', import.meta.url), 'utf8')
+  readNormalizedText(new URL('../web/index.html', import.meta.url)),
+  readNormalizedText(new URL('../web/styles.css', import.meta.url)),
+  readNormalizedText(new URL('../web/app.mjs', import.meta.url))
 ]);
 
 test('primary navigation always points to an existing page region', () => {
