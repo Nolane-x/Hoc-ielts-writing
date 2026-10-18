@@ -134,6 +134,11 @@ try {
 
   // Focus the skip link as the keyboard entry point, then test its native Enter activation.
   await skipLink.focus();
+  await keyboardPage.waitForFunction(() => {
+    const element = document.querySelector('.skip-link');
+    const rect = element?.getBoundingClientRect();
+    return Boolean(rect && rect.top >= 0 && rect.bottom <= 120);
+  }, { timeout: 3000 });
   const skipFocus = await skipLink.evaluate(element => {
     const rect = element.getBoundingClientRect();
     const style = getComputedStyle(element);
@@ -146,7 +151,7 @@ try {
     };
   });
   assert.ok(skipFocus.top >= 0 && skipFocus.bottom <= 120,
-    'The focused skip link must move into the visible viewport.');
+    'The focused skip link must move into the visible viewport: ' + JSON.stringify(skipFocus));
   assert.ok(skipFocus.boxShadow !== 'none' || skipFocus.outlineStyle !== 'none',
     'Keyboard focus on the skip link must have a visible focus indicator.');
   await capture(keyboardPage, '09-skip-link-keyboard-focus.png');
