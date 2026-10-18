@@ -1,8 +1,14 @@
-# Đặc tả Thiết kế Toàn diện: WMR IELTS Supercharged 2.0 (Full-Cycle Academy)
+# Đề xuất Thiết kế: WMR IELTS Supercharged 2.0 (Full-Cycle Academy)
 
 - **Ngày khởi tạo:** 2026-10-16
 - **Tác giả:** Antigravity AI Assistant & WMR Engineering Team
 - **Trạng thái:** Design In-Progress & User Review
+
+> **Trạng thái tài liệu — đề xuất thiết kế, không phải cam kết về sản phẩm đã phát hành (cập nhật 2026-10-18).**
+>
+> Tài liệu dưới đây giữ lại định hướng dài hạn và bao gồm cả hạng mục chưa triển khai hoặc chưa được xác minh độc lập. WMR hiện phát hành ở phiên bản do `package.json` quy định (hiện là 1.7.0); chế độ “luyện thi máy tính” là môi trường thực hành, **không phải phần mềm thi chính thức của IDP/British Council**. Kho đề tích hợp không được trình bày như nội dung Cambridge được cấp phép. Các cụm “C1/C2”, “Band 7.5/8.5+”, “chuẩn quốc tế” hay “100% giống thi thật” trong phần mục tiêu là ý tưởng cần thẩm định, không phải kết quả đo lường hoặc bảo đảm chấm điểm đã được chứng minh.
+>
+> Những nội dung đã xác minh gần đây gồm: Writing Companion có chọn tham gia và yêu cầu quyền gửi provider; đề tự tạo là bản nháp chưa xác minh; sửa đổi Agent cần người học chấp thuận; Read Aloud dựa trên giọng có sẵn của trình duyệt/hệ điều hành; chín trạng thái giao diện đã qua quét Axe WCAG 2.0/2.1/2.2 A/AA với 0 vi phạm trong CI ngày 2026-10-18. Những việc còn cần kiểm tra ngoài CI được liệt kê tại [Production Readiness](../PRODUCTION-READINESS.md), gồm thiết bị thật, screen reader, provider thật và hiệu chuẩn IELTS độc lập.
 - **Mục tiêu:** Nâng cấp WMR Writing Mentor thành Hệ sinh thái Đào tạo IELTS Writing Toàn Trình (Full-Cycle IELTS Academy), giải quyết triệt để mọi trở ngại học thuật từ lúc phân tích đề bài, nạp từ vựng C1/C2, dựng dàn ý, làm bài trong môi trường thi thật 100%, đến mổ xẻ câu văn, đối sánh bài mẫu Band 8.5+, giải đố logic tương tác và xuất bản hồ sơ in ấn chuẩn quốc tế.
 
 ---
