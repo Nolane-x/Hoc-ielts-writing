@@ -94,15 +94,22 @@ test('Chromium smoke audits WCAG 2.1 A/AA accessibility on desktop and mobile', 
   assert.match(visualSmoke, /wcag21aa/);
   for (const flow of [
     "desktop-writing-workspace",
+    "desktop-writing-workspace-dark",
     "desktop-report",
     "desktop-learning-dashboard",
     "desktop-settings-privacy",
     "desktop-exam-practice",
+    "desktop-exam-practice-dark",
     "mobile-writing-workspace-390x844",
     "mobile-exam-practice-390x844"
   ]) assert.ok(visualSmoke.includes("'" + flow + "'"), 'Missing accessibility scan for ' + flow);
   assert.match(visualSmoke, /impact === 'critical' \|\| item\.impact === 'serious'/);
   assert.match(visualSmoke, /accessibilityChecks/);
+  assert.match(visualSmoke, /document\.documentElement\.dataset\.theme === 'dark'/);
+  assert.match(visualSmoke, /desktop-writing-workspace-dark/);
+  assert.match(visualSmoke, /desktop-exam-practice-dark/);
+  assert.match(visualSmoke, /10-dark-writing-workspace-desktop\.png/);
+  assert.match(visualSmoke, /11-dark-exam-practice-desktop\.png/);
   assert.equal((visualSmoke.match(/writeFile\(path\.join\(outputDir, 'visual-smoke-manifest\.json'/g) || []).length, 1,
     'A single manifest writer must preserve accessibility results in both pass and fail paths.');
   assert.match(visualSmoke, /failure: failure \? String\(failure\.stack \|\| failure\) : null/);
