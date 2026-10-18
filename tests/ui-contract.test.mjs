@@ -397,8 +397,21 @@ test('learner mastery radar never substitutes reference scores for missing AI ev
   assert.match(css, /\.radar-empty-note/);
 });
 
+test('timer, grouped controls and icon-only buttons expose valid accessible names', () => {
+  assert.match(html, /id="exam-timer" role="timer" aria-label="Đồng hồ luyện viết IELTS"/);
+  assert.match(html, /class="speech-reader-actions" role="group" aria-label="Chọn nội dung cần đọc"/);
+  assert.match(html, /class="speech-reader-playback" role="group" aria-label="Điều khiển phát"/);
+  assert.match(html, /class="tool-list" role="group" aria-label="Công cụ hướng dẫn"/);
+  assert.match(html, /id="top-settings"[^>]*aria-label="Mở cài đặt"[^>]*>\s*<span aria-hidden="true">⚙<\\/span>/);
+  assert.match(html, /id="mobile-menu"[^>]*aria-label="Mở điều hướng"><span aria-hidden="true">☰<\\/span>/);
+  const practiceButton = html.match(/<button class="zen-pill exam-sim-pill" id="exam-mode-toggle"[^>]*>([\\s\\S]*?)<\\/button>/);
+  assert.ok(practiceButton && practiceButton[1].includes('Luyện thi máy tính'));
+  assert.doesNotMatch(practiceButton?.[0] || '', /aria-label=/,
+    'Visible practice text should supply the accessible name instead of overriding it.');
+});
+
 test('practice mode remains accessible and visible in the mobile top bar', () => {
-  assert.match(html, /id="exam-mode-toggle"[^>]*aria-label="[^"]*(?:practice|luyện thi)[^"]*"/i);
+  assert.match(html, /id="exam-mode-toggle"/);
   assert.match(css, /@media \(max-width: 650px\)[\s\S]*?\.zen-pill:not\(\.exam-sim-pill\) \{\s*display: none;/,
     'Small-screen rules may hide Zen Mode but must not hide the practice-mode toggle.');
   assert.match(css, /\.exam-sim-pill \{\s*display: inline-flex;/,
