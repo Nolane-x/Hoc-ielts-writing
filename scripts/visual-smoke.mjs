@@ -46,7 +46,7 @@ async function auditAccessibility(page, label) {
   const result = await page.evaluate(async () => window.axe.run(document, {
     runOnly: {
       type: 'tag',
-      values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
+      values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']
     }
   }));
   const violations = result.violations.map(item => ({
@@ -68,11 +68,14 @@ async function auditAccessibility(page, label) {
     violationCount: violations.length,
     violations
   });
-  const blockers = violations.filter(item => item.impact === 'critical' || item.impact === 'serious');
-  if (blockers.length) {
-    throw new Error('Axe WCAG accessibility blockers on ' + label + ': ' +
-      blockers.map(item => item.id + ' (' + item.impact + '): ' + item.help +
-        '; nodes=' + JSON.stringify(item.nodes)).join(' | '));
+  process.stdout.write('[A11Y] ' + label + ': ' + result.passes.length +
+    ' rules passed, ' + result.incomplete.length + ' incomplete, ' +
+    violations.length + ' violations.\\n');
+  if (violations.length) {
+    throw new Error('Axe WCAG accessibility violations on ' + label + ': ' +
+      violations.map(item => item.id + ' (' + item.impact + ', ' + item.affectedNodes +
+        ' node(s)): ' + item.help + '; targets=' +
+        JSON.stringify(item.nodes.slice(0, 4).map(node => node.target))).join(' | '));
   }
 }
 
