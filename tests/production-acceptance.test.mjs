@@ -118,3 +118,14 @@ test('Companion voice reminders stay opt-in and have a browser-smoke contract', 
   assert.match(smokeScript, /Opting in should speak a clear confirmation through the local speech API/);
   assert.match(smokeScript, /Voice reminders should be opt-out and must cancel their pending native speech when disabled/);
 });
+
+test('Companion voice reminders queue behind active Read Aloud and clear on opt-out', () => {
+  assert.match(app, /let pendingVoiceReminder = ''/);
+  assert.match(app, /Lời nhắc sẽ được đọc sau khi nội dung hiện tại kết thúc để không ngắt bài đọc/);
+  assert.match(app, /if \(state\.status === 'complete'\)/);
+  assert.match(app, /pendingVoiceReminder = ''/);
+  assert.match(smokeScript, /Queueing a Companion reminder must not interrupt the active Read Aloud utterance/);
+  assert.match(smokeScript, /The queued Companion reminder must play after Read Aloud finishes/);
+  assert.match(smokeScript, /Disabling voice reminders should discard any queued reminder/);
+  assert.match(smokeScript, /utteranceHandlers\.at\(-1\)/);
+});
