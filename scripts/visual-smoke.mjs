@@ -261,6 +261,24 @@ try {
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await capture(page, '01-writing-workspace-desktop.png');
 
+  // Cover the opt-in Companion voice reminder separately from the full Read Aloud reader.
+  const voiceReminderToggle = page.locator('#voice-reminder-toggle');
+  assert.ok(await voiceReminderToggle.isVisible(), 'Companion voice reminder opt-in must be visible.');
+  const reminderCountBefore = await page.evaluate(() => window.__wmrSpeechMock.utterances.length);
+  await voiceReminderToggle.check();
+  await page.waitForFunction(count => window.__wmrSpeechMock.utterances.length > count, reminderCountBefore);
+  const reminderUtterance = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  assert.match(reminderUtterance.text, /Đã bật lời nhắc bằng giọng nói/,
+    'Opting in should speak a clear confirmation through the local speech API.');
+  assert.equal(reminderUtterance.lang, 'vi-VN', 'Companion reminders should use Vietnamese speech.');
+  assert.ok(Math.abs(reminderUtterance.rate - 0.98) < 0.001, 'Companion reminder playback rate should stay bounded.');
+
+  const cancelsBeforeDisable = await page.evaluate(() => window.__wmrSpeechMock.cancels);
+  await voiceReminderToggle.uncheck();
+  await page.waitForFunction(count => window.__wmrSpeechMock.cancels > count, cancelsBeforeDisable);
+  assert.equal(await voiceReminderToggle.isChecked(), false,
+    'Voice reminders should be opt-out and must cancel their pending native speech when disabled.');
+
   // Verify the extra AI action remains blocked until the existing provider-consent switch is enabled.
   await page.locator('#custom-task-panel > summary').click();
   await page.locator('#custom-task-title').fill('Smoke-test custom task');
