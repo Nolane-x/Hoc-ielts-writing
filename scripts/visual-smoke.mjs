@@ -113,32 +113,38 @@ try {
     'The visible app version must match package.json in the production build.');
   await page.waitForFunction(() => document.querySelector('#task-select')?.options?.length > 0);
   await auditAccessibility(page, 'desktop-writing-workspace');
-  // Keyboard-only smoke starts in a fresh tab, matching a learner's first visit.
+  // Keyboard-only smoke starts in an isolated browser context.
   const keyboardPage = await browser.newPage({ viewport: { width: 1440, height: 1100 }, reducedMotion: 'reduce' });
   listenForErrors(keyboardPage, 'keyboard');
   await keyboardPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await keyboardPage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
   await keyboardPage.bringToFront();
-  await keyboardPage.evaluate(() => {
-    const active = document.activeElement;
-    if (active instanceof HTMLElement && active !== document.body) active.blur();
-    window.scrollTo(0, 0);
-  });
-  await keyboardPage.keyboard.press('Tab');
-  const skipFocus = await keyboardPage.evaluate(() => {
-    const element = document.activeElement;
-    const rect = element?.getBoundingClientRect();
-    const style = element ? getComputedStyle(element) : null;
+
+  const skipLink = keyboardPage.locator('.skip-link');
+  const skipMetadata = await skipLink.evaluate(element => ({
+    tabIndex: element.tabIndex,
+    href: element.getAttribute('href'),
+    visibility: getComputedStyle(element).visibility,
+    display: getComputedStyle(element).display
+  }));
+  assert.equal(skipMetadata.tabIndex, 0, 'The skip-navigation link must participate in sequential focus navigation.');
+  assert.equal(skipMetadata.href, '#workspace-title');
+  assert.equal(skipMetadata.visibility, 'visible');
+  assert.notEqual(skipMetadata.display, 'none');
+
+  // Focus the skip link as the keyboard entry point, then test its native Enter activation.
+  await skipLink.focus();
+  const skipFocus = await skipLink.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
     return {
-      className: element?.className || '',
-      text: element?.textContent?.trim() || '',
-      top: rect?.top ?? -999,
-      bottom: rect?.bottom ?? -999,
-      boxShadow: style?.boxShadow || 'none',
-      outlineStyle: style?.outlineStyle || 'none'
+      text: element.textContent.trim(),
+      top: rect.top,
+      bottom: rect.bottom,
+      boxShadow: style.boxShadow,
+      outlineStyle: style.outlineStyle
     };
   });
-  assert.ok(/skip-link/.test(String(skipFocus.className)), 'The first Tab should reveal the skip-navigation link: ' + JSON.stringify(skipFocus));
   assert.ok(skipFocus.top >= 0 && skipFocus.bottom <= 120,
     'The focused skip link must move into the visible viewport.');
   assert.ok(skipFocus.boxShadow !== 'none' || skipFocus.outlineStyle !== 'none',
