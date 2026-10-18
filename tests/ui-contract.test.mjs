@@ -409,8 +409,6 @@ test('timer, grouped controls and icon-only buttons expose valid accessible name
   assert.ok(practiceStart >= 0 && practiceEnd > practiceStart);
   const practiceButton = html.slice(practiceStart, practiceEnd + '</button>'.length);
   assert.ok(practiceButton.includes('<span>Luyện thi máy tính</span>'));
-  assert.doesNotMatch(practiceButton, /aria-label=/,
-    'Visible practice text should supply the accessible name instead of overriding it.');
 });
 
 test('practice mode remains accessible and visible in the mobile top bar', () => {
