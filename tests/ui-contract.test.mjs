@@ -437,7 +437,7 @@ test('exam-mode footer text uses contrast-safe colors in both themes', () => {
 
 
 test('keyboard navigation offers a visible skip link and focusable writing destination', () => {
-  assert.match(html, /<a class="skip-link" href="#workspace-title">Bỏ qua điều hướng, đến nội dung chính<\/a>/);
+  assert.match(html, /<a class="skip-link" href="#workspace-title" tabindex="0">Bỏ qua điều hướng, đến nội dung chính<\/a>/);
   assert.match(html, /<h1 id="workspace-title" tabindex="-1">/);
   assert.match(css, /\.skip-link:focus(?:-visible)?\s*\{/);
   assert.match(css, /\.skip-link:focus-visible\s*\{[\s\S]*?outline: 3px solid var\(--accent\)/);
