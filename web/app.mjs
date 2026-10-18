@@ -966,7 +966,7 @@ function renderReport(report, loading = false) {
       '<p>' + escapeHtml(item.explanation || '') + '</p>' +
       (item.suggestedFix ? '<p><strong>Hướng sửa:</strong> ' + escapeHtml(item.suggestedFix) + '</p>' : '') +
       (item.teachingHint ? '<p><strong>Điều cần hiểu:</strong> ' + escapeHtml(item.teachingHint) + '</p>' : '') +
-      '<div class="sentence-surgery-card" aria-label="Mổ xẻ câu văn 3 cấp độ">' +
+      '<div class="sentence-surgery-card" role="group" aria-label="Phân tích lỗi, đề xuất sửa và ghi chú học tập">' +
       '<div class="surgery-tier tier-diagnosis"><strong>1 · Chẩn đoán</strong>' + escapeHtml(surgery.diagnosis) + '</div>' +
       '<div class="surgery-tier tier-band75"><strong>2 · Gợi ý sửa từ phản hồi</strong>' + escapeHtml(surgery.suggestedRevision || 'Phản hồi chưa có câu sửa cụ thể. Không nên tự suy đoán bản sửa khi thiếu bằng chứng.') + '</div>' +
       '<div class="surgery-tier tier-band85"><strong>3 · Ghi chú học tập</strong>' + escapeHtml(surgery.learningNote) + '</div>' +
