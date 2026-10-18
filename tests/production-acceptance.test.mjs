@@ -89,3 +89,9 @@ test('Axe-incomplete ARIA findings have semantic roles and gradient-backed body 
   assert.match(css, /\.prompt-card\s*\{[\s\S]*?background: var\(--surface-soft\);/);
   assert.match(css, /\.prompt-meta\s*\{\s*color: var\(--ink-secondary\);/);
 });
+
+
+ test('sentence surgery cards use a permitted named group role', async () => {
+  const source = await readFile(new URL('../web/app.mjs', import.meta.url), 'utf8');
+  assert.match(source, /class="sentence-surgery-card" role="group" aria-label="Phân tích lỗi, đề xuất sửa và ghi chú học tập"/);
+});
