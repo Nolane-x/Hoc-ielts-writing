@@ -3,6 +3,7 @@
 ## Unreleased
 - Enforce zero Axe violations across nine WCAG 2.0/2.1/2.2 A/AA UI states, with light/dark and mobile practice coverage.
 - Preserve rule-level Axe `incomplete` findings in the smoke manifest for manual accessibility follow-up.
+- Abort in-flight assessment, Mentor, task-generation and Writing Agent provider requests immediately when provider consent is revoked, with regression coverage for cancellation and request-start races.
 - Reconcile the Full-Cycle Academy design spec with the released 1.7.0 scope and explicit remaining acceptance requirements.
 
 ## 1.7.0 — Speech, task-specific Academy content and local API hardening
