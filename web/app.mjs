@@ -86,6 +86,7 @@ let activeReportFilter = 'all';
 let cohesionSelectedOrder = [];
 
 let speechReader;
+let pendingVoiceReminder = '';
 function updateSpeechReaderState(state) {
   const status = $('#speech-reader-status');
   if (status) {
@@ -98,6 +99,18 @@ function updateSpeechReaderState(state) {
   if (pause) pause.disabled = state.status !== 'speaking';
   if (resume) resume.disabled = state.status !== 'paused';
   if (stop) stop.disabled = !['speaking', 'paused'].includes(state.status);
+
+  if (!pendingVoiceReminder) return;
+  if (state.status === 'complete') {
+    const reminder = pendingVoiceReminder;
+    pendingVoiceReminder = '';
+    if (companionPrefs.voiceReminders) speakReminder(reminder);
+  } else if (['stopped', 'error', 'unsupported', 'empty'].includes(state.status)) {
+    pendingVoiceReminder = '';
+    if (companionPrefs.voiceReminders) {
+      setCompanionStatus('Lời nhắc đang chờ đã bị hủy vì phần đọc hiện tại đã dừng.');
+    }
+  }
 }
 speechReader = createSpeechReader({ onState: updateSpeechReaderState });
 
@@ -125,24 +138,42 @@ function setCompanionStatus(message, bad = false) {
   host.classList.toggle('is-error', Boolean(bad));
 }
 function speakReminder(value) {
-  if (!companionPrefs.voiceReminders || speechReader?.isActive()) return false;
+  if (!companionPrefs.voiceReminders) return false;
+  const text = buildSpokenSummary(value, 320);
   const synth = globalThis.speechSynthesis;
   const Utterance = globalThis.SpeechSynthesisUtterance;
-  const text = buildSpokenSummary(value, 320);
   if (!text || !synth || typeof Utterance !== 'function') {
+    pendingVoiceReminder = '';
     setCompanionStatus('Giọng nói chưa được trình duyệt/hệ điều hành hỗ trợ; lời nhắc vẫn hiển thị trên màn hình.');
     return false;
   }
+
+  if (speechReader?.isActive()) {
+    // Keep at most one pending reminder; the latest one replaces stale reminders.
+    pendingVoiceReminder = text;
+    setCompanionStatus('Lời nhắc sẽ được đọc sau khi nội dung hiện tại kết thúc để không ngắt bài đọc.');
+    return true;
+  }
+
   try {
+    pendingVoiceReminder = '';
     synth.cancel();
     const utterance = new Utterance(text);
     utterance.lang = 'vi-VN';
     utterance.rate = 0.98;
     utterance.pitch = 1;
+    utterance.onend = () => {
+      if (companionPrefs.voiceReminders) setCompanionStatus('Đã đọc xong lời nhắc bằng giọng nói.');
+    };
+    utterance.onerror = event => {
+      if (!companionPrefs.voiceReminders || ['canceled', 'interrupted'].includes(String(event?.error || ''))) return;
+      setCompanionStatus('Không thể phát giọng nói trên thiết bị; lời nhắc vẫn hiển thị.', true);
+    };
     synth.speak(utterance);
+    setCompanionStatus('Đang phát lời nhắc bằng giọng nói của thiết bị.');
     return true;
   } catch {
-    setCompanionStatus('Không thể phát giọng nói trên môi trường hiện tại; lời nhắc vẫn hiển thị.');
+    setCompanionStatus('Không thể phát giọng nói trên môi trường hiện tại; lời nhắc vẫn hiển thị.', true);
     return false;
   }
 }
@@ -2417,7 +2448,10 @@ function attachEvents() {
   $('#voice-reminder-toggle')?.addEventListener('change', event => {
     companionPrefs.voiceReminders = event.target.checked === true;
     saveCompanionPrefs();
-    if (!companionPrefs.voiceReminders && !speechReader.isActive()) globalThis.speechSynthesis?.cancel?.();
+    if (!companionPrefs.voiceReminders) {
+      pendingVoiceReminder = '';
+      if (!speechReader.isActive()) globalThis.speechSynthesis?.cancel?.();
+    }
     setCompanionControlsFromPrefs();
     if (companionPrefs.voiceReminders) {
       const spoke = speakReminder('Đã bật lời nhắc bằng giọng nói. WMR không ghi âm microphone.');
