@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- Add Chromium smoke coverage for opt-in Companion voice reminders, including Vietnamese playback confirmation and cancellation when disabled.
+- Queue Companion voice reminders behind active Read Aloud without interruption; clear queued reminders on opt-out and verify both paths in Chromium smoke.
 - Enforce zero Axe violations across nine WCAG 2.0/2.1/2.2 A/AA UI states, with light/dark and mobile practice coverage.
 - Preserve rule-level Axe `incomplete` findings in the smoke manifest for manual accessibility follow-up.
 - Abort in-flight assessment, Mentor, task-generation and Writing Agent provider requests immediately when provider consent is revoked, with regression coverage for cancellation and request-start races.
