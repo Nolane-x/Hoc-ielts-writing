@@ -76,3 +76,16 @@ test('release packaging and publication wait for CI and browser smoke', () => {
   assert.match(ciWorkflow, /npm audit --audit-level=high/);
   assert.match(smokeScript, /browserErrors, \[\]/);
 });
+
+
+test('Axe-incomplete ARIA findings have semantic roles and gradient-backed body copy is removed', async () => {
+  const html = await readFile(new URL('../web/index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../web/styles.css', import.meta.url), 'utf8');
+  assert.match(html, /id="exam-timer" role="timer"/);
+  assert.match(html, /class="speech-reader-actions" role="group"/);
+  assert.match(html, /class="speech-reader-playback" role="group"/);
+  assert.match(html, /class="tool-list" role="group"/);
+  assert.match(css, /\.gradient-text\s*\{\s*\/\*[\s\S]*?color: var\(--accent-dark\);\s*\}/);
+  assert.match(css, /\.prompt-card\s*\{[\s\S]*?background: var\(--surface-soft\);/);
+  assert.match(css, /\.prompt-meta\s*\{\s*color: var\(--ink-secondary\);/);
+});
