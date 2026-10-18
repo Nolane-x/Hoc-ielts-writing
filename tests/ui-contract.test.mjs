@@ -402,8 +402,8 @@ test('timer, grouped controls and icon-only buttons expose valid accessible name
   assert.match(html, /class="speech-reader-actions" role="group" aria-label="Chọn nội dung cần đọc"/);
   assert.match(html, /class="speech-reader-playback" role="group" aria-label="Điều khiển phát"/);
   assert.match(html, /class="tool-list" role="group" aria-label="Công cụ hướng dẫn"/);
-  assert.ok(html.includes('<button class="icon-button" id="top-settings" type="button" aria-label="Mở cài đặt" title="Cài đặt"><span aria-hidden="true">⚙</span></button>'));
-  assert.ok(html.includes('<button class="mobile-menu" id="mobile-menu" type="button" aria-label="Mở điều hướng"><span aria-hidden="true">☰</span></button>'));
+  assert.ok(html.includes('<button class="icon-button" id="top-settings" type="button" aria-label="Cài đặt" title="Cài đặt"><span aria-hidden="true">⚙</span></button>'));
+  assert.ok(html.includes('<button class="mobile-menu" id="mobile-menu" type="button" aria-label="Mở điều hướng" title="Mở điều hướng"><span aria-hidden="true">☰</span></button>'));
   const practiceStart = html.indexOf('<button class="zen-pill exam-sim-pill" id="exam-mode-toggle"');
   const practiceEnd = html.indexOf('</button>', practiceStart);
   assert.ok(practiceStart >= 0 && practiceEnd > practiceStart);
