@@ -449,3 +449,9 @@ test('dark theme switch and exam-mode overrides retain explicit accessibility st
   assert.match(css, /html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer/);
   assert.match(app, /setTheme\(document\.documentElement\.dataset\.theme === 'dark' \? 'light' : 'dark'\)/);
 });
+
+
+test('dark theme overrides custom component text and input tokens for readable contrast', () => {
+  assert.match(css, /html\[data-theme="dark"\]\s*\{[\s\S]*?--text-primary: var\(--ink\);[\s\S]*?--text-muted: #cbd5e1;[\s\S]*?--input-bg: #243252;/);
+  assert.match(css, /html\[data-theme="dark"\] \.speech-reader-action-primary,[\s\S]*?html\[data-theme="dark"\] \.copilot-tab\.active\s*\{[\s\S]*?background: #4f46e5;[\s\S]*?color: #ffffff;/);
+});
