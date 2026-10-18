@@ -402,11 +402,14 @@ test('timer, grouped controls and icon-only buttons expose valid accessible name
   assert.match(html, /class="speech-reader-actions" role="group" aria-label="Chọn nội dung cần đọc"/);
   assert.match(html, /class="speech-reader-playback" role="group" aria-label="Điều khiển phát"/);
   assert.match(html, /class="tool-list" role="group" aria-label="Công cụ hướng dẫn"/);
-  assert.match(html, /id="top-settings"[^>]*aria-label="Mở cài đặt"[^>]*>\s*<span aria-hidden="true">⚙<\\/span>/);
-  assert.match(html, /id="mobile-menu"[^>]*aria-label="Mở điều hướng"><span aria-hidden="true">☰<\\/span>/);
-  const practiceButton = html.match(/<button class="zen-pill exam-sim-pill" id="exam-mode-toggle"[^>]*>([\\s\\S]*?)<\\/button>/);
-  assert.ok(practiceButton && practiceButton[1].includes('Luyện thi máy tính'));
-  assert.doesNotMatch(practiceButton?.[0] || '', /aria-label=/,
+  assert.ok(html.includes('<button class="icon-button" id="top-settings" type="button" aria-label="Mở cài đặt" title="Cài đặt"><span aria-hidden="true">⚙</span></button>'));
+  assert.ok(html.includes('<button class="mobile-menu" id="mobile-menu" type="button" aria-label="Mở điều hướng"><span aria-hidden="true">☰</span></button>'));
+  const practiceStart = html.indexOf('<button class="zen-pill exam-sim-pill" id="exam-mode-toggle"');
+  const practiceEnd = html.indexOf('</button>', practiceStart);
+  assert.ok(practiceStart >= 0 && practiceEnd > practiceStart);
+  const practiceButton = html.slice(practiceStart, practiceEnd + '</button>'.length);
+  assert.ok(practiceButton.includes('<span>Luyện thi máy tính</span>'));
+  assert.doesNotMatch(practiceButton, /aria-label=/,
     'Visible practice text should supply the accessible name instead of overriding it.');
 });
 
