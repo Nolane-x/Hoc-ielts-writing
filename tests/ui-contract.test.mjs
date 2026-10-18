@@ -455,3 +455,8 @@ test('dark theme overrides custom component text and input tokens for readable c
   assert.match(css, /html\[data-theme="dark"\]\s*\{[\s\S]*?--text-primary: var\(--ink\);[\s\S]*?--text-muted: #cbd5e1;[\s\S]*?--input-bg: #243252;/);
   assert.match(css, /html\[data-theme="dark"\] \.speech-reader-action-primary,[\s\S]*?html\[data-theme="dark"\] \.copilot-tab\.active\s*\{[\s\S]*?background: #4f46e5;[\s\S]*?color: #ffffff;/);
 });
+
+
+test('active exam-mode control remains readable in dark theme', () => {
+  assert.match(css, /html\[data-theme="dark"\] \.exam-sim-pill\[aria-pressed="true"\]\s*\{\s*background: #4f46e5;\s*border-color: #4f46e5;\s*color: #ffffff;/);
+});
