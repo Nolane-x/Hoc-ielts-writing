@@ -109,6 +109,9 @@ test('Chromium smoke enforces zero WCAG 2.0/2.1/2.2 A/AA violations on desktop a
   assert.doesNotMatch(visualSmoke, /const blockers = violations\.filter/);
   assert.match(visualSmoke, /\[A11Y\]/);
   assert.match(visualSmoke, /accessibilityChecks/);
+  assert.match(visualSmoke, /const incomplete = summarizeAxeItems\(result\.incomplete\)/);
+  assert.match(visualSmoke, /incompleteRules: result\.incomplete\.length,[\s\S]*?incomplete,/);
+  assert.match(visualSmoke, /zero|WCAG accessibility violations/);
   assert.match(visualSmoke, /document\.documentElement\.dataset\.theme === 'dark'/);
   assert.match(visualSmoke, /desktop-writing-workspace-dark/);
   assert.match(visualSmoke, /desktop-exam-practice-dark/);

@@ -49,7 +49,7 @@ async function auditAccessibility(page, label) {
       values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']
     }
   }));
-  const violations = result.violations.map(item => ({
+  const summarizeAxeItems = items => items.map(item => ({
     id: item.id,
     impact: item.impact,
     help: item.help,
@@ -61,16 +61,19 @@ async function auditAccessibility(page, label) {
       failureSummary: node.failureSummary || ''
     }))
   }));
+  const violations = summarizeAxeItems(result.violations);
+  const incomplete = summarizeAxeItems(result.incomplete);
   accessibilityChecks.push({
     page: label,
     passedRules: result.passes.length,
     incompleteRules: result.incomplete.length,
+    incomplete,
     violationCount: violations.length,
     violations
   });
   process.stdout.write('[A11Y] ' + label + ': ' + result.passes.length +
     ' rules passed, ' + result.incomplete.length + ' incomplete, ' +
-    violations.length + ' violations.\\n');
+    violations.length + ' violations.\n');
   if (violations.length) {
     throw new Error('Axe WCAG accessibility violations on ' + label + ': ' +
       violations.map(item => item.id + ' (' + item.impact + ', ' + item.affectedNodes +
@@ -364,7 +367,7 @@ try {
   await mobilePage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
   await auditAccessibility(mobilePage, 'mobile-writing-workspace-390x844');
   assert.ok(await mobilePage.locator('#exam-mode-toggle').isVisible(), 'Practice mode toggle must remain reachable on mobile.');
-  assert.match(await mobilePage.locator('#exam-mode-toggle').getAttribute('aria-label'), /practice|luyện thi/i);
+  assert.match(await mobilePage.locator('#exam-mode-toggle').getAttribute('aria-label'), /luyện thi máy tính/i);
   const geometry = await mobilePage.evaluate(() => ({
     viewportWidth: window.innerWidth,
     documentWidth: document.documentElement.scrollWidth

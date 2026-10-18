@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+- Enforce zero Axe violations across nine WCAG 2.0/2.1/2.2 A/AA UI states, with light/dark and mobile practice coverage.
+- Preserve rule-level Axe `incomplete` findings in the smoke manifest for manual accessibility follow-up.
+- Reconcile the Full-Cycle Academy design spec with the released 1.7.0 scope and explicit remaining acceptance requirements.
+
 ## 1.7.0 — Speech, task-specific Academy content and local API hardening
 - Add opt-in Proactive Writing Companion reviews with per-task baselines, changed-text threshold, cooldown, approval-staged edits, cancellation and existing budget limits.
 - Add local custom prompt creation/management and a consent-gated task-generation endpoint that excludes essay text, the current prompt and chat history from upstream context.

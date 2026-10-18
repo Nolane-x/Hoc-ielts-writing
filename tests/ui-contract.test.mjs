@@ -397,8 +397,22 @@ test('learner mastery radar never substitutes reference scores for missing AI ev
   assert.match(css, /\.radar-empty-note/);
 });
 
+test('timer, grouped controls and icon-only buttons expose valid accessible names', () => {
+  assert.match(html, /id="exam-timer" role="timer" aria-label="Đồng hồ luyện viết IELTS"/);
+  assert.match(html, /class="speech-reader-actions" role="group" aria-label="Chọn nội dung cần đọc"/);
+  assert.match(html, /class="speech-reader-playback" role="group" aria-label="Điều khiển phát"/);
+  assert.match(html, /class="tool-list" role="group" aria-label="Công cụ hướng dẫn"/);
+  assert.ok(html.includes('<button class="icon-button" id="top-settings" type="button" aria-label="Cài đặt" title="Cài đặt"><span aria-hidden="true">⚙</span></button>'));
+  assert.ok(html.includes('<button class="mobile-menu" id="mobile-menu" type="button" aria-label="Mở điều hướng" title="Mở điều hướng"><span aria-hidden="true">☰</span></button>'));
+  const practiceStart = html.indexOf('<button class="zen-pill exam-sim-pill" id="exam-mode-toggle"');
+  const practiceEnd = html.indexOf('</button>', practiceStart);
+  assert.ok(practiceStart >= 0 && practiceEnd > practiceStart);
+  const practiceButton = html.slice(practiceStart, practiceEnd + '</button>'.length);
+  assert.ok(practiceButton.includes('<span>Luyện thi máy tính</span>'));
+});
+
 test('practice mode remains accessible and visible in the mobile top bar', () => {
-  assert.match(html, /id="exam-mode-toggle"[^>]*aria-label="[^"]*(?:practice|luyện thi)[^"]*"/i);
+  assert.match(html, /id="exam-mode-toggle"/);
   assert.match(css, /@media \(max-width: 650px\)[\s\S]*?\.zen-pill:not\(\.exam-sim-pill\) \{\s*display: none;/,
     'Small-screen rules may hide Zen Mode but must not hide the practice-mode toggle.');
   assert.match(css, /\.exam-sim-pill \{\s*display: inline-flex;/,
