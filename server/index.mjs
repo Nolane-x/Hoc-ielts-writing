@@ -29,6 +29,29 @@ let usage = { date: new Date().toISOString().slice(0, 10), calls: 0, estimatedUs
 let usageHealthy = true;
 let aiInFlight = false;
 const activeAgentSessions = new Map();
+const activeProviderRequests = new Set();
+
+function trackProviderRequest(res) {
+  const controller = new AbortController();
+  const abortOnDisconnect = () => {
+    if (!res.writableEnded) controller.abort(new Error('Client disconnected'));
+  };
+  activeProviderRequests.add(controller);
+  res.on('close', abortOnDisconnect);
+  return {
+    controller,
+    cleanup() {
+      res.off('close', abortOnDisconnect);
+      activeProviderRequests.delete(controller);
+    }
+  };
+}
+
+function abortActiveProviderRequests() {
+  const reason = new Error('Provider consent was revoked');
+  for (const controller of activeProviderRequests) controller.abort(reason);
+  for (const controller of activeAgentSessions.values()) controller.abort(reason);
+}
 
 export async function initialise() {
   await mkdir(DATA_ROOT, { recursive: true, mode: 0o700 });
@@ -154,6 +177,9 @@ async function runConfiguredAI(kind, input) {
   try { await persistJson(USAGE_PATH, ledger); }
   catch { usageHealthy = false; aiInFlight = false; throw httpError(503, 'Không lưu được sổ sử dụng; request AI đã bị chặn.'); }
   try {
+    if (input.signal?.aborted || !settings.externalAllowed) {
+      throw httpError(409, 'Quyền gửi provider đã bị thu hồi hoặc request đã bị hủy; không tiếp tục gửi nội dung.');
+    }
     const messages = kind === 'assessment'
       ? buildAssessmentMessages(input)
       : kind === 'task-generation'
@@ -173,6 +199,9 @@ async function runConfiguredAI(kind, input) {
     const answer = kind === 'task-generation' ? JSON.stringify(generatedTask) : result.text;
     return { report, answer: ['coach', 'task-generation'].includes(kind) ? answer : undefined, generatedTask: generatedTask || undefined, aiStatus: 'ai-complete', provider: provider.label, model: result.model, estimatedCostUsd: cost, usage: result.usage, message: 'Phản hồi chỉ phục vụ luyện tập, không phải điểm IELTS chính thức; độ chính xác band chưa được hiệu chuẩn độc lập.' };
   } catch (error) {
+    if (input.signal?.aborted || !settings.externalAllowed) {
+      throw httpError(409, 'Quyền gửi provider đã bị thu hồi hoặc request đã bị hủy; nội dung không được tiếp tục gửi.');
+    }
     throw httpError(error.status || 502, 'Provider không hoàn tất yêu cầu một cách đáng tin cậy. Khoản dự phòng vẫn được giữ lại để tránh coi request chưa xác định là miễn phí.');
   } finally { aiInFlight = false; }
 }
@@ -210,6 +239,12 @@ async function handleWritingAgentStream(req, res, input) {
     throw httpError(503, 'Không lưu được sổ sử dụng; Agent đã bị chặn.');
   }
 
+  // Consent may be revoked while the usage ledger write is awaited.
+  // Recheck before registering a session or making the first provider call.
+  if (!settings.externalAllowed) {
+    aiInFlight = false;
+    throw httpError(409, 'Quyền gửi provider đã bị thu hồi khi chuẩn bị phiên Agent; nội dung chưa được gửi.');
+  }
   const controller = new AbortController();
   activeAgentSessions.set(sessionId, controller);
   const onResponseClose = () => {
@@ -302,7 +337,9 @@ async function handle(req, res) {
       return json(res, 200, { ok: true, cancelRequested: true });
     }
     if (url.pathname === '/api/settings') {
+      const permissionWasEnabled = settings.externalAllowed === true;
       settings = sanitiseSettings(body);
+      if (permissionWasEnabled && !settings.externalAllowed) abortActiveProviderRequests();
       if (typeof body.apiKey === 'string' && body.apiKey.trim()) activeApiKey = body.apiKey.trim().slice(0, 4096);
       if (body.clearApiKey === true) activeApiKey = '';
       await persistJson(SETTINGS_PATH, settings);
@@ -326,27 +363,35 @@ async function handle(req, res) {
         message: 'Topic preference: ' + topic + '\\nAdditional learner idea: ' + learnerIdea,
         history: []
       };
-      const generationController = new AbortController();
-      const abortOnDisconnect = () => {
-        if (!res.writableEnded) generationController.abort();
-      };
-      res.on('close', abortOnDisconnect);
-      input.signal = generationController.signal;
+      const trackedRequest = trackProviderRequest(res);
+      input.signal = trackedRequest.controller.signal;
       try {
         return json(res, 200, await runConfiguredAI('task-generation', input));
       } finally {
-        res.off('close', abortOnDisconnect);
+        trackedRequest.cleanup();
       }
     }
     const input = { taskType: body.taskType, taskPrompt: String(body.taskPrompt || '').slice(0, 5000), essay: String(body.essay || '').slice(0, 20000), message: String(body.message || '').slice(0, 4000), history: normaliseCoachHistory(body.history), learningContext: normaliseAgentLearningContext(body.learningContext), sessionId: String(body.sessionId || '').slice(0, 80) };
     if (url.pathname === '/api/assessment') {
       if (!input.essay.trim()) throw httpError(400, 'Write a draft before submitting it for review.');
       if (!body.sendToProvider) return json(res, 200, { report: createLocalReport(input), aiStatus: 'offline-by-choice', message: 'Chưa gửi bài viết tới AI bên ngoài.' });
-      return json(res, 200, await runConfiguredAI('assessment', input));
+      const trackedRequest = settings.externalAllowed ? trackProviderRequest(res) : null;
+      if (trackedRequest) input.signal = trackedRequest.controller.signal;
+      try {
+        return json(res, 200, await runConfiguredAI('assessment', input));
+      } finally {
+        trackedRequest?.cleanup();
+      }
     }
     if (url.pathname === '/api/coach') {
       if (!input.message.trim()) throw httpError(400, 'Enter a question first.');
-      return json(res, 200, await runConfiguredAI('coach', input));
+      const trackedRequest = settings.externalAllowed ? trackProviderRequest(res) : null;
+      if (trackedRequest) input.signal = trackedRequest.controller.signal;
+      try {
+        return json(res, 200, await runConfiguredAI('coach', input));
+      } finally {
+        trackedRequest?.cleanup();
+      }
     }
     if (url.pathname === '/api/agent') return await handleWritingAgentStream(req, res, input);
   }

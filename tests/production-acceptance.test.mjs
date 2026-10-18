@@ -95,3 +95,17 @@ test('Axe-incomplete ARIA findings have semantic roles and gradient-backed body 
   const source = await readFile(new URL('../web/app.mjs', import.meta.url), 'utf8');
   assert.match(source, /class="sentence-surgery-card" role="group" aria-label="Phân tích lỗi, đề xuất sửa và ghi chú học tập"/);
 });
+
+
+test('provider permission revocation aborts registered requests and active Agent sessions', async () => {
+  const server = await readFile(new URL('../server/index.mjs', import.meta.url), 'utf8');
+  const integration = await readFile(new URL('./local-server.integration.test.mjs', import.meta.url), 'utf8');
+  assert.match(server, /const activeProviderRequests = new Set\(\)/);
+  assert.match(server, /function abortActiveProviderRequests\(\)/);
+  assert.match(server, /if \(permissionWasEnabled && !settings\.externalAllowed\) abortActiveProviderRequests\(\)/);
+  assert.match(server, /const trackedRequest = settings\.externalAllowed \? trackProviderRequest\(res\) : null/);
+  assert.match(server, /if \(input\.signal\?\.aborted \|\| !settings\.externalAllowed\)/);
+  assert.match(server, /Consent may be revoked while the usage ledger write is awaited/);
+  assert.match(integration, /revoking provider consent aborts an active Writing Agent provider request/);
+  assert.match(integration, /revoking provider consent aborts in-flight assessment, Mentor and task-generation calls/);
+});
