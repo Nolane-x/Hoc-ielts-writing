@@ -345,3 +345,187 @@ test('AI task generation uses a dedicated strict-schema route and excludes the c
   assert.doesNotMatch(upstreamText, /essay-private-sentinel|task-prompt-private-sentinel|history-private-sentinel/);
   assert.match(upstreamText, /You generate one original IELTS Writing practice prompt/);
 });
+
+
+test('revoking provider consent aborts an active Writing Agent provider request', async t => {
+  let resolveUpstreamStarted;
+  const upstreamStarted = new Promise(resolve => { resolveUpstreamStarted = resolve; });
+  let resolveUpstreamClosed;
+  const upstreamClosed = new Promise(resolve => { resolveUpstreamClosed = resolve; });
+  const providerServer = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    resolveUpstreamStarted(JSON.parse(body));
+    res.on('close', () => resolveUpstreamClosed());
+    // Keep the synthetic provider response pending until the application aborts it.
+  });
+  await new Promise((resolve, reject) => { providerServer.once('error', reject); providerServer.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => {
+    providerServer.closeAllConnections?.();
+    await new Promise(resolve => providerServer.close(resolve));
+  });
+
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const providerBase = 'http://127.0.0.1:' + providerServer.address().port + '/v1';
+  const configured = {
+    provider: 'ollama',
+    baseUrl: providerBase,
+    model: 'wmr-consent-revoke-agent-test',
+    clearApiKey: true,
+    externalAllowed: true,
+    dailyBudgetUsd: 1,
+    maxCallUsd: 1,
+    maxAgentSessionUsd: 1,
+    maxDailyCalls: 50,
+    maxOutputTokens: 900
+  };
+  const saved = await fetch(base + '/api/settings', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify(configured)
+  });
+  assert.equal(saved.status, 200);
+
+  const agentResponse = await fetch(base + '/api/agent', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({
+      taskType: 'task2',
+      taskPrompt: 'Discuss the benefits of public transport.',
+      essay: 'Public transport can reduce traffic because buses carry many passengers. Governments should plan routes carefully and connect residential areas with workplaces.',
+      message: 'Inspect the draft and suggest one next step.',
+      sessionId: 'agent-consent-revocation-test-0001'
+    })
+  });
+  assert.equal(agentResponse.status, 200);
+  assert.match(agentResponse.headers.get('content-type') || '', /text\/event-stream/i);
+  const started = await Promise.race([
+    upstreamStarted.then(payload => ({ ok: true, payload })),
+    new Promise(resolve => setTimeout(() => resolve({ ok: false }), 5000))
+  ]);
+  assert.equal(started.ok, true, 'The controlled provider must receive the active Agent request before consent is revoked.');
+
+  const revoked = await fetch(base + '/api/settings', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({ ...configured, externalAllowed: false })
+  });
+  assert.equal(revoked.status, 200);
+  assert.equal((await revoked.json()).externalAllowed, false);
+
+  const closed = await Promise.race([
+    upstreamClosed.then(() => true),
+    new Promise(resolve => setTimeout(() => resolve(false), 5000))
+  ]);
+  assert.equal(closed, true, 'Revoking consent must abort the in-flight upstream Agent fetch, not only prevent the next call.');
+  const events = await agentResponse.text();
+  assert.match(events, /event: error/);
+});
+
+test('revoking provider consent aborts in-flight assessment, Mentor and task-generation calls', async t => {
+  const server = createWmrServer();
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+
+  const scenarios = [
+    {
+      name: 'assessment',
+      route: '/api/assessment',
+      body: {
+        taskType: 'task2',
+        taskPrompt: 'Discuss both views.',
+        essay: 'Some people believe education should focus on theory, while others prefer practical skills. Both approaches have advantages for learners.',
+        sendToProvider: true
+      }
+    },
+    {
+      name: 'Mentor',
+      route: '/api/coach',
+      body: {
+        taskType: 'task2',
+        taskPrompt: 'Discuss both views.',
+        essay: 'Some people believe education should focus on theory, while others prefer practical skills.',
+        message: 'Help me develop one specific reason.'
+      }
+    },
+    {
+      name: 'task generation',
+      route: '/api/tasks/generate',
+      body: {
+        taskType: 'task2',
+        topic: 'Synthetic consent-revocation test',
+        learnerIdea: 'Create a practice question only.'
+      }
+    }
+  ];
+
+  for (const scenario of scenarios) {
+    let resolveUpstreamStarted;
+    const upstreamStarted = new Promise(resolve => { resolveUpstreamStarted = resolve; });
+    let resolveUpstreamClosed;
+    const upstreamClosed = new Promise(resolve => { resolveUpstreamClosed = resolve; });
+    const providerServer = http.createServer(async (req, res) => {
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      resolveUpstreamStarted(JSON.parse(body));
+      res.on('close', () => resolveUpstreamClosed());
+      // Deliberately hold the provider response until WMR aborts it.
+    });
+    await new Promise((resolve, reject) => { providerServer.once('error', reject); providerServer.listen(0, '127.0.0.1', resolve); });
+
+    try {
+      const providerBase = 'http://127.0.0.1:' + providerServer.address().port + '/v1';
+      const configured = {
+        provider: 'ollama',
+        baseUrl: providerBase,
+        model: 'wmr-consent-revoke-' + scenario.name.replace(/\s+/g, '-'),
+        clearApiKey: true,
+        externalAllowed: true,
+        dailyBudgetUsd: 1,
+        maxCallUsd: 1,
+        maxDailyCalls: 50,
+        maxOutputTokens: 900
+      };
+      const saved = await fetch(base + '/api/settings', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: base },
+        body: JSON.stringify(configured)
+      });
+      assert.equal(saved.status, 200, scenario.name + ': provider configuration should be accepted');
+
+      const requestPromise = fetch(base + scenario.route, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: base },
+        body: JSON.stringify(scenario.body)
+      });
+      const started = await Promise.race([
+        upstreamStarted.then(payload => ({ ok: true, payload })),
+        new Promise(resolve => setTimeout(() => resolve({ ok: false }), 5000))
+      ]);
+      assert.equal(started.ok, true, scenario.name + ': controlled provider must receive the request before revocation');
+
+      const revoked = await fetch(base + '/api/settings', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: base },
+        body: JSON.stringify({ ...configured, externalAllowed: false })
+      });
+      assert.equal(revoked.status, 200, scenario.name + ': consent revocation should be saved');
+
+      const closed = await Promise.race([
+        upstreamClosed.then(() => true),
+        new Promise(resolve => setTimeout(() => resolve(false), 5000))
+      ]);
+      assert.equal(closed, true, scenario.name + ': revoking consent must close the upstream provider request');
+      const response = await requestPromise;
+      assert.equal(response.status, 409, scenario.name + ': cancelled provider request should not be reported as success');
+      assert.match((await response.json()).error, /thu hồi|hủy/i);
+    } finally {
+      providerServer.closeAllConnections?.();
+      await new Promise(resolve => providerServer.close(resolve));
+    }
+  }
+});
