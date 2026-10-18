@@ -442,3 +442,10 @@ test('keyboard navigation offers a visible skip link and focusable writing desti
   assert.match(css, /\.skip-link:focus(?:-visible)?\s*\{/);
   assert.match(css, /\.skip-link:focus-visible\s*\{[\s\S]*?outline: 3px solid var\(--accent\)/);
 });
+
+
+test('dark theme switch and exam-mode overrides retain explicit accessibility states', () => {
+  assert.match(css, /:root\[data-theme="dark"\]\s*\{/);
+  assert.match(css, /html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer/);
+  assert.match(app, /setTheme\(document\.documentElement\.dataset\.theme === 'dark' \? 'light' : 'dark'\)/);
+});
