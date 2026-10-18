@@ -113,6 +113,23 @@ try {
     'The visible app version must match package.json in the production build.');
   await page.waitForFunction(() => document.querySelector('#task-select')?.options?.length > 0);
   await auditAccessibility(page, 'desktop-writing-workspace');
+
+  // Scan the same flows under the dark theme; colors and focus treatment differ from light mode.
+  await page.locator('#theme-toggle').click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  await auditAccessibility(page, 'desktop-writing-workspace-dark');
+  await capture(page, '10-dark-writing-workspace-desktop.png');
+
+  await page.locator('#exam-mode-toggle').click();
+  await page.waitForFunction(() => document.querySelector('#app-shell')?.classList.contains('idp-bc-mode'));
+  await auditAccessibility(page, 'desktop-exam-practice-dark');
+  await capture(page, '11-dark-exam-practice-desktop.png');
+
+  await page.locator('#exam-mode-toggle').click();
+  await page.waitForFunction(() => !document.querySelector('#app-shell')?.classList.contains('idp-bc-mode'));
+  await page.locator('#theme-toggle').click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme !== 'dark');
+
   // Keyboard-only smoke starts in an isolated browser context.
   const keyboardPage = await browser.newPage({ viewport: { width: 1440, height: 1100 }, reducedMotion: 'reduce' });
   listenForErrors(keyboardPage, 'keyboard');

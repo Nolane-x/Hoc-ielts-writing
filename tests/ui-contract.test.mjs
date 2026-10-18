@@ -442,3 +442,21 @@ test('keyboard navigation offers a visible skip link and focusable writing desti
   assert.match(css, /\.skip-link:focus(?:-visible)?\s*\{/);
   assert.match(css, /\.skip-link:focus-visible\s*\{[\s\S]*?outline: 3px solid var\(--accent\)/);
 });
+
+
+test('dark theme switch and exam-mode overrides retain explicit accessibility states', () => {
+  assert.match(css, /:root\[data-theme="dark"\]\s*\{/);
+  assert.match(css, /html\[data-theme="dark"\] \.app-shell\.idp-bc-mode \.app-footer/);
+  assert.match(app, /setTheme\(document\.documentElement\.dataset\.theme === 'dark' \? 'light' : 'dark'\)/);
+});
+
+
+test('dark theme overrides custom component text and input tokens for readable contrast', () => {
+  assert.match(css, /html\[data-theme="dark"\]\s*\{[\s\S]*?--text-primary: var\(--ink\);[\s\S]*?--text-muted: #cbd5e1;[\s\S]*?--input-bg: #243252;/);
+  assert.match(css, /html\[data-theme="dark"\] \.speech-reader-action-primary,[\s\S]*?html\[data-theme="dark"\] \.copilot-tab\.active\s*\{[\s\S]*?background: #4f46e5;[\s\S]*?color: #ffffff;/);
+});
+
+
+test('active exam-mode control remains readable in dark theme', () => {
+  assert.match(css, /html\[data-theme="dark"\] \.exam-sim-pill\[aria-pressed="true"\]\s*\{\s*background: #4f46e5;\s*border-color: #4f46e5;\s*color: #ffffff;/);
+});

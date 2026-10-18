@@ -4609,3 +4609,25 @@ html[data-theme="dark"] .app-shell.idp-bc-mode .app-footer strong {
 @media (prefers-reduced-motion: reduce) {
   .speech-reader-action, .speech-reader-transport { transition: none; }
 }
+
+
+/* Theme-specific contrast corrections discovered by Axe in dark-mode smoke. */
+html[data-theme="dark"] {
+  --text-primary: var(--ink);
+  --text-muted: #cbd5e1;
+  --input-bg: #243252;
+  --border: #475569;
+}
+html[data-theme="dark"] .speech-reader-action-primary,
+html[data-theme="dark"] .copilot-tab.active {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #ffffff;
+}
+
+
+html[data-theme="dark"] .exam-sim-pill[aria-pressed="true"] {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #ffffff;
+}
