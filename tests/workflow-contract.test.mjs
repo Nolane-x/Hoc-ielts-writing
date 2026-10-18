@@ -84,7 +84,7 @@ test('Chromium smoke exercises the local Read Aloud playback lifecycle with a fa
 });
 
 
-test('Chromium smoke audits WCAG 2.1 A/AA accessibility on desktop and mobile', () => {
+test('Chromium smoke enforces zero WCAG 2.0/2.1/2.2 A/AA violations on desktop and mobile', () => {
   assert.match(visualWorkflow, /npm install --no-save --package-lock=false playwright axe-core/);
   assert.match(visualSmoke, /new URL\('\/axe\.min\.js', baseUrl\)/);
   assert.match(visualWorkflow, /cp node_modules\/axe-core\/axe\.min\.js dist\/axe\.min\.js/);
@@ -92,6 +92,8 @@ test('Chromium smoke audits WCAG 2.1 A/AA accessibility on desktop and mobile', 
   assert.match(visualSmoke, /wcag2aa/);
   assert.match(visualSmoke, /wcag21a/);
   assert.match(visualSmoke, /wcag21aa/);
+  assert.match(visualSmoke, /wcag22aa/);
+  assert.match(visualSmoke, /wcag22a/);
   for (const flow of [
     "desktop-writing-workspace",
     "desktop-writing-workspace-dark",
@@ -103,7 +105,9 @@ test('Chromium smoke audits WCAG 2.1 A/AA accessibility on desktop and mobile', 
     "mobile-writing-workspace-390x844",
     "mobile-exam-practice-390x844"
   ]) assert.ok(visualSmoke.includes("'" + flow + "'"), 'Missing accessibility scan for ' + flow);
-  assert.match(visualSmoke, /impact === 'critical' \|\| item\.impact === 'serious'/);
+  assert.match(visualSmoke, /if \(violations\.length\)/);
+  assert.doesNotMatch(visualSmoke, /const blockers = violations\.filter/);
+  assert.match(visualSmoke, /\[A11Y\]/);
   assert.match(visualSmoke, /accessibilityChecks/);
   assert.match(visualSmoke, /document\.documentElement\.dataset\.theme === 'dark'/);
   assert.match(visualSmoke, /desktop-writing-workspace-dark/);
