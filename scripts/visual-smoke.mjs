@@ -113,6 +113,74 @@ try {
     'The visible app version must match package.json in the production build.');
   await page.waitForFunction(() => document.querySelector('#task-select')?.options?.length > 0);
   await auditAccessibility(page, 'desktop-writing-workspace');
+  // Keyboard-only smoke starts in an isolated browser context.
+  const keyboardPage = await browser.newPage({ viewport: { width: 1440, height: 1100 }, reducedMotion: 'reduce' });
+  listenForErrors(keyboardPage, 'keyboard');
+  await keyboardPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await keyboardPage.locator('#workspace-title').waitFor({ state: 'visible', timeout: 20000 });
+  await keyboardPage.bringToFront();
+
+  const skipLink = keyboardPage.locator('.skip-link');
+  const skipMetadata = await skipLink.evaluate(element => ({
+    tabIndex: element.tabIndex,
+    href: element.getAttribute('href'),
+    visibility: getComputedStyle(element).visibility,
+    display: getComputedStyle(element).display
+  }));
+  assert.equal(skipMetadata.tabIndex, 0, 'The skip-navigation link must participate in sequential focus navigation.');
+  assert.equal(skipMetadata.href, '#workspace-title');
+  assert.equal(skipMetadata.visibility, 'visible');
+  assert.notEqual(skipMetadata.display, 'none');
+
+  // Focus the skip link as the keyboard entry point, then test its native Enter activation.
+  await skipLink.focus();
+  await keyboardPage.waitForFunction(() => {
+    const element = document.querySelector('.skip-link');
+    const rect = element?.getBoundingClientRect();
+    return Boolean(rect && rect.top >= 0 && rect.bottom <= 120);
+  }, { timeout: 3000 });
+  const skipFocus = await skipLink.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return {
+      text: element.textContent.trim(),
+      top: rect.top,
+      bottom: rect.bottom,
+      boxShadow: style.boxShadow,
+      outlineStyle: style.outlineStyle
+    };
+  });
+  assert.ok(skipFocus.top >= 0 && skipFocus.bottom <= 120,
+    'The focused skip link must move into the visible viewport: ' + JSON.stringify(skipFocus));
+  assert.ok(skipFocus.boxShadow !== 'none' || skipFocus.outlineStyle !== 'none',
+    'Keyboard focus on the skip link must have a visible focus indicator.');
+  await capture(keyboardPage, '09-skip-link-keyboard-focus.png');
+  await keyboardPage.keyboard.press('Enter');
+  await keyboardPage.waitForFunction(() => location.hash === '#workspace-title');
+  assert.equal(await keyboardPage.evaluate(() => document.activeElement.id), 'workspace-title',
+    'Activating the skip link should move focus to the main workspace heading.');
+
+  let ideaLabFocused = false;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    await keyboardPage.keyboard.press('Tab');
+    if (await keyboardPage.evaluate(() => document.activeElement?.id === 'toggle-idea-lab')) {
+      ideaLabFocused = true;
+      break;
+    }
+  }
+  assert.ok(ideaLabFocused, 'Keyboard traversal should reach the Idea Lab toggle without a focus trap.');
+  const buttonFocus = await keyboardPage.locator('#toggle-idea-lab').evaluate(element => ({
+    boxShadow: getComputedStyle(element).boxShadow,
+    outlineStyle: getComputedStyle(element).outlineStyle
+  }));
+  assert.ok(buttonFocus.boxShadow !== 'none' || buttonFocus.outlineStyle !== 'none',
+    'Keyboard-focused action buttons must show a visible focus indicator.');
+  await keyboardPage.keyboard.press('Space');
+  await keyboardPage.waitForFunction(() => document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded') === 'true');
+  assert.ok(await keyboardPage.locator('#idea-lab').isVisible(), 'Space should activate the focused native button.');
+  await keyboardPage.keyboard.press('Space');
+  await keyboardPage.waitForFunction(() => document.querySelector('#toggle-idea-lab')?.getAttribute('aria-expanded') === 'false');
+  await keyboardPage.close();
 
   const versionLabel = await page.locator('.version-line').innerText();
   assert.ok(versionLabel.includes(version), `UI version label "${versionLabel}" does not match package version ${version}`);

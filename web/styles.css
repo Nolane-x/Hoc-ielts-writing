@@ -150,6 +150,30 @@ a {
 /* ==========================================================================
    APP SHELL & SIDEBAR NAVIGATION
    ========================================================================== */
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 8px;
+  left: 16px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 750;
+  box-shadow: var(--shadow);
+  transform: translateY(calc(-100% - 14px));
+  transition: transform 0.15s ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .app-shell {
   min-height: 100vh;
   display: flex;
