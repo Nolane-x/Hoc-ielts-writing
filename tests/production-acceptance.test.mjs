@@ -109,3 +109,12 @@ test('provider permission revocation aborts registered requests and active Agent
   assert.match(integration, /revoking provider consent aborts an active Writing Agent provider request/);
   assert.match(integration, /revoking provider consent aborts in-flight assessment, Mentor and task-generation calls/);
 });
+
+test('Companion voice reminders stay opt-in and have a browser-smoke contract', () => {
+  assert.match(html, /id="voice-reminder-toggle"/);
+  assert.match(app, /function speakReminder\(value\)/);
+  assert.match(app, /if \(!companionPrefs\.voiceReminders \|\| speechReader\?\.isActive\(\)\) return false;/);
+  assert.match(smokeScript, /Companion voice reminder opt-in must be visible/);
+  assert.match(smokeScript, /Opting in should speak a clear confirmation through the local speech API/);
+  assert.match(smokeScript, /Voice reminders should be opt-out and must cancel their pending native speech when disabled/);
+});
