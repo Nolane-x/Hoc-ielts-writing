@@ -422,7 +422,9 @@ test('revoking provider consent aborts an active Writing Agent provider request'
   ]);
   assert.equal(closed, true, 'Revoking consent must abort the in-flight upstream Agent fetch, not only prevent the next call.');
   const events = await agentResponse.text();
-  assert.match(events, /event: error/);
+  assert.match(events, /event: result/);
+  assert.match(events, /\"status\":\"cancelled\"/,
+    'The Agent should report a bounded cancellation result after provider consent is revoked.');
 });
 
 test('revoking provider consent aborts in-flight assessment, Mentor and task-generation calls', async t => {
