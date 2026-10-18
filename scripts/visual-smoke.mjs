@@ -89,9 +89,17 @@ try {
   });
   // Stub the local Web Speech API so headless CI can exercise real UI wiring without audio or network access.
   await context.addInitScript(() => {
-    const mock = { utterances: [], cancels: 0, pauses: 0, resumes: 0 };
+    const mock = { utterances: [], utteranceHandlers: [], cancels: 0, pauses: 0, resumes: 0 };
     class MockSpeechSynthesisUtterance {
-      constructor(text) { this.text = text; this.lang = ''; this.rate = 1; this.pitch = 1; this.voice = null; }
+      constructor(text) {
+        this.text = text;
+        this.lang = '';
+        this.rate = 1;
+        this.pitch = 1;
+        this.voice = null;
+        this.onend = null;
+        this.onerror = null;
+      }
     }
     Object.defineProperty(window, 'SpeechSynthesisUtterance', {
       configurable: true,
@@ -106,6 +114,10 @@ try {
         resume: () => { mock.resumes += 1; },
         speak: utterance => {
           mock.utterances.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate });
+          mock.utteranceHandlers.push({
+            end: () => utterance.onend?.(),
+            error: error => utterance.onerror?.({ error })
+          });
         }
       }
     });
@@ -278,6 +290,40 @@ try {
   await page.waitForFunction(count => window.__wmrSpeechMock.cancels > count, cancelsBeforeDisable);
   assert.equal(await voiceReminderToggle.isChecked(), false,
     'Voice reminders should be opt-out and must cancel their pending native speech when disabled.');
+
+  // A reminder must wait behind Read Aloud rather than cancelling or overlapping the reader.
+  await page.locator('#essay-editor').fill('A short draft to verify that companion reminders wait until the current reading finishes.');
+  await page.locator('[data-speech-read="essay"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  const utterancesBeforeDeferredReminder = await page.evaluate(() => window.__wmrSpeechMock.utterances.length);
+  await voiceReminderToggle.check();
+  await page.waitForFunction(() => document.querySelector('#companion-status')?.textContent.includes('sẽ được đọc sau'));
+  assert.equal(await page.evaluate(() => window.__wmrSpeechMock.utterances.length), utterancesBeforeDeferredReminder,
+    'Queueing a Companion reminder must not interrupt the active Read Aloud utterance.');
+
+  await page.evaluate(() => window.__wmrSpeechMock.utteranceHandlers.at(-1)?.end());
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'complete');
+  await page.waitForFunction(count => window.__wmrSpeechMock.utterances.length > count, utterancesBeforeDeferredReminder);
+  let deferredReminder = await page.evaluate(() => window.__wmrSpeechMock.utterances.at(-1));
+  assert.match(deferredReminder.text, /Đã bật lời nhắc bằng giọng nói/,
+    'The queued Companion reminder must play after Read Aloud finishes.');
+  assert.equal(deferredReminder.lang, 'vi-VN');
+  await page.evaluate(() => window.__wmrSpeechMock.utteranceHandlers.at(-1)?.end());
+  await page.waitForFunction(() => document.querySelector('#companion-status')?.textContent.includes('Đã đọc xong lời nhắc'));
+
+  // Disabling reminders while one is queued should clear it; the reader continues undisturbed.
+  await voiceReminderToggle.uncheck();
+  await page.locator('[data-speech-read="essay"]').click();
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'speaking');
+  const utterancesBeforeCancelledQueue = await page.evaluate(() => window.__wmrSpeechMock.utterances.length);
+  await voiceReminderToggle.check();
+  await page.waitForFunction(() => document.querySelector('#companion-status')?.textContent.includes('sẽ được đọc sau'));
+  await voiceReminderToggle.uncheck();
+  assert.equal(await voiceReminderToggle.isChecked(), false);
+  await page.evaluate(() => window.__wmrSpeechMock.utteranceHandlers.at(-1)?.end());
+  await page.waitForFunction(() => document.querySelector('#speech-reader-status')?.dataset.state === 'complete');
+  assert.equal(await page.evaluate(() => window.__wmrSpeechMock.utterances.length), utterancesBeforeCancelledQueue,
+    'Disabling voice reminders should discard any queued reminder without interrupting the active reader.');
 
   // Verify the extra AI action remains blocked until the existing provider-consent switch is enabled.
   await page.locator('#custom-task-panel > summary').click();
